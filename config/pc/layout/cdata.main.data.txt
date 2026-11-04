@@ -1,0 +1,603 @@
+@ cdata main.data
+C
+S 1BA110 10 src/main/dma_queue.c 9
+S 1BA120 28 src/main/dma_queue.c 10
+S 1BA150 20 src/main/texconv.c 3
+S 1BA170 80 src/main/texconv.c 4
+S 1BA1F0 80 src/main/texconv.c 5
+S 1BA270 80 src/main/texconv.c 6
+S 1BA2F0 80 src/main/texconv.c 7
+S 1BA370 200 src/main/texconv.c 8
+S 1BA570 200 src/main/texconv.c 9
+S 1BA770 10 src/main/texconv.c 10
+S 1BA780 100 src/main/texconv.c 12
+S 1BA880 100 src/main/texconv.c 13
+S 1BA980 10 src/main/texconv.c 14
+S 1BA990 80 src/main/screen_tex.c 3
+S 1BAA10 4 src/main/gs_setup.c 5
+S 1BAA20 80 src/main/gs_setup.c 6
+S 1BAAA0 90 src/main/iop.c 3
+S 1BAB30 20 src/main/gs_tex_regs.c 3
+S 1BAB50 8 src/main/gs_tex_regs.c 4
+S 1BAB58 8 src/main/gs_tex_regs.c 5
+S 1BAB60 8 src/main/gs_tex_regs.c 6
+S 1BAB68 8 src/main/gs_tex_regs.c 7
+S 1BAB70 8 src/main/gs_tex_regs.c 8
+S 1BAB78 8 src/main/gs_tex_regs.c 9
+S 1BAB80 8 src/main/gs_tex_regs.c 10
+S 1BAB88 8 src/main/gs_tex_regs.c 11
+S 1BAB90 8 src/main/gs_tex_regs.c 12
+S 1BAB98 8 src/main/gs_tex_regs.c 13
+S 1BABA0 8 src/main/gs_tex_regs.c 14
+S 1BABA8 8 src/main/gs_tex_regs.c 15
+S 1BABB0 40 src/main/prim.c 3
+S 1BABF0 40 src/main/prim.c 4
+S 1BAC30 70 src/main/prim.c 5
+S 1BACA0 50 src/main/prim.c 6
+S 1BACF0 50 src/main/prim.c 7
+S 1BAD40 60 src/main/prim.c 8
+S 1BADA0 40 src/main/prim.c 9
+S 1BADE0 70 src/main/prim.c 10
+S 1BAE50 40 src/main/prim.c 11
+S 1BAE90 50 src/main/prim.c 12
+S 1BAEE0 40 src/main/prim.c 13
+S 1BAF20 50 src/main/prim.c 14
+S 1BAF70 70 src/main/prim.c 15
+S 1BAFE0 4 src/main/pad.c 3
+S 1BAFF0 80 src/main/pad_port.c 3
+S 1BB070 80 src/main/pad_port.c 4
+S 1BB0F0 10 src/main/pad_port.c 5
+S 1BB100 8 src/main/pad_port.c 6
+S 1BB110 10 src/main/pad_port.c 7
+S 1BB120 10 src/main/pad_port.c 8
+S 1BB130 10 src/main/main.c 8
+S 1BB140 40 src/main/save_helpers.c 9
+S 1BB180 10 src/main/save_helpers.c 10
+S 1BB190 10 src/main/save_helpers.c 11
+S 1BB1A0 10 src/main/save_helpers.c 12
+S 1BB1B0 10 src/main/save_helpers.c 13
+S 1BB1C0 10 src/main/save_helpers.c 14
+S 1BB1D0 10 src/main/save_helpers.c 15
+S 1BB1E0 18 src/main/save_helpers.c 16
+S 1BB1F8 8 src/main/save_helpers.c 18
+S 1BB200 60 src/main/save_helpers.c 19
+S 1BB260 20 src/main/save_helpers.c 20
+S 1BB280 20 src/main/save_helpers.c 21
+S 1BB2A0 DC src/main/save_helpers.c 22
+S 1BB380 50 src/main/save_helpers.c 23
+S 1BB3D0 20 src/main/save_helpers.c 24
+S 1BB3F0 50 src/main/save_helpers.c 25
+S 1BB440 30 src/main/save_helpers.c 26
+S 1BB470 30 src/main/save_helpers.c 27
+S 1BB4A0 30 src/main/save_helpers.c 28
+S 1BB4D0 30 src/main/save_helpers.c 29
+S 1BB500 30 src/main/save_helpers.c 30
+S 1BB530 30 src/main/save_helpers.c 31
+S 1BB560 30 src/main/save_helpers.c 32
+S 1BB590 30 src/main/save_helpers.c 33
+S 1BB5C0 30 src/main/save_helpers.c 34
+S 1BB5F0 30 src/main/save_helpers.c 35
+S 1BB620 30 src/main/save_helpers.c 36
+S 1BB650 30 src/main/save_helpers.c 37
+S 1BB680 30 src/main/save_helpers.c 38
+S 1BB6B0 30 src/main/save_helpers.c 39
+S 1BB6E0 30 src/main/save_helpers.c 40
+S 1BB710 68 src/main/save_helpers.c 41
+S 1BB778 8 src/main/save_helpers.c 43
+S 1BB780 14 src/main/save_helpers.c 44
+S 1BB7A0 14 src/main/save_helpers.c 45
+S 1BB7C0 14 src/main/save_helpers.c 46
+S 1BB7E0 14 src/main/save_helpers.c 47
+S 1BB800 14 src/main/save_helpers.c 48
+S 1BB820 14 src/main/save_helpers.c 49
+S 1BB840 14 src/main/save_helpers.c 50
+S 1BB860 14 src/main/save_helpers.c 51
+S 1BB880 14 src/main/save_helpers.c 52
+S 1BB8A0 14 src/main/save_helpers.c 53
+S 1BB8C0 14 src/main/save_helpers.c 54
+S 1BB8E0 14 src/main/save_helpers.c 55
+S 1BB900 14 src/main/save_helpers.c 56
+S 1BB920 70 src/main/save_helpers.c 57
+S 1BB990 50 src/main/save_helpers.c 59
+S 1BB9E0 40 src/main/sound.c 3
+S 1BBA20 40 src/main/sound.c 4
+S 1BBA60 88 src/main/sound.c 5
+S 1BBAF0 88 src/main/sound.c 6
+S 1BBB80 88 src/main/sound.c 7
+S 1BBC10 88 src/main/sound.c 8
+S 1BBCA0 88 src/main/sound.c 9
+S 1BBD30 88 src/main/sound.c 10
+S 1BBDC0 88 src/main/sound.c 11
+S 1BBE50 88 src/main/sound.c 12
+S 1BBEE0 88 src/main/sound.c 13
+S 1BBF70 88 src/main/sound.c 14
+S 1BC000 88 src/main/sound.c 15
+S 1BC090 88 src/main/sound.c 16
+S 1BC120 88 src/main/sound.c 17
+S 1BC1B0 88 src/main/sound.c 18
+S 1BC240 88 src/main/sound.c 19
+S 1BC2D0 88 src/main/sound.c 20
+S 1BC360 88 src/main/sound.c 21
+S 1BC3F0 88 src/main/sound.c 22
+S 1BC480 88 src/main/sound.c 23
+S 1BC510 88 src/main/sound.c 24
+S 1BC5A0 88 src/main/sound.c 25
+S 1BC630 88 src/main/sound.c 26
+S 1BC6C0 88 src/main/sound.c 27
+S 1BC750 88 src/main/sound.c 28
+S 1BC7E0 88 src/main/sound.c 29
+S 1BC870 88 src/main/sound.c 30
+S 1BC900 88 src/main/sound.c 31
+S 1BC990 70 src/main/sound.c 32
+S 1BCA00 1B0 src/main/sound.c 34
+S 1BCBB0 50 src/main/sound.c 35
+S 1BCC00 70 src/main/sound.c 36
+S 1BCC70 C src/main/sound.c 38
+S 1BCC80 4 src/main/cse_rpc.c 9
+S 1BCC88 4 src/main/cse_rpc.c 10
+S 1BCC90 4 src/main/cse_rpc.c 11
+S 1BCC98 1 src/main/cse.c 8
+S 1BCCA0 4 src/main/ml_rpc_queue.c 8
+S 1BCCA8 4 src/main/ml_rpc_queue.c 9
+S 1BCCB0 30 src/main/adx_init.c 3
+S 1BCCE0 20 src/main/adx_init.c 5
+S 1BCD00 100 src/main/stream_play.c 3
+S 1BCE00 8 src/main/stream_play.c 4
+S 1BCE08 8 src/main/stream_play.c 5
+S 1BCE10 2 src/main/afs_files.c 3
+S 1BCE18 2 src/main/afs_files.c 4
+S 1BCE20 20 src/main/sound_effects.c 3
+S 1BCE40 40 src/main/sound_effects.c 4
+S 1C7B10 18 src/main/dma_queue.c 3
+S 1C7B30 18 src/main/dma_queue.c 5
+S 1C7B50 18 src/main/dma_queue.c 7
+S 1C7B70 40 src/main/texture.c 3
+S 1C7BB0 37 src/main/texture.c 4
+S 1C7BF0 40 src/main/texconv.c 16
+S 1C7C30 18 src/main/screen_tex.c 4
+S 1C7C48 8 src/main/screen_tex.c 5
+S 1C7C50 10 src/main/screen_tex.c 6
+S 1C7C60 2C src/main/screen_tex.c 7
+S 1C7C90 60 src/main/screen_tex.c 8
+S 1C7CF0 8 src/main/screen_tex.c 9
+S 1C7CF8 B src/main/gs_setup.c 3
+S 1C7D10 1F src/main/gs_setup.c 4
+S 1C7D30 20 src/main/iop.c 5
+S 1C7D50 30 src/main/iop.c 6
+S 1C7D80 20 src/main/iop.c 7
+S 1C7DA0 10 src/main/iop.c 8
+S 1C7DB0 30 src/main/iop.c 9
+S 1C7DE0 28 src/main/iop.c 10
+S 1C7E08 8 src/main/iop.c 11
+S 1C7E10 20 src/main/iop.c 12
+S 1C7E30 20 src/main/iop.c 13
+S 1C7E50 10 src/main/iop.c 14
+S 1C7E60 20 src/main/render_state.c 3
+S 1C7E80 20 src/main/render_state.c 5
+S 1C7EA0 18 src/main/gs_regs.c 3
+S 1C7EC0 24 src/main/gs_regs.c 5
+S 1C7EE8 4 src/main/power_off.c 3
+S 1C7EF0 5 src/main/power_off.c 4
+S 1C7EF8 7 src/main/power_off.c 5
+S 1C7F00 5 src/main/power_off.c 6
+S 1C7F08 8 src/main/power_off.c 7
+S 1C7F10 40 src/main/pad.c 4
+S 1C7F50 10 src/main/pad.c 5
+S 1C7F60 19 src/main/main.c 3
+S 1C7F80 1B src/main/main.c 4
+S 1C7FA0 2 src/main/main.c 5
+S 1C7FB0 1C src/main/main.c 6
+S 1C7FD0 B src/main/main.c 7
+S 1C7FE0 8 src/main/save_helpers.c 3
+S 1C7FE8 8 src/main/save_helpers.c 4
+S 1C7FF0 8 src/main/save_helpers.c 5
+S 1C7FF8 3 src/main/save_helpers.c 6
+S 1C8000 34 src/main/save_helpers.c 7
+S 1C8038 9 src/main/cse_spumap.c 3
+S 1C8048 5 src/main/cse_spumap.c 4
+S 1C8050 6 src/main/cse_spumap.c 5
+S 1C8060 16 src/main/cse_spumap.c 6
+S 1C8080 16 src/main/cse_spumap.c 7
+S 1C80A0 18 src/main/cse_spumap.c 8
+S 1C80C0 24 src/main/cse_spumap.c 9
+S 1C80F0 24 src/main/cse_spumap.c 10
+S 1C8120 16 src/main/cse_spumap.c 11
+S 1C8138 5 src/main/cse_rpc.c 3
+S 1C8140 6 src/main/cse_rpc.c 4
+S 1C8150 2A src/main/cse_rpc.c 5
+S 1C8180 1D src/main/cse_rpc.c 6
+S 1C81A0 2C src/main/cse_rpc.c 7
+S 1C81D0 18 src/main/cse_rpc.c 8
+S 1C81E8 5 src/main/cse.c 3
+S 1C81F0 6 src/main/cse.c 4
+S 1C8200 36 src/main/cse.c 5
+S 1C8240 34 src/main/cse.c 6
+S 1C8278 5 src/main/cse_bank.c 3
+S 1C8280 6 src/main/cse_bank.c 4
+S 1C8290 16 src/main/cse_bank.c 5
+S 1C82A8 5 src/main/cse_bank.c 6
+S 1C82B0 5 src/main/cse_bank.c 7
+S 1C82B8 5 src/main/cse_bank.c 8
+S 1C82C0 5 src/main/cse_bank.c 9
+S 1C82C8 5 src/main/cse_bankfile.c 3
+S 1C82D0 5 src/main/cse_bankfile.c 4
+S 1C82D8 5 src/main/cse_bankfile.c 5
+S 1C82E0 5 src/main/cse_bankfile.c 6
+S 1C82E8 5 src/main/cse_bankfile.c 7
+S 1C82F0 6 src/main/cse_bankfile.c 8
+S 1C8300 14 src/main/cse_bankfile.c 9
+S 1C8320 14 src/main/cse_bankfile.c 10
+S 1C8340 14 src/main/cse_bankfile.c 11
+S 1C8360 14 src/main/cse_bankfile.c 12
+S 1C8378 5 src/main/ml_rpc_queue.c 3
+S 1C8380 6 src/main/ml_rpc_queue.c 4
+S 1C8390 28 src/main/ml_rpc_queue.c 5
+S 1C83C0 40 src/main/ml_rpc_queue.c 6
+S 1C8400 52 src/main/ml_rpc_queue.c 7
+S 1C8458 5 src/main/cse_cmd.c 3
+S 1C8460 6 src/main/cse_cmd.c 4
+S 1C8470 39 src/main/cse_cmd.c 5
+S 1C84B0 14 src/main/cse_cmd.c 6
+S 1C84D0 1C src/main/cse_cmd.c 7
+S 1C84F0 10 src/main/adx_init.c 6
+S 1C8500 10 src/main/adx_init.c 7
+S 1C8510 10 src/main/adx_init.c 8
+S 1C8520 10 src/main/adx_init.c 9
+S 1C8530 8 src/main/afs_files.c 5
+S 1C8538 8 src/main/afs_files.c 6
+S 1C8540 40 src/main/afs_files.c 7
+S 1C8580 80 src/main/afs_files.c 8
+N gVif1Path3Unmask 1BA110 10 src/main/dma_queue.c
+N gDmaChcrRegs 1BA120 28 src/main/dma_queue.c
+N gTexSwizzle4Tbls_0 1BA370 200 src/main/texconv.c
+N gTexSwizzle8Tbls_1 1BA880 100 src/main/texconv.c
+N gSwizzle4BlockOrder 1BA270 80 src/main/texconv.c
+N D_001C7BF0 1C7BF0 40 src/main/texconv.c
+N gSwizzle8BlockOrder 1BA2F0 80 src/main/texconv.c
+N gTexSwizzle8Tbls_0 1BA780 100 src/main/texconv.c
+N gClutCsm1Order 1BA150 20 src/main/texconv.c
+N gTexSwizzle4Tbls 1BA770 10 src/main/texconv.c
+N gTexSwizzle4Tbls_1 1BA570 200 src/main/texconv.c
+N gSwizzleBlockCol 1BA170 80 src/main/texconv.c
+N gTexSwizzle8Tbls 1BA980 10 src/main/texconv.c
+N gSwizzleBlockRow 1BA1F0 80 src/main/texconv.c
+N gIopLoadErrorFmt 1C7C30 18 src/main/screen_tex.c
+N gPadConfigDefault 1C7C60 2C src/main/screen_tex.c
+N gPadBit 1C7C90 60 src/main/screen_tex.c
+N D_001C7CF0 1C7CF0 8 src/main/screen_tex.c
+N gScreenTexPacket 1BA990 80 src/main/screen_tex.c
+N gCdromSuffix 1C7C50 10 src/main/screen_tex.c
+N gCdromPrefix 1C7C48 8 src/main/screen_tex.c
+N gDebugFileFirst 1BAA10 4 src/main/gs_setup.c
+N gClearColorPacket 1BAA20 80 src/main/gs_setup.c
+N gIopModArgs_9 1C7D30 20 src/main/iop.c
+N D_001C7D80 1C7D80 20 src/main/iop.c
+N D_001C7E08 1C7E08 8 src/main/iop.c
+N D_001C7DB0 1C7DB0 30 src/main/iop.c
+N D_001C7DE0 1C7DE0 28 src/main/iop.c
+N D_001C7E50 1C7E50 10 src/main/iop.c
+N gIopModArgs_10 1C7D50 30 src/main/iop.c
+N gIopModArgs 1BAAA0 90 src/main/iop.c
+N D_001C7E30 1C7E30 20 src/main/iop.c
+N D_001C7E10 1C7E10 20 src/main/iop.c
+N D_001C7DA0 1C7DA0 10 src/main/iop.c
+N gTexRegMiptbp1Addr 1BAB98 8 src/main/gs_tex_regs.c
+N gTexRegClampAddr 1BAB88 8 src/main/gs_tex_regs.c
+N gTexRegTexaAddr 1BAB58 8 src/main/gs_tex_regs.c
+N gTexRegTex1 1BAB60 8 src/main/gs_tex_regs.c
+N gTexRegMiptbp2 1BABA0 8 src/main/gs_tex_regs.c
+N gTexRegMiptbp2Addr 1BABA8 8 src/main/gs_tex_regs.c
+N gTexRegPacket 1BAB30 20 src/main/gs_tex_regs.c
+N gTexRegTex0Addr 1BAB78 8 src/main/gs_tex_regs.c
+N gTexRegTex1Addr 1BAB68 8 src/main/gs_tex_regs.c
+N gTexRegMiptbp1 1BAB90 8 src/main/gs_tex_regs.c
+N gTexRegTex0 1BAB70 8 src/main/gs_tex_regs.c
+N gTexRegTexa 1BAB50 8 src/main/gs_tex_regs.c
+N gTexRegClamp 1BAB80 8 src/main/gs_tex_regs.c
+N gPrimRectFPacket_u64 1BAE50 40 src/main/prim.c
+N gPrimSpriteFPacket_u64 1BAE90 50 src/main/prim.c
+N gPrimTexTri3DPacket_u64 1BAF70 70 src/main/prim.c
+N gPrimTexTriPacket_u64 1BAD40 60 src/main/prim.c
+N gPrimTexTriFPacket_u64 1BADE0 70 src/main/prim.c
+N gPrimSprite3DPacket_u64 1BAF20 50 src/main/prim.c
+N gSpritePacket_u64 1BACA0 50 src/main/prim.c
+N gPrimGradRectPacket_u64 1BAC30 70 src/main/prim.c
+N gPrimTriPacket_u64 1BACF0 50 src/main/prim.c
+N gPrimLineFPacket_u64 1BADA0 40 src/main/prim.c
+N gPrimRectPacket_u64 1BABF0 40 src/main/prim.c
+N gPrimRect3DPacket_u64 1BAEE0 40 src/main/prim.c
+N gPrimLinePacket_u64 1BABB0 40 src/main/prim.c
+N gPadPressRemap 1C7F50 10 src/main/pad.c
+N gPadDirRemap 1C7F10 40 src/main/pad.c
+N gPadFirstSocket 1BAFE0 4 src/main/pad.c
+N gPadMapAnalog 1BAFF0 80 src/main/pad_port.c
+N gPadStickDirBits 1BB120 10 src/main/pad_port.c
+N gPadMapDigital 1BB070 80 src/main/pad_port.c
+N gPadPressIndex 1BB0F0 10 src/main/pad_port.c
+N gPadDpadFix 1BB110 10 src/main/pad_port.c
+N gPadDefaultLimits 1BB100 8 src/main/pad_port.c
+N gOverlayWindow 1BB130 10 src/main/main.c
+N gArenaGaugeUpChances_8 1BB880 14 src/main/save_helpers.c
+N gArenaGaugeUpChances_3 1BB7E0 14 src/main/save_helpers.c
+N gArenaGaugeUpChances_9 1BB8A0 14 src/main/save_helpers.c
+N gMonsterNoteMarks_0 1BB440 30 src/main/save_helpers.c
+N gMonsterNoteMarks_5 1BB530 30 src/main/save_helpers.c
+N gArenaGaugeUpChances_6 1BB840 14 src/main/save_helpers.c
+N gArenaGaugeUpChances 1BB920 70 src/main/save_helpers.c
+N gHrGateQuests_5 1BB1D0 10 src/main/save_helpers.c
+N gMonsterNoteMarks_3 1BB4D0 30 src/main/save_helpers.c
+N gHrGateQuests 1BB1E0 18 src/main/save_helpers.c
+N gMonsterNoteMarks_4 1BB500 30 src/main/save_helpers.c
+N gMonsterNoteMarks_6 1BB560 30 src/main/save_helpers.c
+N gHrGateQuests_2 1BB1A0 10 src/main/save_helpers.c
+N gMonsterNoteIds 1BB990 50 src/main/save_helpers.c
+N gArenaGaugeUpChances_0 1BB780 14 src/main/save_helpers.c
+N gMonsterNoteMarks_2 1BB4A0 30 src/main/save_helpers.c
+N gQuestGroupLastIds 1BB3D0 20 src/main/save_helpers.c
+N gArenaGaugeUpChances_13 1BB900 14 src/main/save_helpers.c
+N gArenaGaugeUpChances_7 1BB860 14 src/main/save_helpers.c
+N gMonsterNoteMarks_12 1BB680 30 src/main/save_helpers.c
+N gArenaGaugeUpChances_1 1BB7A0 14 src/main/save_helpers.c
+N gArenaGaugeUpChances_12 1BB8E0 14 src/main/save_helpers.c
+N gMonsterNoteMarks_13 1BB6B0 30 src/main/save_helpers.c
+N gMonsterNoteMarks_1 1BB470 30 src/main/save_helpers.c
+N gDojoParTimes 1BB200 60 src/main/save_helpers.c
+N gPresetColors 1BB140 40 src/main/save_helpers.c
+N D_001BB778 1BB778 8 src/main/save_helpers.c
+N gMonsterNoteMarks_16 1BB6E0 30 src/main/save_helpers.c
+N gHrGateQuests_4 1BB1C0 10 src/main/save_helpers.c
+N D_001BB1F8 1BB1F8 8 src/main/save_helpers.c
+N gArenaGaugeUpChances_4 1BB800 14 src/main/save_helpers.c
+N gRateListsInit 1BB380 50 src/main/save_helpers.c
+N gHrGateQuests_0 1BB180 10 src/main/save_helpers.c
+N gHrGateQuests_3 1BB1B0 10 src/main/save_helpers.c
+N gMonsterNoteMarks_10 1BB620 30 src/main/save_helpers.c
+N D_001BB260 1BB260 20 src/main/save_helpers.c
+N gRateGroups 1BB2A0 DC src/main/save_helpers.c
+N gMonsterNoteMarks_7 1BB590 30 src/main/save_helpers.c
+N gArenaGaugeUpChances_2 1BB7C0 14 src/main/save_helpers.c
+N gHrGateQuests_1 1BB190 10 src/main/save_helpers.c
+N gArenaGaugeUpChances_5 1BB820 14 src/main/save_helpers.c
+N gMonsterNoteMarks 1BB710 68 src/main/save_helpers.c
+N gMonsterNoteMarks_11 1BB650 30 src/main/save_helpers.c
+N gArenaGaugeUpChances_10 1BB8C0 14 src/main/save_helpers.c
+N gQuestRecordIds 1BB280 20 src/main/save_helpers.c
+N gMonsterNoteMarks_8 1BB5C0 30 src/main/save_helpers.c
+N gMonsterNoteMarks_9 1BB5F0 30 src/main/save_helpers.c
+N gTeamItemBits 1BB3F0 50 src/main/save_helpers.c
+N gSePosVolCurves_24 1BC7E0 88 src/main/sound.c
+N gSePosVolCurves_21 1BC630 88 src/main/sound.c
+N gSePosVolCurves_12 1BC120 88 src/main/sound.c
+N gSndForwardAxis 1BCC70 C src/main/sound.c
+N gSePosVolCurves_18 1BC480 88 src/main/sound.c
+N gSePosVolCurves_1 1BBAF0 88 src/main/sound.c
+N gSePosVolCurves_25 1BC870 88 src/main/sound.c
+N gSePosVolCurves_0 1BBA60 88 src/main/sound.c
+N gSndSeBufSizes 1BB9E0 40 src/main/sound.c
+N gSePosVolCurves_5 1BBD30 88 src/main/sound.c
+N gSePosRanges 1BCA00 1B0 src/main/sound.c
+N gSePosVolCurves_9 1BBF70 88 src/main/sound.c
+N gSePosVolCurves_15 1BC2D0 88 src/main/sound.c
+N gSndBankBufSizes 1BBA20 40 src/main/sound.c
+N gSePosVolCurves_22 1BC6C0 88 src/main/sound.c
+N gSePosVolCurves_13 1BC1B0 88 src/main/sound.c
+N gSePosVolCurves_2 1BBB80 88 src/main/sound.c
+N gSePosVolCurves_8 1BBEE0 88 src/main/sound.c
+N gSePosCurves2_24 1BCBB0 50 src/main/sound.c
+N gSePosVolCurves_4 1BBCA0 88 src/main/sound.c
+N gSePosVolCurves_16 1BC360 88 src/main/sound.c
+N gSePosVolCurves_7 1BBE50 88 src/main/sound.c
+N gSePosVolCurves_3 1BBC10 88 src/main/sound.c
+N gSePosVolCurves_10 1BC000 88 src/main/sound.c
+N gSePosVolCurves_23 1BC750 88 src/main/sound.c
+N gSePosVolCurves_14 1BC240 88 src/main/sound.c
+N gSePosVolCurves_6 1BBDC0 88 src/main/sound.c
+N gSePosCurves2 1BCC00 70 src/main/sound.c
+N gSePosVolCurves_20 1BC5A0 88 src/main/sound.c
+N gSePosVolCurves_19 1BC510 88 src/main/sound.c
+N gSePosVolCurves 1BC990 70 src/main/sound.c
+N gSePosVolCurves_17 1BC3F0 88 src/main/sound.c
+N gSePosVolCurves_26 1BC900 88 src/main/sound.c
+N gSePosVolCurves_11 1BC090 88 src/main/sound.c
+N gCseRpcDoneSema 1BCC90 4 src/main/cse_rpc.c
+N gCseRpcSema 1BCC80 4 src/main/cse_rpc.c
+N gCseRpcReqSema 1BCC88 4 src/main/cse_rpc.c
+N gSndOutputMode 1BCC98 1 src/main/cse.c
+N gMlRpcQueueSema 1BCCA8 4 src/main/ml_rpc_queue.c
+N gMlRpcQueueThread 1BCCA0 4 src/main/ml_rpc_queue.c
+N gAfsPartitions 1BCCB0 30 src/main/adx_init.c
+N gAfs02Name 1C8510 10 src/main/adx_init.c
+N gAdxtParams 1BCCE0 20 src/main/adx_init.c
+N gDataBinName 1C8520 10 src/main/adx_init.c
+N gAfs00Name 1C84F0 10 src/main/adx_init.c
+N gAfs01Name 1C8500 10 src/main/adx_init.c
+N gVolumeMax 1BCE00 8 src/main/stream_play.c
+N gVolumeDb 1BCD00 100 src/main/stream_play.c
+N gVolumeMaxSurround 1BCE08 8 src/main/stream_play.c
+N gDmcamGroupAlt 1BCE10 2 src/main/afs_files.c
+N gMibPtName 1C8530 8 src/main/afs_files.c
+N gOverlayWindowBase 1C8580 80 src/main/afs_files.c
+N gEmcmdPtName 1C8538 8 src/main/afs_files.c
+N gDmcamGroup 1BCE18 2 src/main/afs_files.c
+N gBrdataPtName 1C8540 40 src/main/afs_files.c
+N gSndVolumeScale 1BCE20 20 src/main/sound_effects.c
+N D_001BCE40 1BCE40 40 src/main/sound_effects.c
+R 1BA770 s gTexSwizzle4Tbls_0 0
+R 1BA774 s gTexSwizzle4Tbls_1 0
+R 1BA778 s gTexSwizzle4Tbls_0 0
+R 1BA77C s gTexSwizzle4Tbls_1 0
+R 1BA980 s gTexSwizzle8Tbls_0 0
+R 1BA984 s gTexSwizzle8Tbls_1 0
+R 1BA988 s gTexSwizzle8Tbls_0 0
+R 1BA98C s gTexSwizzle8Tbls_1 0
+R 1BAB14 s gIopModArgs_9 0
+R 1BAB20 s gIopModArgs_10 0
+R 1BB1E0 s gHrGateQuests_0 0
+R 1BB1E4 s gHrGateQuests_1 0
+R 1BB1E8 s gHrGateQuests_2 0
+R 1BB1EC s gHrGateQuests_3 0
+R 1BB1F0 s gHrGateQuests_4 0
+R 1BB1F4 s gHrGateQuests_5 0
+R 1BB710 s gMonsterNoteMarks_0 0
+R 1BB714 s gMonsterNoteMarks_1 0
+R 1BB718 s gMonsterNoteMarks_2 0
+R 1BB71C s gMonsterNoteMarks_3 0
+R 1BB720 s gMonsterNoteMarks_4 0
+R 1BB724 s gMonsterNoteMarks_5 0
+R 1BB728 s gMonsterNoteMarks_6 0
+R 1BB72C s gMonsterNoteMarks_7 0
+R 1BB730 s gMonsterNoteMarks_8 0
+R 1BB734 s gMonsterNoteMarks_9 0
+R 1BB738 s gMonsterNoteMarks_10 0
+R 1BB73C s gMonsterNoteMarks_11 0
+R 1BB740 s gMonsterNoteMarks_12 0
+R 1BB744 s gMonsterNoteMarks_13 0
+R 1BB748 s gMonsterNoteMarks_13 0
+R 1BB74C s gMonsterNoteMarks_13 0
+R 1BB750 s gMonsterNoteMarks_16 0
+R 1BB754 s gMonsterNoteMarks_3 0
+R 1BB758 s gMonsterNoteMarks_0 0
+R 1BB75C s gMonsterNoteMarks_1 0
+R 1BB760 s gMonsterNoteMarks_2 0
+R 1BB764 s gMonsterNoteMarks_3 0
+R 1BB768 s gMonsterNoteMarks_8 0
+R 1BB76C s gMonsterNoteMarks_4 0
+R 1BB770 s gMonsterNoteMarks_5 0
+R 1BB774 s gMonsterNoteMarks_2 0
+R 1BB920 s gArenaGaugeUpChances_0 0
+R 1BB924 s gArenaGaugeUpChances_1 0
+R 1BB928 s gArenaGaugeUpChances_2 0
+R 1BB92C s gArenaGaugeUpChances_3 0
+R 1BB930 s gArenaGaugeUpChances_4 0
+R 1BB934 s gArenaGaugeUpChances_5 0
+R 1BB938 s gArenaGaugeUpChances_6 0
+R 1BB93C s gArenaGaugeUpChances_7 0
+R 1BB940 s gArenaGaugeUpChances_8 0
+R 1BB944 s gArenaGaugeUpChances_9 0
+R 1BB948 s gArenaGaugeUpChances_10 0
+R 1BB94C s D_0024C150 0
+R 1BB950 s gArenaGaugeUpChances_12 0
+R 1BB954 s gArenaGaugeUpChances_13 0
+R 1BB958 s gArenaGaugeUpChances_13 0
+R 1BB95C s gArenaGaugeUpChances_13 0
+R 1BB960 s gArenaGaugeUpChances_13 0
+R 1BB964 s D_0024C150 0
+R 1BB968 s D_0024C150 0
+R 1BB96C s D_0024C150 0
+R 1BB970 s D_0024C150 0
+R 1BB974 s D_0024C150 0
+R 1BB978 s D_0024C150 0
+R 1BB97C s D_0024C150 0
+R 1BB980 s D_0024C150 0
+R 1BB984 s D_0024C150 0
+R 1BC990 s gSePosVolCurves_0 0
+R 1BC994 s gSePosVolCurves_1 0
+R 1BC998 s gSePosVolCurves_2 0
+R 1BC99C s gSePosVolCurves_3 0
+R 1BC9A0 s gSePosVolCurves_4 0
+R 1BC9A4 s gSePosVolCurves_5 0
+R 1BC9A8 s gSePosVolCurves_6 0
+R 1BC9AC s gSePosVolCurves_7 0
+R 1BC9B0 s gSePosVolCurves_8 0
+R 1BC9B4 s gSePosVolCurves_9 0
+R 1BC9B8 s gSePosVolCurves_10 0
+R 1BC9BC s gSePosVolCurves_11 0
+R 1BC9C0 s gSePosVolCurves_12 0
+R 1BC9C4 s gSePosVolCurves_13 0
+R 1BC9C8 s gSePosVolCurves_14 0
+R 1BC9CC s gSePosVolCurves_15 0
+R 1BC9D0 s gSePosVolCurves_16 0
+R 1BC9D4 s gSePosVolCurves_17 0
+R 1BC9D8 s gSePosVolCurves_18 0
+R 1BC9DC s gSePosVolCurves_19 0
+R 1BC9E0 s gSePosVolCurves_20 0
+R 1BC9E4 s gSePosVolCurves_21 0
+R 1BC9E8 s gSePosVolCurves_22 0
+R 1BC9EC s gSePosVolCurves_23 0
+R 1BC9F0 s gSePosVolCurves_24 0
+R 1BC9F4 s gSePosVolCurves_25 0
+R 1BC9F8 s gSePosVolCurves_26 0
+R 1BCC60 s gSePosCurves2_24 0
+R 1BCCB0 s gAfs00Name 0
+R 1BCCB4 s D_002E3340 0
+R 1BCCBC s gAfs01Name 0
+R 1BCCC0 s D_002E2ED0 0
+R 1BCCC8 s gAfs02Name 0
+R 1BCCCC s D_002E2D70 0
+R 1BCCD4 s gDataBinName 0
+R 1BCCD8 s D_002DF850 0
+J 1C7B10 DmaQueue_AddChain F8 src/main/dma_queue.c @311
+J 1C7B14 DmaQueue_AddChain 138 src/main/dma_queue.c @311
+J 1C7B18 DmaQueue_AddChain 30 src/main/dma_queue.c @311
+J 1C7B1C DmaQueue_AddChain F8 src/main/dma_queue.c @311
+J 1C7B20 DmaQueue_AddChain F8 src/main/dma_queue.c @311
+J 1C7B24 DmaQueue_AddChain F8 src/main/dma_queue.c @311
+J 1C7B30 DmaQueue_Handler 1C8 src/main/dma_queue.c @351
+J 1C7B34 DmaQueue_Handler 1C8 src/main/dma_queue.c @351
+J 1C7B38 DmaQueue_Handler 240 src/main/dma_queue.c @351
+J 1C7B3C DmaQueue_Handler 1C8 src/main/dma_queue.c @351
+J 1C7B40 DmaQueue_Handler 1C8 src/main/dma_queue.c @351
+J 1C7B44 DmaQueue_Handler 1C8 src/main/dma_queue.c @351
+J 1C7B50 SendFrameDmaChain C8 src/main/dma_queue.c @380
+J 1C7B54 SendFrameDmaChain C8 src/main/dma_queue.c @380
+J 1C7B58 SendFrameDmaChain 118 src/main/dma_queue.c @380
+J 1C7B5C SendFrameDmaChain C8 src/main/dma_queue.c @380
+J 1C7B60 SendFrameDmaChain C8 src/main/dma_queue.c @380
+J 1C7B64 SendFrameDmaChain C8 src/main/dma_queue.c @380
+J 1C7E60 Gs_SetState EF0 src/main/render_state.c @247
+J 1C7E64 Gs_SetState F08 src/main/render_state.c @247
+J 1C7E68 Gs_SetState F20 src/main/render_state.c @247
+J 1C7E6C Gs_SetState F18 src/main/render_state.c @247
+J 1C7E70 Gs_SetState F20 src/main/render_state.c @247
+J 1C7E74 Gs_SetState F20 src/main/render_state.c @247
+J 1C7E78 Gs_SetState F20 src/main/render_state.c @247
+J 1C7E7C Gs_SetState EF8 src/main/render_state.c @247
+J 1C7E80 Gs_SetState AD0 src/main/render_state.c @234
+J 1C7E84 Gs_SetState AE8 src/main/render_state.c @234
+J 1C7E88 Gs_SetState A90 src/main/render_state.c @234
+J 1C7E8C Gs_SetState AF8 src/main/render_state.c @234
+J 1C7E90 Gs_SetState AB0 src/main/render_state.c @234
+J 1C7E94 Gs_SetState AA0 src/main/render_state.c @234
+J 1C7E98 Gs_SetState AC0 src/main/render_state.c @234
+J 1C7E9C Gs_SetState AD8 src/main/render_state.c @234
+J 1C7EA0 Gs_SetAlpha 3D8 src/main/gs_regs.c @231
+J 1C7EA4 Gs_SetAlpha 380 src/main/gs_regs.c @231
+J 1C7EA8 Gs_SetAlpha 450 src/main/gs_regs.c @231
+J 1C7EAC Gs_SetAlpha 488 src/main/gs_regs.c @231
+J 1C7EB0 Gs_SetAlpha 4B0 src/main/gs_regs.c @231
+J 1C7EB4 Gs_SetAlpha 4E8 src/main/gs_regs.c @231
+J 1C7EC0 Gs_SetAlpha 180 src/main/gs_regs.c @230
+J 1C7EC4 Gs_SetAlpha E0 src/main/gs_regs.c @230
+J 1C7EC8 Gs_SetAlpha 220 src/main/gs_regs.c @230
+J 1C7ECC Gs_SetAlpha 268 src/main/gs_regs.c @230
+J 1C7ED0 Gs_SetAlpha 2A0 src/main/gs_regs.c @230
+J 1C7ED4 Gs_SetAlpha 2E8 src/main/gs_regs.c @230
+J 1C7ED8 Gs_SetAlpha 348 src/main/gs_regs.c @230
+J 1C7EDC Gs_SetAlpha 348 src/main/gs_regs.c @230
+J 1C7EE0 Gs_SetAlpha 320 src/main/gs_regs.c @230
+J 1C8000 SaveRecord_KindIndex_Unk 28 src/main/save_helpers.c @919
+J 1C8004 SaveRecord_KindIndex_Unk 28 src/main/save_helpers.c @919
+J 1C8008 SaveRecord_KindIndex_Unk 30 src/main/save_helpers.c @919
+J 1C800C SaveRecord_KindIndex_Unk 30 src/main/save_helpers.c @919
+J 1C8010 SaveRecord_KindIndex_Unk 38 src/main/save_helpers.c @919
+J 1C8014 SaveRecord_KindIndex_Unk 38 src/main/save_helpers.c @919
+J 1C8018 SaveRecord_KindIndex_Unk 40 src/main/save_helpers.c @919
+J 1C801C SaveRecord_KindIndex_Unk 40 src/main/save_helpers.c @919
+J 1C8020 SaveRecord_KindIndex_Unk 48 src/main/save_helpers.c @919
+J 1C8024 SaveRecord_KindIndex_Unk 50 src/main/save_helpers.c @919
+J 1C8028 SaveRecord_KindIndex_Unk 58 src/main/save_helpers.c @919
+J 1C802C SaveRecord_KindIndex_Unk 60 src/main/save_helpers.c @919
+J 1C8030 SaveRecord_KindIndex_Unk 68 src/main/save_helpers.c @919
+J 1C8240 CseSe_Request 360 src/main/cse.c @443
+J 1C8244 CseSe_Request 300 src/main/cse.c @443
+J 1C8248 CseSe_Request 320 src/main/cse.c @443
+J 1C824C CseSe_Request 330 src/main/cse.c @443
+J 1C8250 CseSe_Request 360 src/main/cse.c @443
+J 1C8254 CseSe_Request 340 src/main/cse.c @443
+J 1C8258 CseSe_Request 360 src/main/cse.c @443
+J 1C825C CseSe_Request 360 src/main/cse.c @443
+J 1C8260 CseSe_Request 360 src/main/cse.c @443
+J 1C8264 CseSe_Request 360 src/main/cse.c @443
+J 1C8268 CseSe_Request 360 src/main/cse.c @443
+J 1C826C CseSe_Request 360 src/main/cse.c @443
+J 1C8270 CseSe_Request 360 src/main/cse.c @443

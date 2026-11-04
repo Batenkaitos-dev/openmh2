@@ -1,0 +1,65 @@
+@ cdata nethttp.data
+C
+S 94FF98 1 src/nethttp/http_front.c 3
+S 94FFA0 4 src/nethttp/http_front.c 4
+S 94FFA8 8 src/nethttp/http_front.c 5
+S 94FFB0 54 src/nethttp/http_front.c 6
+S 954D50 1C src/nethttp/http_front.c 8
+S 954D70 F src/nethttp/http_front.c 10
+S 954D80 D src/nethttp/http_front.c 11
+S 954D90 22 src/nethttp/http_front.c 12
+S 954DB8 2 src/nethttp/http_front.c 13
+S 954DC0 1F src/nethttp/http_front.c 14
+S 954DE0 8 src/nethttp/http_front.c 15
+S 954DE8 7 src/nethttp/http_front.c 16
+S 954DF0 9 src/nethttp/http_front.c 17
+S 954E00 E src/nethttp/http_front.c 18
+S 954E10 5 src/nethttp/http_front.c 19
+S 954E20 3C src/nethttp/http_front.c 20
+N gHttpCertSize 94FFA8 8 src/nethttp/http_front.c
+N gHttpsSecureOption 94FFA0 4 src/nethttp/http_front.c
+N gHttpReqMax 94FF98 1 src/nethttp/http_front.c
+N gHttpStateFn 94FFB0 54 src/nethttp/http_front.c
+R 94FFB0 s HttpReq_Open 0
+R 94FFB4 s HttpReq_ParseUrl 0
+R 94FFB8 s HttpReq_CreateClient 0
+R 94FFBC s HttpReq_SetOptions 0
+R 94FFC0 s HttpReq_Connect 0
+R 94FFC4 s HttpReq_Send 0
+R 94FFC8 s HttpReq_ReadBody 0
+R 94FFCC s HttpReq_CheckStatus 0
+R 94FFD0 s HttpReq_Authenticate 0
+R 94FFD4 s HttpReq_Close 0
+R 94FFD8 s HttpReq_Done 0
+R 94FFDC s HttpReq_Abort 0
+R 94FFE0 s HttpReq_Failed 0
+R 94FFE4 s HttpLbs_Send 0
+R 94FFE8 s HttpLbs_Wait 0
+R 94FFEC s HttpLbs_Done 0
+R 94FFF0 s HttpLbs_Abort 0
+R 94FFF4 s HttpLbs_Failed 0
+R 94FFF8 s HttpAfs_Read 0
+R 94FFFC s HttpAfs_Next 0
+R 950000 s HttpAfs_Done 0
+J 954D50 HttpReq_Open 318 src/nethttp/http_front.c @166
+J 954D54 HttpReq_Open 68 src/nethttp/http_front.c @166
+J 954D58 HttpReq_Open 290 src/nethttp/http_front.c @166
+J 954D5C HttpReq_Open 2D0 src/nethttp/http_front.c @166
+J 954D60 HttpReq_Open 148 src/nethttp/http_front.c @166
+J 954D64 HttpReq_Open 258 src/nethttp/http_front.c @166
+J 954D68 HttpReq_Open 138 src/nethttp/http_front.c @166
+J 954E20 HttpReq_Abort 100 src/nethttp/http_front.c @650
+J 954E24 HttpReq_Abort C8 src/nethttp/http_front.c @650
+J 954E28 HttpReq_Abort D0 src/nethttp/http_front.c @650
+J 954E2C HttpReq_Abort F8 src/nethttp/http_front.c @650
+J 954E30 HttpReq_Abort F0 src/nethttp/http_front.c @650
+J 954E34 HttpReq_Abort C8 src/nethttp/http_front.c @650
+J 954E38 HttpReq_Abort E8 src/nethttp/http_front.c @650
+J 954E3C HttpReq_Abort D0 src/nethttp/http_front.c @650
+J 954E40 HttpReq_Abort D0 src/nethttp/http_front.c @650
+J 954E44 HttpReq_Abort E0 src/nethttp/http_front.c @650
+J 954E48 HttpReq_Abort D8 src/nethttp/http_front.c @650
+J 954E4C HttpReq_Abort C8 src/nethttp/http_front.c @650
+J 954E50 HttpReq_Abort D0 src/nethttp/http_front.c @650
+J 954E54 HttpReq_Abort C8 src/nethttp/http_front.c @650
+J 954E58 HttpReq_Abort C8 src/nethttp/http_front.c @650

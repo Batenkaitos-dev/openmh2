@@ -1,0 +1,220 @@
+# The data objects Capcom's code addresses by name that the matching build defines in main's unsplit .data/.bss
+# pieces (asm/main/data/*: they count as "library data"; 209). Written for
+# the platform layer's modules.
+#
+# NAME <tab> OWNER <tab> SIZE <tab> WHERE <tab> USED BY (Capcom's files that name it; the symbol file's comment)
+#   OWNER capcom: Capcom's own object (its code writes or reads it, or hands its address to a library as a
+#                 work area or a buffer). tools/pc/data_c.py defines it as zeros of SIZE (the symbol files' size),
+#                 as every .bss object. The library functions that fill it do so through the pointer the call hands them.
+#   OWNER lib:X   a library's object (library X): stays a 4 KB stub until the platform layer defines it from
+#                 the library's interface (R4).
+# WHERE: bss (zero at start) | rodata/data (initial bytes: never taken from the binary for a library object)
+D_0020E134	capcom	4	bss	src/sub_main/model_draw.c
+D_0021905C	capcom	4	bss	src/main/display.c
+D_00219060	capcom	4	bss	src/main/display.c
+D_00219138	capcom	8	bss	src/main/display.c
+D_0024C150	capcom	48	bss	src/main/save_helpers.c
+D_002DF850	capcom	2012	bss	src/main/adx_init.c
+D_002E2D70	capcom	352	bss	src/main/adx_init.c
+D_002E2ED0	capcom	1136	bss	src/main/adx_init.c
+D_002E3340	capcom	1008	bss	src/main/adx_init.c
+_gp	lib:crt0	4	linker symbol (the global pointer register's value)	src/main/power_off.c, src/select/select_psp.c
+gAdxCacheWork	capcom	544	bss	src/main/main.c
+gAdxtWork	capcom	2998	bss	src/main/adx_init.c
+gAfsPtInfo4	capcom	304	bss	src/main/afs_files.c
+gArgv	capcom	192	bss	src/main/main.c, src/select/select_boot.c
+gCardRecords	capcom	32	bss	src/main/image_pixels.c -- two 12-byte records Sys_InitCard clears, no code reads them
+gCardWork	capcom	104	bss	src/main/image_pixels.c -- Sys_InitCard clears its first 100 bytes, no code reads it
+gClearPacket	capcom	320	bss	src/main/gs_setup.c
+gCseBanks	capcom	64	bss	src/main/cse_bank.c
+gCseClientComm	capcom	40	bss	src/main/cse_rpc.c
+gCseClientStat	capcom	40	bss	src/main/cse_rpc.c
+gCseClientThmn	capcom	40	bss	src/main/cse_rpc.c
+gCseCommReply	capcom	64	bss	src/main/cse_rpc.c
+gCseEffectEnd	capcom	8	bss	src/main/cse_spumap.c
+gCseFrame	capcom	68	bss	src/main/cse.c
+gCseRpcClient	capcom	64	bss	src/main/cse_rpc.c
+gCseRpcEndFunc	capcom	48	bss	src/main/cse_rpc.c
+gCseRpcFno	capcom	16	bss	src/main/cse_rpc.c
+gCseRpcRecvBuf	capcom	1024	bss	src/main/cse_rpc.c
+gCseRpcSendBuf	capcom	64	bss	src/main/cse_rpc.c
+gCseSeKeyOnHook	capcom	8	bss	src/main/cse.c
+gCseSeTables	capcom	64	bss	src/main/cse.c
+gCseSeq	capcom	8	bss	src/main/cse_cmd.c
+gCseSeqInit	capcom	8	bss	src/main/cse_cmd.c
+gCseSpuBanks	capcom	128	bss	src/main/cse_spumap.c
+gCseSpuMap	capcom	8	bss	src/main/cse_spumap.c
+gCseSpuMapPage	capcom	8	bss	src/main/cse_spumap.c
+gCseStatReply	capcom	64	bss	src/main/cse_rpc.c
+gCseThmnReply	capcom	1024	bss	src/main/cse_rpc.c
+gCtypeTable	lib:libc	1	rodata	src/lobby/lobby_routes.c, src/lobby/word_filter.c, src/select/select_ngword.c
+gDebugMsg	capcom	2048	bss	src/main/heap.c
+gDispHeight	capcom	4	bss	src/main/gs_regs.c, src/main/gs_setup.c, src/main/prim.c, src/main/render_state.c (+5)
+gDispTexScaleU	capcom	4	bss	src/main/render_state.c, src/sub_main/model_draw.c -- the display width over the next power of two (Gs_ResetState), Model_BuildVifPackets scales u by it
+gDispTexScaleV	capcom	4	bss	src/main/render_state.c, src/sub_main/model_draw.c -- the display height over the next power of two (Gs_ResetState), Model_BuildVifPackets scales v by it
+gDispWidth	capcom	4	bss	src/main/gs_regs.c, src/main/gs_setup.c, src/main/prim.c, src/main/render_state.c (+5)
+gDmaChan	capcom	40	bss	src/main/dma_queue.c, src/main/gs_setup.c, src/sub_main/loading_screen.c, src/sub_main/movie.c
+gDmaGsIntcId	capcom	4	bss	src/main/dma_queue.c, src/yn/yn_main.c -- the GS interrupt handler id (AddIntcHandler in DmaQueue_Init, removed by Yn_LaunchSetupGuide)
+gDmaQueue	capcom	8	bss	src/main/display.c, src/main/dma_queue.c, src/main/gs_regs.c, src/main/gs_setup.c (+6)
+gDmaRecvDst	capcom	4	bss	src/main/dma_queue.c
+gDmaRecvQwc	capcom	4	bss	src/main/dma_queue.c
+gDmaSavedImr	capcom	8	bss	src/main/dma_queue.c
+gDmcamAddr	capcom	64	bss	src/main/afs_files.c
+gDmcamCount	capcom	16	bss	src/main/afs_files.c
+gDmcamId	capcom	12	bss	src/main/afs_files.c
+gDmcamSize	capcom	60	bss	src/main/afs_files.c
+gDrawEnv	capcom	320	bss	src/main/gs_setup.c
+gFileQueue	capcom	1	bss	src/main/file_queue.c
+gFileReqs	capcom	2016	bss	src/main/file_queue.c
+gFlipCountdown	capcom	8	bss	src/main/display.c, src/main/display_util.c, src/main/dma_queue.c, src/main/mem_util.c (+5)
+gFrameImage	capcom	72	bss	src/main/gs_setup.c
+gGameVSyncOn	capcom	4	bss	src/main/display.c
+gGsAlphaRef	capcom	4	bss	src/main/gs_regs.c, src/main/render_state.c -- the alpha test reference (Gs_SetState state 0x60, Gs_SetTest)
+gGsBoundTexture	capcom	4	bss	src/main/render_state.c, src/main/vram_slots.c -- the texture render state RS_TEXTURE bound last (Gs_SetState), 1 after the texture conversion
+gGsColor	capcom	4	bss	src/main/render_state.c -- render state RS_COLOR, a packed ARGB color, as floats in gGsColorF (Gs_SetState)
+gGsColor2	capcom	4	bss	src/main/render_state.c -- render state RS_COLOR2, a packed ARGB color, as floats in gGsColor2F (Gs_SetState)
+gGsColor2F	capcom	16	bss	src/main/render_state.c, src/sub_main/vu1_packets.c -- render state RS_COLOR2 as floats over 255, copied into the VU1 packets (Vu1Pkt_V, Vu1Pkt_LV)
+gGsColorF	capcom	16	bss	src/main/render_state.c, src/sub_main/vu1_packets.c -- render state RS_COLOR as floats, RGB over 255 and alpha 0 to 128, the base colour of the VU1 packets (Vu1Pkt_L, Vu1Pkt_SL)
+gGsFba	capcom	4	bss	src/main/gs_setup.c, src/main/render_state.c -- the FBA register value Gs_ClearFrame puts back into FBA_1 and FBA_2 (its packet, beside gGsTest1 and gGsZbuf1), 0 at Gs_ResetState
+gGsFogColor	capcom	4	bss	src/main/render_state.c -- Gs state 0xF, the fog color, set through Gs_SetFogColor when it changes (Gs_SetState)
+gGsFogFar	capcom	4	bss	src/main/render_state.c, src/sub_main/vu1_packets.c -- Gs state 0x11, the fog end depth (Gs_SetState, Vu1Pkt_D, Vu1Pkt_LD)
+gGsFogNear	capcom	4	bss	src/main/render_state.c, src/sub_main/vu1_packets.c -- Gs state 0x10, the fog start depth, with gGsFogFar gives the fog scale of the VU1 packets (Gs_SetState, Vu1Pkt_D)
+gGsScissor1	capcom	8	bss	src/main/gs_regs.c, src/main/gs_setup.c
+gGsScissor2	capcom	8	bss	src/main/gs_regs.c, src/main/gs_setup.c
+gGsStateTextures	capcom	4	bss	src/main/gs_tex_regs.c, src/main/render_state.c -- the textures of Gs states 4 to 7 (Gs_SetState, Gs_GetState)
+gGsTest1	capcom	8	bss	src/main/gs_regs.c, src/main/gs_setup.c
+gGsTest2	capcom	8	bss	src/main/gs_regs.c, src/main/gs_setup.c
+gGsTexLodL	capcom	4	bss	src/main/gs_tex_regs.c, src/main/render_state.c -- the TEX1 L value (Gs_SetState states 0x68 and 0x69, Gs_BuildTexRegs shifts it to bit 19)
+gGsZbuf1	capcom	8	bss	src/main/gs_regs.c, src/main/gs_setup.c
+gGsZbuf2	capcom	8	bss	src/main/gs_regs.c, src/main/gs_setup.c
+gHeap	capcom	40	bss	src/main/heap.c, src/main/main_heap.c
+gHeapBlocks	capcom	196608	bss	src/main/main_heap.c, src/sub_main/hud.c, src/sub_main/quest.c
+gHttpActive	capcom	4	bss	src/nethttp/http_front.c -- NETWORK, 1 while the http front end is up (set by Http_Init, cleared by Http_Term in nethttp)
+gLoadingScreenOn	capcom	4	bss	src/main/main.c, src/sub_main/game_util.c, src/sub_main/loading_screen.c, src/sub_main/sys_main.c
+gMlRpcQueue	capcom	4608	bss	src/main/ml_rpc_queue.c
+gMlRpcQueueCount	capcom	8	bss	src/main/ml_rpc_queue.c
+gMlRpcQueueIntrBuf	capcom	4608	bss	src/main/ml_rpc_queue.c
+gMlRpcQueueIntrCount	capcom	8	bss	src/main/ml_rpc_queue.c
+gMlRpcQueueRead	capcom	8	bss	src/main/ml_rpc_queue.c
+gMlRpcQueueUploads	capcom	8	bss	src/main/ml_rpc_queue.c
+gMlRpcQueueWrite	capcom	48	bss	src/main/ml_rpc_queue.c
+gModelCount	capcom	4	bss	src/main/display.c, src/sub_main/model_draw.c -- the number of models set up (Model_Setup, Model_FreeHandle), 0 at Sys_InitWork
+gModelPool	capcom	147456	bss	src/sub_main/model_draw.c
+gMtxCamProj	capcom	64	bss	src/main/render_state.c, src/sub_main/engine_math.c
+gMtxClip	capcom	64	bss	src/main/render_state.c, src/sub_main/engine_math.c
+gMtxIdentity	capcom	64	bss	src/main/render_state.c, src/sub_main/bones.c, src/sub_main/engine_math.c
+gMtxProj	capcom	64	bss	src/sub_main/engine_math.c, src/sub_main/vu1_packets.c
+gMtxProjClip	capcom	64	bss	src/main/render_state.c, src/sub_main/engine_math.c, src/sub_main/vu1_packets.c
+gMtxProjScreen	capcom	64	bss	src/main/prim.c, src/main/render_state.c, src/sub_main/engine_math.c
+gMtxScreen	capcom	64	bss	src/main/render_state.c, src/sub_main/engine_math.c
+gMtxSlots	capcom	2048	bss	src/main/prim.c, src/main/render_state.c, src/sub_main/bones.c, src/sub_main/engine_math.c (+1)
+gMtxUv	capcom	64	bss	src/main/render_state.c, src/sub_main/vu1_packets.c -- render state RS_UV_MTX, the texture coordinate matrix (the Vu1Pkt_ E packets)
+gMtxView	capcom	64	bss	src/main/prim.c, src/main/render_state.c, src/sub_main/engine_math.c, src/sub_main/vu1_packets.c
+gPacketBlocks	capcom	8	bss	src/main/packet_tim2.c
+gPacketBuf	capcom	4	bss	src/main/packet_tim2.c
+gPacketBufIdx	capcom	4	bss	src/main/dma_queue.c, src/main/packet_tim2.c
+gPacketCur	capcom	4	bss	src/main/packet_tim2.c, src/sub_main/font.c
+gPacketEnd	capcom	4	bss	src/main/packet_tim2.c, src/sub_main/font.c
+gPacketMode	capcom	4	bss	src/main/image_pixels.c, src/main/packet_mode.c, src/main/packet_tim2.c, src/main/render_state.c
+gPad	capcom	136	bss	src/main/pad.c
+gPadButtonMaps	capcom	128	bss	src/main/pad_port.c -- per port, 16 button mappings (mask and kind) copied from the default maps (Pad_ReadPort, Pad_ConvertData)
+gPadConfig	capcom	44	bss	src/main/pad.c
+gPadConnected	capcom	1	bss	src/main/pad.c
+gPadData	capcom	32	bss	src/main/pad.c, src/main/pad_port.c
+gPadDataCur	capcom	32	bss	src/main/pad.c, src/main/pad_port.c
+gPadDataNone	capcom	32	bss	src/main/pad.c, src/main/pad_port.c
+gPadIn	capcom	136	bss	src/main/pad.c, src/select/select_boot.c
+gPadInputPtr	capcom	4	bss	src/main/pad.c, src/select/select_boot.c, src/sub_main/dnas_check.c, src/sub_main/sys_main.c
+gPadLimits	capcom	16	bss	src/main/pad.c, src/main/pad_port.c
+gPadPort	capcom	24	bss	src/main/pad.c, src/main/pad_port.c
+gPadPortCount	capcom	4	bss	src/main/pad.c -- the number of pad ports opened (Pad_Open)
+gPadPtr	capcom	4	bss	src/lobby/browser_util.c, src/main/pad.c
+gPadRaw	capcom	52	bss	src/main/pad.c, src/main/pad_port.c
+gPadSocketBuf	capcom	256	bss	src/main/pad.c
+gPadVibration	capcom	1	bss	src/main/pad.c -- the vibration request flag (Pad_SetVibrationFlag, Pad_Read)
+gPadVibrationLast	capcom	1	bss	src/main/pad.c -- the vibration request as of the last Pad_Read, which copies gPadVibration into it (Pad_Open clears it)
+gPalCount	capcom	8	bss	src/main/display.c, src/main/texture.c
+gPalRecs	capcom	7896	bss	src/lobby/image_decode.c, src/main/gs_tex_regs.c, src/main/packet_tim2.c, src/main/texture.c (+2)
+gPowerOffStack	capcom	8192	bss	src/main/power_off.c -- the stack of the power off thread (PowerOff_Init)
+gPowerOffStat	capcom	4	bss	src/main/power_off.c -- PowerOff_Thread, the hdd devctl 0x4807 result, then the status sceCdPowerOff writes
+gRenderFlags	capcom	4	bss	src/lobby/browser_packets.c, src/main/display.c, src/main/gs_regs.c, src/main/gs_tex_regs.c (+5)
+gRenderFlags2	capcom	4	bss	src/main/display.c, src/main/render_state.c, src/sub_main/model_draw.c, src/sub_main/vu1_packets.c
+gRsLightReciprocals	capcom	16	bss	src/main/render_state.c -- per render state light, 1 over its unk50 (Gs_SetState), no reader seen
+gRsLights	capcom	312	bss	src/main/render_state.c, src/sub_main/vu1_packets.c -- the render state lights (RsLight, Gs_SetState states 0x5A-0x5C normalize their direction at 0x34), Vu1_PutLightColors and the Vu1Pkt_ light packets read them
+gRsMaterials	capcom	2432	bss	src/main/render_state.c, src/sub_main/model_draw.c
+gScissor1X0	capcom	4	bss	src/main/gs_regs.c
+gScissor1X1	capcom	4	bss	src/main/gs_regs.c
+gScissor1Y0	capcom	4	bss	src/main/gs_regs.c
+gScissor1Y1	capcom	4	bss	src/main/gs_regs.c
+gScissor2X0	capcom	4	bss	src/main/gs_regs.c
+gScissor2X1	capcom	4	bss	src/main/gs_regs.c
+gScissor2Y0	capcom	4	bss	src/main/gs_regs.c
+gScissor2Y1	capcom	4	bss	src/main/gs_regs.c
+gScreenTex	capcom	4	bss	src/main/screen_tex.c
+gScreenTexState	capcom	8	bss	src/main/screen_tex.c
+gScreenTexVram	capcom	16	bss	src/main/screen_tex.c
+gSndBankBufs	capcom	64	bss	src/main/sound.c
+gSndBankData	capcom	15556	bss	src/main/sound.c
+gSndLoad	capcom	1	bss	src/main/sound_banks.c
+gSndSeBufs	capcom	64	bss	src/main/sound.c
+gSndSeData	capcom	15525	bss	src/main/sound.c
+gSndSpuMapBuf	capcom	8	bss	src/main/sound.c
+gSndSpuMapData	capcom	512	bss	src/main/sound.c
+gSndStageBodyBase	capcom	16	bss	src/main/sound.c
+gSndStageBodyUsed	capcom	4	bss	src/main/sound.c
+gSndStageCount	capcom	4	bss	src/main/sound.c
+gSndStageHeadBase	capcom	4	bss	src/main/sound.c
+gSndStageHeadUsed	capcom	4	bss	src/main/sound.c
+gSndStageHeads	capcom	16	bss	src/main/sound.c
+gStreamAdxt	capcom	8	bss	src/main/adx_init.c, src/main/stream_play.c
+gStreamChan	capcom	4	bss	src/main/stream_play.c
+gSysAllocHook	capcom	4	bss	src/main/display.c, src/sub_main/model_file.c -- the allocator hook of the model code, set to SysHeap_Alloc by Sys_InitWork
+gSysBgColor	capcom	4	bss	src/main/gs_setup.c, src/main/render_state.c
+gSysCurBuf	capcom	4	bss	src/main/display.c, src/main/gs_setup.c, src/main/screen_tex.c
+gSysDispAdjX	capcom	4	bss	src/main/display_util.c, src/main/gs_setup.c -- display position adjustment, x (Display_SetOffset), added to dispX times magH by Gs_ShowFrame, gSysWork.unk3BC
+gSysDispAdjY	capcom	4	bss	src/main/display_util.c, src/main/gs_setup.c -- display position adjustment, y (Display_SetOffset), added to dispY by Gs_ShowFrame, gSysWork.unk3C0
+gSysExiting	capcom	4	bss	src/main/display.c, src/main/power_off.c, src/sub_main/sys_main.c, src/yn/yn_main.c -- set at power off (PowerOff_Thread) and before launching the setup guide (Yn_LaunchSetupGuide), stops the VBlank work and the main loop
+gSysFbBlock0	capcom	4	bss	src/main/gs_setup.c, src/main/screen_tex.c
+gSysFbBlock1	capcom	4	bss	src/main/gs_setup.c, src/main/screen_tex.c
+gSysFbDepth	capcom	4	bss	src/main/gs_setup.c, src/main/screen_tex.c
+gSysFbLines	capcom	4	bss	src/lobby/browser_packets.c, src/main/gs_setup.c
+gSysFbPsm	capcom	4	bss	src/main/gs_setup.c, src/main/screen_tex.c
+gSysFbWidth	capcom	4	bss	src/lobby/browser_packets.c, src/main/gs_setup.c, src/sub_main/movie.c
+gSysField	capcom	4	bss	src/main/display.c, src/main/display_util.c, src/main/gs_setup.c
+gSysFlipAt	capcom	4	bss	src/main/display.c, src/main/display_util.c
+gSysFlipCount	capcom	4	bss	src/main/display.c -- frames flipped, counted by Sys_FlipFrame
+gSysFlipPending	capcom	4	bss	src/main/display.c, src/main/display_util.c
+gSysFrameMode	capcom	4	bss	src/lobby/browser_packets.c, src/main/gs_setup.c, src/main/gs_tex_regs.c, src/main/prim.c (+4)
+gSysFreeHook	capcom	4	bss	src/main/display.c -- the free hook next to gSysAllocHook, set to libc free by Sys_InitWork
+gSysHeap	capcom	24	bss	src/main/display.c, src/main/mem_util.c
+gSysHeapBase	capcom	4	bss	src/main/display.c -- the system heap taken by Sys_InitWork (SysHeap_AllocTop)
+gSysHeapSize	capcom	4	bss	src/main/display.c -- the system heap size, 0xE00000 (Sys_InitWork)
+gSysNextFlipAt	capcom	4	bss	src/main/display.c, src/main/packet_mode.c
+gSysNoDraw	capcom	4	bss	src/lobby/browser_packets.c, src/main/prim.c, src/main/screen_tex.c, src/plsel/ending.c
+gSysOffsetX	capcom	4	bss	src/main/gs_setup.c, src/main/prim.c
+gSysOffsetY	capcom	4	bss	src/main/gs_setup.c, src/main/prim.c
+gSysScrollX	capcom	4	bss	src/main/gs_setup.c, src/main/gs_tex_regs.c
+gSysScrollY	capcom	4	bss	src/main/gs_setup.c, src/main/gs_tex_regs.c, src/main/prim.c
+gSysTexBlock	capcom	4	bss	src/main/texture.c, src/main/vram_slots.c, src/sub_main/loading_screen.c
+gSysVblanks	capcom	4	bss	src/main/display.c, src/main/display_util.c
+gSysWork	capcom	4	bss	src/main/display.c, src/main/gs_setup.c, src/main/packet_tim2.c, src/main/texture.c (+4)
+gSysZBlock	capcom	4	bss	src/main/gs_regs.c, src/main/gs_setup.c
+gSysZMax	capcom	4	bss	src/lobby/browser_packets.c, src/main/gs_setup.c, src/main/gs_tex_regs.c, src/main/prim.c (+2)
+gSysZPsm	capcom	4	bss	src/main/gs_regs.c, src/main/gs_setup.c
+gTexCount	capcom	8	bss	src/main/display.c, src/main/texture.c
+gTexRecs	capcom	202	bss	src/lobby/image_decode.c, src/main/gs_tex_regs.c, src/main/packet_tim2.c, src/main/texture.c (+2)
+gVSyncCount	capcom	8	bss	src/main/display.c, src/main/file_queue.c, src/main/main.c, src/main/save_helpers.c (+1)
+gViewCenterX	capcom	4	bss	src/main/prim.c, src/sub_main/engine_math.c
+gViewCenterY	capcom	4	bss	src/main/prim.c, src/sub_main/engine_math.c
+gViewClipH	capcom	4	bss	src/main/prim.c, src/sub_main/engine_math.c
+gViewClipW	capcom	4	bss	src/main/prim.c, src/sub_main/engine_math.c
+gViewH	capcom	4	bss	src/sub_main/engine_math.c
+gViewW	capcom	4	bss	src/sub_main/engine_math.c
+gViewX	capcom	4	bss	src/sub_main/engine_math.c
+gViewY	capcom	4	bss	src/sub_main/engine_math.c
+gViewportMtx	capcom	64	bss	src/sub_main/engine_math.c, src/sub_main/vu1_packets.c
+gVramBlockCount	capcom	16	bss	src/main/texture.c, src/main/vram_slots.c
+gVramBlocks	capcom	32	bss	src/main/texture.c, src/main/vram_slots.c
+gVramSlotCount	capcom	8	bss	src/main/vram_slots.c
+gVramSlotHead	capcom	16	bss	src/main/vram_slots.c
+gVramSlots	capcom	14336	bss	src/main/vram_slots.c

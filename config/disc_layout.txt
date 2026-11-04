@@ -1,0 +1,10 @@
+# The disc's sectors for the files of the port's archive (tools/port/make_archive.py).
+# Format: lba  size  path   (written by tools/port/make_archive.py --write-layout)
+376  822368  SLPM_662.80
+916  43  0FLIST.DIR
+917  983040  NTGUIDVD/BIN/BG.RGB
+4371  410752  IOP/MODULES/MH2DRIVE.DAT
+5071  407248896  DATA.BIN
+203923  47835136  AFS01.AFS
+1000000  1077581824  AFS02.AFS
+1526163  1186904064  AFS00.AFS

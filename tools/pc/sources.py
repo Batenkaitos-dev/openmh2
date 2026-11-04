@@ -1,0 +1,203 @@
+#!/usr/bin/env python3
+"""The C files mh2-core is built from, for pc/CMakeLists.txt.
+
+    python3 tools/pc/sources.py --cmake OUT.cmake    write the lists CMake includes
+    python3 tools/pc/sources.py --verify-broken      check pc/known_broken.txt is not stale
+    python3 tools/pc/sources.py --list               print "module file" lines
+
+The list is the matching build's: every file build.ninja compiles with the
+`cc` rule (the decomp's src/ and build/assets/lbguild/lbguild.c; the assembly
+pieces are not part of it), grouped by module..
+
+pc/known_broken.txt names the files that don't compile yet (a fix is
+pending). They are left out of the build and their functions get
+aborting stubs; every other file must compile, so a new error fails the
+build. --verify-broken fails when a listed file now compiles: delete its
+line. (tools/pc/census.py --list-failing prints the current list.)
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(os.path.abspath(__file__)).parent.parent.parent
+sys.path.insert(0, str(ROOT / "tools" / "pc"))
+
+# The modules in the PS2's address order (a tie by overlay id): main, sub_main,
+# then the overlays; select, game and the lobby share one window, nethttp,
+# gm_sub and lbguild another. (name, OverlayId, load address)
+MODULES = [
+    ("main", 0, 0x100000),
+    ("sub_main", 1, 0x2E3900),
+    ("select", 2, 0x6AF200),
+    ("game", 3, 0x6AF200),
+    ("lobby", 4, 0x6AF200),
+    ("nethttp", 5, 0x8FAE00),
+    ("gm_sub", 6, 0x8FAE00),
+    ("lbguild", 10, 0x8FAE00),
+    ("yn", 9, 0xAC8000),
+    ("plsel", 11, 0xD60200),
+]
+KNOWN_BROKEN = ROOT / "pc" / "known_broken.txt"
+
+
+def module_of(path: str) -> str:
+    parts = path.split("/")
+    if parts[0] == "src":
+        return parts[1]
+    if parts[:2] == ["build", "assets"]:
+        return parts[2]
+    raise SystemExit(f"sources.py: {path}: not in a module")
+
+
+SOURCES_TXT = ROOT / "config" / "pc" / "sources.txt"
+
+
+def ninja_files() -> list[tuple[str, str]]:
+    """The matching build's list: every `cc` rule of build.ninja, as (module, file)."""
+    ninja = ROOT / "build.ninja"
+    if not ninja.exists():
+        raise SystemExit("sources.py: build.ninja is missing (tools/configure.py, then the matching build)")
+    out = []
+    for line in ninja.read_text().splitlines():
+        m = re.match(r"build \S+: cc (\S+\.c)\b", line)
+        if m:
+            out.append((module_of(m.group(1)), m.group(1)))
+    return sorted(out)
+
+
+def sources_text() -> str:
+    """The text of config/pc/sources.txt (what `--write` writes and the layout check compares)."""
+    L = ["# The C files of the matching build by module (build.ninja's cc rules); tools/pc/sources.py --write.",
+         "# Read by sources.py when build.ninja is absent (a tree that never ran the matching build)."]
+    L += [f"{m} {f}" for m, f in ninja_files()]
+    return "\n".join(L) + "\n"
+
+
+def txt_files() -> list[tuple[str, str]]:
+    if not SOURCES_TXT.exists():
+        raise SystemExit("sources.py: config/pc/sources.txt is missing (tools/pc/sources.py --write, on the matching build)")
+    out = []
+    for line in SOURCES_TXT.read_text().splitlines():
+        if line.strip() and not line.startswith("#"):
+            m, f = line.split(" ")
+            if module_of(f) != m:
+                raise SystemExit(f"sources.py: config/pc/sources.txt: {f} is not in module {m}")
+            out.append((m, f))
+    return sorted(out)
+
+
+def list_source() -> str:
+    """Where the list comes from: MH2_LAYOUT=mwcc|manifest decides (data_c.py's switch); else build.ninja when the
+    tree has one, else config/pc/sources.txt."""
+    env = os.environ.get("MH2_LAYOUT", "")
+    if env == "mwcc":
+        return "ninja"
+    if env == "manifest":
+        return "txt"
+    return "ninja" if (ROOT / "build.ninja").exists() else "txt"
+
+
+def source_files() -> list[tuple[str, str]]:
+    out = ninja_files() if list_source() == "ninja" else txt_files()
+    names = {m for m, _, _ in MODULES}
+    for mod, f in out:
+        if mod not in names:
+            raise SystemExit(f"sources.py: {f}: module {mod} is not in MODULES")
+        if not (ROOT / f).exists():
+            raise SystemExit(f"sources.py: {f} is missing (build it: ninja {f}; build/assets/lbguild/lbguild.c: tools/asset_c.py)")
+    return sorted(out)
+
+
+def known_broken() -> list[str]:
+    if not KNOWN_BROKEN.exists():
+        return []
+    return [l.split("#", 1)[0].strip() for l in KNOWN_BROKEN.read_text().splitlines() if l.split("#", 1)[0].strip()]
+
+
+def has_text(f: str) -> bool:
+    return any(b >= 0x80 for b in (ROOT / f).read_bytes())
+
+
+def write_cmake(out: Path):
+    files = source_files()
+    broken = set(known_broken())
+    unknown = broken - {f for _, f in files}
+    if unknown:
+        raise SystemExit(f"sources.py: pc/known_broken.txt names files the build doesn't compile: {sorted(unknown)}")
+    L = ["# Generated by tools/pc/sources.py. Do not edit."]
+    L.append("set(MH2_MODULES " + " ".join(m for m, _, _ in MODULES) + ")")
+    for mod, oid, addr in MODULES:
+        mine = [f for m, f in files if m == mod]
+        ok = [f for f in mine if f not in broken]
+        L.append(f"set(MH2_ID_{mod} {oid})")
+        L.append(f"set(MH2_SRC_{mod}")
+        L += [f'    "${{MH2_ROOT}}/{f}"' for f in ok]
+        L.append(")")
+    L.append("set(MH2_BROKEN")
+    L += [f'    "{f}"' for f in sorted(broken)]
+    L.append(")")
+    L.append("set(MH2_TEXT_SOURCES   # UTF-8 text in them: converted to Shift-JIS escapes first")
+    L += [f'    "{f}"' for _, f in files if has_text(f)]
+    L.append(")")
+    # re-run CMake when the file list changes
+    dep = "build.ninja" if list_source() == "ninja" else "config/pc/sources.txt"
+    L.append('set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MH2_ROOT}/%s" "${MH2_ROOT}/pc/known_broken.txt")' % dep)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    text = "\n".join(L) + "\n"
+    if not out.exists() or out.read_text() != text:
+        out.write_text(text)
+
+
+def verify_broken() -> int:
+    from census import compile_one                      # the census's own compile
+    stale = []
+    for f in known_broken():
+        _, counts, _ = compile_one("i686", f)
+        if not any(k.startswith("error") for k in counts):
+            stale.append(f)
+    for f in stale:
+        print(f"sources.py: {f} compiles now: delete its line from pc/known_broken.txt")
+    print(f"known_broken: {len(known_broken()) - len(stale)} still broken, {len(stale)} stale")
+    return 1 if stale else 0
+
+
+def check_sources() -> int:
+    if not (ROOT / "build.ninja").exists():
+        print("sources: skipped, no build.ninja (the matching build's)")
+        return 0
+    ok = SOURCES_TXT.exists() and SOURCES_TXT.read_text() == sources_text()
+    print(f"sources: config/pc/sources.txt {'equals' if ok else 'DIFFERS from'} the fresh derivation from build.ninja")
+    return 0 if ok else 1
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--cmake", type=Path)
+    ap.add_argument("--verify-broken", action="store_true")
+    ap.add_argument("--list", action="store_true")
+    ap.add_argument("--write", nargs="?", const=str(SOURCES_TXT), metavar="FILE",
+                    help="write config/pc/sources.txt (or FILE) from build.ninja")
+    ap.add_argument("--check", action="store_true", help="config/pc/sources.txt equals a fresh derivation from build.ninja")
+    a = ap.parse_args()
+    if a.write:
+        Path(a.write).write_text(sources_text())
+    elif a.check:
+        sys.exit(check_sources())
+    elif a.cmake:
+        write_cmake(a.cmake)
+    elif a.verify_broken:
+        sys.exit(verify_broken())
+    elif a.list:
+        for m, f in source_files():
+            print(m, f)
+    else:
+        ap.print_help()
+
+
+if __name__ == "__main__":
+    main()

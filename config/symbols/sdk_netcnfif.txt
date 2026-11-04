@@ -1,0 +1,21 @@
+// Overlay 9, yn.bin: Sony's netcnfif (version 3020, by its id string), text
+// 0xAC8080-0xAC96D0, built with GCC (8-byte aligned functions); asm piece
+// sdk/netcnfif, with yn's first .data, .rodata and .bss pieces. Its first
+// function is the overlay's entry, yn_entry.
+// Sony's library code, kept as assembly: public API names only, where the
+// binary shows them. Format: name = 0xADDRESS; // attributes
+
+// The API calls yn makes, named from the call sites.
+sceNetcnfifCheck = 0x00AC82B0; // type:func
+sceNetcnfifGetResult = 0x00AC82D0; // type:func
+sceNetcnfifGetCount = 0x00AC83B0; // type:func
+sceNetcnfifGetList = 0x00AC8418; // type:func
+sceNetcnfifLoadEntry = 0x00AC84A8; // type:func
+sceNetcnfifAllocWorkarea = 0x00AC8CF8; // type:func
+sceNetcnfifFreeWorkarea = 0x00AC8D38; // type:func
+sceNetcnfifDataInit = 0x00AC91E0; // type:func
+
+// Functions the game's C calls, named from what each does (its line's
+// comment).
+sceNetcnfifSetFNoDecode = 0x00AC83A0; // type:func sets the flag the load, add and edit entry calls pass to the IOP
+sceNetcnfifConvAuthname = 0x00AC9060; // type:func (src, dst, size) converts an aolnet/ auth name

@@ -1,0 +1,19 @@
+// The boot ELF (SLPM_662.80): Sony's libmc (version 3031, by its id string
+// in .data at 0x199730), text 0x1246A8-0x1267F8; asm piece sdk/libmc.
+// Sony's library code, kept as assembly: public API names only, where the
+// binary shows them. Format: name = 0xADDRESS; // attributes
+
+// The memory card calls, named from the card steps that make them
+// (Card_WriteFile, Card_ReadFile, Card_MkDir, Card_Delete, Card_Format ...).
+sceMcInit = 0x001246A8; // type:func
+sceMcOpen = 0x00124C00; // type:func
+sceMcClose = 0x00124D68; // type:func
+sceMcRead = 0x00124FE0; // type:func
+sceMcWrite = 0x00125100; // type:func
+sceMcMkdir = 0x00124D38; // type:func
+sceMcDelete = 0x001259B0; // type:func
+sceMcFormat = 0x001258D8; // type:func
+sceMcSync = 0x00125268; // type:func
+sceMcGetInfo = 0x00125398; // type:func
+sceMcGetDir = 0x001255A0; // type:func
+sceMcSetFileInfo = 0x00125BA8; // type:func

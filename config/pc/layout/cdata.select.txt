@@ -1,0 +1,20 @@
+@ cdata select
+C
+S 6D2180 4 src/select/select_boot.c 8
+S 6D2190 10 src/select/select_option.c 31
+S 6D21A0 4 src/select/select_option.c 32
+S 6D21A8 4 src/select/select_psp.c 424
+S 6D21B0 4 src/select/select_psp.c 425
+S 6D21B8 4 src/select/select_psp.c 426
+S 6D21C0 40 src/select/select_psp.c 427
+S 6D2200 10 src/select/select_psp.c 428
+S 6D2210 1070 src/select/select_psp.c 429
+N gBootWork 6D2180 4 src/select/select_boot.c
+N gNetOptDefaults 6D2190 10 src/select/select_option.c
+N gOptWork 6D21A0 4 src/select/select_option.c
+N gPspDevPath 6D21C0 40 src/select/select_psp.c
+N gPspWork 6D21A8 4 src/select/select_psp.c
+N gPspDevctlArg 6D2200 10 src/select/select_psp.c
+N gPspState 6D21B8 4 src/select/select_psp.c
+N gPspThreadId 6D21B0 4 src/select/select_psp.c
+N gPspThreadStack 6D2210 1070 src/select/select_psp.c

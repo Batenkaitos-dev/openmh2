@@ -1,0 +1,5 @@
+// The lbguild overlay (overlay 10, lbguild.bin): data only, loaded with the
+// lobby. Format: name = 0xADDRESS; // attributes
+
+// The table of the 14 quest lists, which the lobby reads.
+gGuildQuestLists = 0x00924240; // size:0x40

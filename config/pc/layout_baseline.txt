@@ -1,0 +1,5 @@
+# tools/pc/layout.py: known layout differences, host vs PS2 (ARCH<TAB>difference), and the units
+# MWCC cannot compile (ARCH<TAB>unit NAME: mwcc failed). Today no record differs, on i686 (Linux) or on
+# mingw (Windows). h_vu0ops is the PC-only header of the VU0 operations (it includes <emmintrin.h>).
+i686	unit h_vu0ops: mwcc failed
+mingw	unit h_vu0ops: mwcc failed

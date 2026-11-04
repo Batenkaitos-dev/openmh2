@@ -1,0 +1,20 @@
+@ holes -
+H main
+H main.data
+H sub_main
+H sub_main.data
+H select.data
+H game
+H game.data
+H lobby
+H lobby.data
+H nethttp
+H nethttp.data
+H gm_sub.data
+H yn
+H yn.data
+H plsel.data
+H lbguild.data
+H select
+H gm_sub
+H plsel

@@ -1,0 +1,48 @@
+OpenMH2: third-party components
+
+The project's own work in this repository is dedicated to the public domain (CC0 1.0, see LICENSE). Monster
+Hunter 2's code, which the decompiled C reproduces, and its data and text are Capcom's and are not covered
+(README.md, "Licences"). A file that says otherwise keeps its notice. This list names what the build uses or loads, with its licence and what the licence asks of a
+distribution. Versions and checksums are in tools/versions.txt.
+
+Components of the repository's source
+--------------------------------------
+newlib 1.8.2 / 4.6.0 and fdlibm (C library and math, in pc/core/crt)
+    BSD-style notices (Sun Microsystems, David M. Gay, the Regents of the University of California and others).
+    Each file keeps its notice; pc/core/crt/THIRD_PARTY.md lists them. They are compiled into mh2-core, which is
+    made on the user's machine and not distributed.
+zlib 1.1.4 (the game's decompiled C in src/lobby)
+    zlib licence. The notice stays in its files.
+stb_image 2.30 and stb_image_write 1.16 (pc/gs/third_party/stb, the renderer's texture files), unmodified
+    From https://github.com/nothings/stb at commit d14d46f6b44456eb88beac58cba833a4135d4c89. Public domain
+    (Unlicense) or MIT, at the user's choice; each file ends with both notices. They are compiled into mh2gs.
+
+Libraries the build downloads (the pinned versions)
+----------------------------------------------------
+SDL3 3.4.16
+    zlib licence. Built from the pinned source; mh2 links it (SDL3.dll on Windows, libSDL3.so on Linux).
+paraLLEl-GS (commit 3a66c1976170cbc2cb53a3593fabbc7c4b2ccfbd), with Granite and volk
+    LGPL-3.0-or-later (paraLLEl-GS); MIT (Granite, volk). Vulkan-Headers: Apache-2.0 or MIT.
+    Built into mh2gs, a shared library that mh2 loads at run time, so that a user can replace it. The source is the
+    pinned commits (tools/versions.txt) plus the patches in pc/gs/patches. mh2gs as a whole is LGPL-3.0-or-later.
+FFmpeg n8.1.3-32-g760d10603e (an LGPL build, shared libraries)
+    LGPL-2.1-or-later. mh2movie loads avcodec, avformat, avutil, swresample and swscale at run time; the user's own
+    copy of these libraries works in place. The builds are BtbN's (https://github.com/BtbN/FFmpeg-Builds), the
+    exact files are mirrored among this repository's release files together with FFmpeg's source at the same
+    commit (the source offer). No GPL or non-free configuration is used.
+
+Tools the build downloads
+-------------------------
+LLVM 23.1.1 (Linux) and llvm-mingw 20260908 (Windows): Apache-2.0 with the LLVM exception; mingw-w64's runtime
+    (public domain, ZPL, some BSD and ISC files) and winpthreads (MIT). The Windows programs link the runtime
+    statically; no runtime library of the toolchain is shipped.
+GNU binutils for the R5900 (decompals/binutils-mips-ps2-decompals): GPL-3.0, used as a build tool only; none of its
+    code is in the programs.
+uv, CPython, and the Python packages of uv.lock (splat64, spimdisasm, rabbitizer, pyelftools, pycdlib, PyYAML ...):
+    build tools, under their own licences (MIT, BSD, PSF, LGPL for pycdlib); none of their code is in the programs.
+CMake and Ninja: BSD licences, build tools.
+
+The game
+--------
+Monster Hunter 2 (Dos) is Capcom's. OpenMH2 contains none of its data. mh2-core, the archive (mh2-disc.arc) and the
+build/ folder hold the user's game data and are never distributed.

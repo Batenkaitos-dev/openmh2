@@ -1,0 +1,18 @@
+# The host (mh2) on Windows: llvm-mingw's x86_64 target, clang and clang++ (tools/deps/windows-x64/llvm-mingw;
+# its clang is LLVM_VERSION of tools/versions.txt, as on Linux). -DMH2_LLVM_MINGW=<its directory> for another.
+set(CMAKE_SYSTEM_NAME Windows)
+set(CMAKE_SYSTEM_PROCESSOR x86_64)
+if(NOT MH2_LLVM_MINGW AND DEFINED ENV{MH2_LLVM_MINGW})
+  file(TO_CMAKE_PATH "$ENV{MH2_LLVM_MINGW}" MH2_LLVM_MINGW)
+endif()
+if(NOT MH2_LLVM_MINGW)
+  get_filename_component(MH2_LLVM_MINGW "${CMAKE_CURRENT_LIST_DIR}/../../tools/deps/windows-x64/llvm-mingw" ABSOLUTE)
+endif()
+list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES MH2_LLVM_MINGW)
+set(CMAKE_C_COMPILER "${MH2_LLVM_MINGW}/bin/x86_64-w64-mingw32-clang.exe")
+set(CMAKE_CXX_COMPILER "${MH2_LLVM_MINGW}/bin/x86_64-w64-mingw32-clang++.exe")
+set(CMAKE_C_COMPILER_TARGET x86_64-w64-mingw32)
+set(CMAKE_CXX_COMPILER_TARGET x86_64-w64-mingw32)
+set(CMAKE_RC_COMPILER "${MH2_LLVM_MINGW}/bin/x86_64-w64-mingw32-windres.exe")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=lld")
+set(MH2_PLATFORM windows)

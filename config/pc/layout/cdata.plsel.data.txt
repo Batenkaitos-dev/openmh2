@@ -1,0 +1,1153 @@
+@ cdata plsel.data
+C
+S D75F80 20 src/plsel/plsel.c 3
+S D75FA0 10 src/plsel/plsel.c 4
+S D75FB0 58 src/plsel/plsel.c 5
+S D76008 8 src/plsel/plsel.c 6
+S D76010 20 src/plsel/plsel.c 7
+S D76030 10 src/plsel/plsel.c 8
+S D76040 18 src/plsel/plsel.c 9
+S D76060 20 src/plsel/player_menu.c 3
+S D76080 20 src/plsel/player_menu.c 4
+S D760A0 18 src/plsel/player_menu.c 6
+S D760B8 8 src/plsel/player_menu.c 8
+S D760C0 10 src/plsel/player_menu.c 9
+S D760D0 10 src/plsel/player_menu.c 10
+S D760E0 1C src/plsel/player_menu.c 12
+S D76100 20 src/plsel/ending.c 3
+S D76120 60 src/plsel/ending.c 4
+S D76180 20 src/plsel/ending.c 5
+S D761A0 102C src/plsel/ending.c 301
+S D771D0 B0 src/plsel/ending.c 303
+S D77280 180 src/plsel/ending.c 304
+S D77400 258 src/plsel/ending.c 305
+S D77660 C0 src/plsel/ending.c 306
+S D77720 1C8 src/plsel/ending.c 307
+S D778F0 C0 src/plsel/ending.c 309
+S D779B0 2E8 src/plsel/ending.c 310
+S D77CA0 2E8 src/plsel/ending.c 312
+S D77F90 60 src/plsel/ending.c 314
+S D77FF0 C0 src/plsel/ending.c 315
+S D780B0 40 src/plsel/ending.c 317
+S D780F0 C0 src/plsel/ending.c 318
+S D781B0 40 src/plsel/ending.c 320
+S D781F0 C0 src/plsel/ending.c 321
+S D782B0 30 src/plsel/ending.c 323
+S D782E0 108 src/plsel/ending.c 324
+S D783F0 78 src/plsel/ending.c 326
+S D78470 70 src/plsel/ending.c 328
+S D784E0 A0 src/plsel/ending.c 329
+S D78580 228 src/plsel/ending.c 330
+S D787B0 80 src/plsel/ending.c 332
+S D78830 150 src/plsel/ending.c 333
+S D78980 18 src/plsel/ending.c 335
+S D789A0 18 src/plsel/ending.c 337
+S D789C0 18 src/plsel/ending.c 339
+S D789E0 40 src/plsel/ending.c 341
+S D78A20 60 src/plsel/ending.c 343
+S D78A80 40 src/plsel/ending.c 344
+S D78AC0 50 src/plsel/ending.c 345
+S D78B10 1C src/plsel/quest_results.c 3
+S D78B30 1C src/plsel/quest_results.c 4
+S D78B50 1C src/plsel/quest_results.c 5
+S D78B70 1C src/plsel/quest_results.c 6
+S D78B90 1C src/plsel/quest_results.c 7
+S D78BB0 1C src/plsel/quest_results.c 8
+S D78BD0 1C src/plsel/quest_results.c 9
+S D78BF0 1C src/plsel/quest_results.c 10
+S D78C10 20 src/plsel/quest_results.c 11
+S D78C30 22 src/plsel/quest_results.c 13
+S D78C60 11 src/plsel/quest_results.c 14
+S D78C80 90 src/plsel/quest_results.c 15
+S D78D10 70 src/plsel/quest_results.c 16
+S D78D80 F0 src/plsel/quest_results.c 17
+S D78E70 20 src/plsel/quest_results.c 18
+S D78E90 20 src/plsel/quest_results.c 19
+S D78EB0 18 src/plsel/quest_results.c 21
+S D78EC8 8 src/plsel/quest_results.c 22
+S D78ED0 8 src/plsel/quest_results.c 23
+S D78ED8 8 src/plsel/quest_results.c 24
+S D78EE0 14 src/plsel/quest_results.c 25
+S D78F00 20 src/plsel/quest_results.c 26
+S D78F20 40 src/plsel/quest_results.c 27
+S D78F60 10 src/plsel/quest_results.c 28
+S D78F70 20 src/plsel/quest_results.c 29
+S D78F90 20 src/plsel/quest_results.c 30
+S D78FB0 20 src/plsel/quest_results.c 31
+S D78FD0 28 src/plsel/quest_results.c 32
+S D78FF8 8 src/plsel/quest_results.c 33
+S D79000 10 src/plsel/quest_results.c 34
+S D79010 C0 src/plsel/quest_results.c 35
+S D790D0 B0 src/plsel/quest_results.c 36
+S D79180 B0 src/plsel/quest_results.c 37
+S D79230 20 src/plsel/quest_results.c 38
+S D79250 20 src/plsel/quest_results.c 39
+S D79270 20 src/plsel/quest_results.c 40
+S D79290 18 src/plsel/quest_results.c 42
+S D792B0 20 src/plsel/quest_results.c 43
+S D792D0 20 src/plsel/quest_results.c 44
+S D792F0 1C src/plsel/quest_results.c 45
+S D79310 10 src/plsel/quest_results.c 46
+S D79320 20 src/plsel/quest_results.c 47
+S D79340 28 src/plsel/quest_results.c 48
+S D79368 8 src/plsel/quest_results.c 49
+S D79370 170 src/plsel/gallery_scene.c 3
+S D794E0 A0 src/plsel/gallery_scene.c 4
+S D79580 18 src/plsel/plsel.c 10
+S D79598 5 src/plsel/plsel.c 12
+S D795A0 7 src/plsel/plsel.c 13
+S D795A8 3 src/plsel/plsel.c 14
+S D795B0 2 src/plsel/plsel.c 15
+S D795B8 6 src/plsel/plsel.c 16
+S D795C0 5 src/plsel/plsel.c 17
+S D795C8 5 src/plsel/plsel.c 18
+S D795D0 4 src/plsel/plsel.c 19
+S D795D8 F src/plsel/ending.c 6
+S D795F0 11 src/plsel/ending.c 7
+S D79608 9 src/plsel/ending.c 8
+S D79618 F src/plsel/ending.c 9
+S D79630 15 src/plsel/ending.c 10
+S D79648 F src/plsel/ending.c 11
+S D79658 F src/plsel/ending.c 12
+S D79670 11 src/plsel/ending.c 13
+S D79688 C src/plsel/ending.c 14
+S D79698 B src/plsel/ending.c 15
+S D796B0 12 src/plsel/ending.c 16
+S D796C8 D src/plsel/ending.c 17
+S D796E0 10 src/plsel/ending.c 18
+S D796F0 F src/plsel/ending.c 19
+S D79700 6 src/plsel/ending.c 20
+S D79710 12 src/plsel/ending.c 21
+S D79728 8 src/plsel/ending.c 22
+S D79730 10 src/plsel/ending.c 23
+S D79740 17 src/plsel/ending.c 24
+S D79760 11 src/plsel/ending.c 25
+S D79778 3 src/plsel/ending.c 26
+S D79780 12 src/plsel/ending.c 27
+S D797A0 12 src/plsel/ending.c 28
+S D797B8 D src/plsel/ending.c 29
+S D797D0 12 src/plsel/ending.c 30
+S D797F0 12 src/plsel/ending.c 31
+S D79810 16 src/plsel/ending.c 32
+S D79828 5 src/plsel/ending.c 33
+S D79830 7 src/plsel/ending.c 34
+S D79838 F src/plsel/ending.c 35
+S D79850 11 src/plsel/ending.c 36
+S D79868 6 src/plsel/ending.c 37
+S D79870 14 src/plsel/ending.c 38
+S D79888 7 src/plsel/ending.c 39
+S D79890 D src/plsel/ending.c 40
+S D798A0 15 src/plsel/ending.c 41
+S D798B8 A src/plsel/ending.c 42
+S D798C8 D src/plsel/ending.c 43
+S D798E0 11 src/plsel/ending.c 44
+S D79900 11 src/plsel/ending.c 45
+S D79918 E src/plsel/ending.c 46
+S D79928 D src/plsel/ending.c 47
+S D79938 F src/plsel/ending.c 48
+S D79948 6 src/plsel/ending.c 49
+S D79950 E src/plsel/ending.c 50
+S D79960 F src/plsel/ending.c 51
+S D79970 C src/plsel/ending.c 52
+S D79980 10 src/plsel/ending.c 53
+S D79990 10 src/plsel/ending.c 54
+S D799A0 10 src/plsel/ending.c 55
+S D799B0 F src/plsel/ending.c 56
+S D799C0 10 src/plsel/ending.c 57
+S D799D0 1F src/plsel/ending.c 58
+S D799F0 10 src/plsel/ending.c 59
+S D79A00 F src/plsel/ending.c 60
+S D79A10 10 src/plsel/ending.c 61
+S D79A20 9 src/plsel/ending.c 62
+S D79A30 D src/plsel/ending.c 63
+S D79A40 11 src/plsel/ending.c 64
+S D79A58 E src/plsel/ending.c 65
+S D79A68 F src/plsel/ending.c 66
+S D79A80 10 src/plsel/ending.c 67
+S D79A90 7 src/plsel/ending.c 68
+S D79A98 6 src/plsel/ending.c 69
+S D79AA0 C src/plsel/ending.c 70
+S D79AB0 13 src/plsel/ending.c 71
+S D79AC8 F src/plsel/ending.c 72
+S D79AD8 D src/plsel/ending.c 73
+S D79AE8 D src/plsel/ending.c 74
+S D79AF8 D src/plsel/ending.c 75
+S D79B08 E src/plsel/ending.c 76
+S D79B20 15 src/plsel/ending.c 77
+S D79B38 E src/plsel/ending.c 78
+S D79B48 C src/plsel/ending.c 79
+S D79B58 F src/plsel/ending.c 80
+S D79B68 9 src/plsel/ending.c 81
+S D79B78 E src/plsel/ending.c 82
+S D79B88 5 src/plsel/ending.c 83
+S D79B90 E src/plsel/ending.c 84
+S D79BA0 9 src/plsel/ending.c 85
+S D79BB0 10 src/plsel/ending.c 86
+S D79BC0 10 src/plsel/ending.c 87
+S D79BD0 11 src/plsel/ending.c 88
+S D79BF0 10 src/plsel/ending.c 89
+S D79C00 F src/plsel/ending.c 90
+S D79C10 11 src/plsel/ending.c 91
+S D79C28 C src/plsel/ending.c 92
+S D79C40 11 src/plsel/ending.c 93
+S D79C60 1B src/plsel/ending.c 94
+S D79C80 D src/plsel/ending.c 95
+S D79C90 B src/plsel/ending.c 96
+S D79CA0 10 src/plsel/ending.c 97
+S D79CB0 7 src/plsel/ending.c 98
+S D79CB8 C src/plsel/ending.c 99
+S D79CC8 D src/plsel/ending.c 100
+S D79CE0 15 src/plsel/ending.c 101
+S D79D00 11 src/plsel/ending.c 102
+S D79D18 A src/plsel/ending.c 103
+S D79D28 D src/plsel/ending.c 104
+S D79D40 10 src/plsel/ending.c 105
+S D79D50 12 src/plsel/ending.c 106
+S D79D68 E src/plsel/ending.c 107
+S D79D78 D src/plsel/ending.c 108
+S D79D88 F src/plsel/ending.c 109
+S D79DA0 12 src/plsel/ending.c 110
+S D79DC0 10 src/plsel/ending.c 111
+S D79DD0 1A src/plsel/ending.c 112
+S D79DF0 E src/plsel/ending.c 113
+S D79E00 13 src/plsel/ending.c 114
+S D79E20 10 src/plsel/ending.c 115
+S D79E30 12 src/plsel/ending.c 116
+S D79E48 6 src/plsel/ending.c 117
+S D79E50 6 src/plsel/ending.c 118
+S D79E58 E src/plsel/ending.c 119
+S D79E68 C src/plsel/ending.c 120
+S D79E78 8 src/plsel/ending.c 121
+S D79E80 F src/plsel/ending.c 122
+S D79E90 1B src/plsel/ending.c 123
+S D79EB0 D src/plsel/ending.c 124
+S D79EC0 7 src/plsel/ending.c 125
+S D79ED0 2E src/plsel/ending.c 126
+S D79F00 34 src/plsel/ending.c 127
+S D79F40 38 src/plsel/ending.c 128
+S D79F80 30 src/plsel/ending.c 129
+S D79FB0 36 src/plsel/ending.c 130
+S D79FF0 22 src/plsel/ending.c 131
+S D7A018 6 src/plsel/ending.c 132
+S D7A020 2F src/plsel/ending.c 133
+S D7A050 35 src/plsel/ending.c 134
+S D7A088 8 src/plsel/ending.c 135
+S D7A090 32 src/plsel/ending.c 136
+S D7A0D0 35 src/plsel/ending.c 137
+S D7A108 7 src/plsel/ending.c 138
+S D7A110 32 src/plsel/ending.c 139
+S D7A150 13 src/plsel/ending.c 140
+S D7A170 23 src/plsel/ending.c 141
+S D7A1A0 11 src/plsel/ending.c 142
+S D7A1B8 5 src/plsel/ending.c 143
+S D7A1C0 11 src/plsel/ending.c 144
+S D7A1D8 5 src/plsel/ending.c 145
+S D7A1E0 D src/plsel/ending.c 146
+S D7A1F0 1E src/plsel/ending.c 147
+S D7A210 1C src/plsel/ending.c 148
+S D7A230 11 src/plsel/ending.c 149
+S D7A250 31 src/plsel/ending.c 150
+S D7A290 1F src/plsel/ending.c 151
+S D7A2B0 14 src/plsel/ending.c 152
+S D7A2D0 20 src/plsel/ending.c 153
+S D7A2F0 13 src/plsel/ending.c 154
+S D7A310 27 src/plsel/ending.c 155
+S D7A340 15 src/plsel/ending.c 156
+S D7A360 19 src/plsel/ending.c 157
+S D7A380 1B src/plsel/ending.c 158
+S D7A3A0 14 src/plsel/ending.c 159
+S D7A3C0 2F src/plsel/ending.c 160
+S D7A3F0 1B src/plsel/ending.c 161
+S D7A410 C src/plsel/ending.c 162
+S D7A420 12 src/plsel/ending.c 163
+S D7A438 E src/plsel/ending.c 164
+S D7A450 13 src/plsel/ending.c 165
+S D7A468 C src/plsel/ending.c 166
+S D7A478 C src/plsel/ending.c 167
+S D7A488 D src/plsel/ending.c 168
+S D7A498 F src/plsel/ending.c 169
+S D7A4A8 F src/plsel/ending.c 170
+S D7A4B8 E src/plsel/ending.c 171
+S D7A4D0 11 src/plsel/ending.c 172
+S D7A4F0 15 src/plsel/ending.c 173
+S D7A510 10 src/plsel/ending.c 174
+S D7A520 12 src/plsel/ending.c 175
+S D7A538 C src/plsel/ending.c 176
+S D7A550 10 src/plsel/ending.c 177
+S D7A560 B src/plsel/ending.c 178
+S D7A570 19 src/plsel/ending.c 179
+S D7A590 F src/plsel/ending.c 180
+S D7A5A0 1B src/plsel/ending.c 181
+S D7A5C0 2D src/plsel/ending.c 182
+S D7A5F0 2A src/plsel/ending.c 183
+S D7A620 C src/plsel/ending.c 184
+S D7A630 33 src/plsel/ending.c 185
+S D7A670 23 src/plsel/ending.c 186
+S D7A6A0 26 src/plsel/ending.c 187
+S D7A6D0 29 src/plsel/ending.c 188
+S D7A700 F src/plsel/ending.c 189
+S D7A710 1B src/plsel/ending.c 190
+S D7A730 B src/plsel/ending.c 191
+S D7A740 C src/plsel/ending.c 192
+S D7A750 7 src/plsel/ending.c 193
+S D7A758 B src/plsel/ending.c 194
+S D7A770 14 src/plsel/ending.c 195
+S D7A790 17 src/plsel/ending.c 196
+S D7A7A8 9 src/plsel/ending.c 197
+S D7A7C0 10 src/plsel/ending.c 198
+S D7A7D0 29 src/plsel/ending.c 199
+S D7A800 27 src/plsel/ending.c 200
+S D7A830 24 src/plsel/ending.c 201
+S D7A860 23 src/plsel/ending.c 202
+S D7A890 1F src/plsel/ending.c 203
+S D7A8B0 1F src/plsel/ending.c 204
+S D7A8D0 2A src/plsel/ending.c 205
+S D7A900 30 src/plsel/ending.c 206
+S D7A930 28 src/plsel/ending.c 207
+S D7A960 21 src/plsel/ending.c 208
+S D7A990 2B src/plsel/ending.c 209
+S D7A9C0 28 src/plsel/ending.c 210
+S D7A9F0 2C src/plsel/ending.c 211
+S D7AA20 24 src/plsel/ending.c 212
+S D7AA50 27 src/plsel/ending.c 213
+S D7AA80 15 src/plsel/ending.c 214
+S D7AAA0 35 src/plsel/ending.c 215
+S D7AAE0 29 src/plsel/ending.c 216
+S D7AB10 13 src/plsel/ending.c 217
+S D7AB30 31 src/plsel/ending.c 218
+S D7AB70 13 src/plsel/ending.c 219
+S D7AB90 31 src/plsel/ending.c 220
+S D7ABD0 1D src/plsel/ending.c 221
+S D7ABF0 2F src/plsel/ending.c 222
+S D7AC20 16 src/plsel/ending.c 223
+S D7AC40 32 src/plsel/ending.c 224
+S D7AC80 2F src/plsel/ending.c 225
+S D7ACB0 2D src/plsel/ending.c 226
+S D7ACE0 32 src/plsel/ending.c 227
+S D7AD20 2C src/plsel/ending.c 228
+S D7AD50 32 src/plsel/ending.c 229
+S D7AD90 2F src/plsel/ending.c 230
+S D7ADC0 2C src/plsel/ending.c 231
+S D7ADF0 26 src/plsel/ending.c 232
+S D7AE20 30 src/plsel/ending.c 233
+S D7AE50 20 src/plsel/ending.c 234
+S D7AE70 2F src/plsel/ending.c 235
+S D7AEA0 2E src/plsel/ending.c 236
+S D7AED0 2E src/plsel/ending.c 237
+S D7AF00 2C src/plsel/ending.c 238
+S D7AF30 2C src/plsel/ending.c 239
+S D7AF60 2F src/plsel/ending.c 240
+S D7AF90 2B src/plsel/ending.c 241
+S D7AFC0 30 src/plsel/ending.c 242
+S D7AFF0 22 src/plsel/ending.c 243
+S D7B020 2D src/plsel/ending.c 244
+S D7B050 30 src/plsel/ending.c 245
+S D7B080 19 src/plsel/ending.c 246
+S D7B0A0 31 src/plsel/ending.c 247
+S D7B0E0 2F src/plsel/ending.c 248
+S D7B110 2A src/plsel/ending.c 249
+S D7B140 31 src/plsel/ending.c 250
+S D7B180 2D src/plsel/ending.c 251
+S D7B1B0 2C src/plsel/ending.c 252
+S D7B1E0 2E src/plsel/ending.c 253
+S D7B210 2F src/plsel/ending.c 254
+S D7B240 2E src/plsel/ending.c 255
+S D7B270 2E src/plsel/ending.c 256
+S D7B2A0 2D src/plsel/ending.c 257
+S D7B2D0 24 src/plsel/ending.c 258
+S D7B300 2D src/plsel/ending.c 259
+S D7B330 33 src/plsel/ending.c 260
+S D7B370 15 src/plsel/ending.c 261
+S D7B390 2F src/plsel/ending.c 262
+S D7B3C0 18 src/plsel/ending.c 263
+S D7B3E0 33 src/plsel/ending.c 264
+S D7B420 16 src/plsel/ending.c 265
+S D7B440 2F src/plsel/ending.c 266
+S D7B470 13 src/plsel/ending.c 267
+S D7B490 2E src/plsel/ending.c 268
+S D7B4C0 30 src/plsel/ending.c 269
+S D7B4F0 18 src/plsel/ending.c 270
+S D7B510 32 src/plsel/ending.c 271
+S D7B550 2F src/plsel/ending.c 272
+S D7B580 27 src/plsel/ending.c 273
+S D7B5B0 24 src/plsel/ending.c 274
+S D7B5E0 1B src/plsel/ending.c 275
+S D7B600 2C src/plsel/ending.c 276
+S D7B630 1E src/plsel/ending.c 277
+S D7B650 2D src/plsel/ending.c 278
+S D7B680 2F src/plsel/ending.c 279
+S D7B6B0 2E src/plsel/ending.c 280
+S D7B6E0 2F src/plsel/ending.c 281
+S D7B710 33 src/plsel/ending.c 282
+S D7B750 11 src/plsel/ending.c 283
+S D7B770 2F src/plsel/ending.c 284
+S D7B7A0 31 src/plsel/ending.c 285
+S D7B7E0 2C src/plsel/ending.c 286
+S D7B810 30 src/plsel/ending.c 287
+S D7B840 31 src/plsel/ending.c 288
+S D7B878 F src/plsel/ending.c 289
+S D7B890 2F src/plsel/ending.c 290
+S D7B8C0 2F src/plsel/ending.c 291
+S D7B8F0 2D src/plsel/ending.c 292
+S D7B920 2B src/plsel/ending.c 293
+S D7B950 30 src/plsel/ending.c 294
+S D7B980 14 src/plsel/ending.c 295
+S D7B9A0 25 src/plsel/ending.c 296
+S D7B9C8 9 src/plsel/ending.c 297
+S D7B9E0 25 src/plsel/ending.c 298
+S D7BA08 9 src/plsel/ending.c 299
+S D7BA20 21 src/plsel/ending.c 300
+S D7BA50 17 src/plsel/ending.c 346
+S D7BA68 7 src/plsel/ending.c 347
+S D7BA70 30 src/plsel/ending.c 348
+S D7BAA0 28 src/plsel/ending.c 350
+S D7BAD0 68 src/plsel/quest_results.c 50
+S D7BB38 3 src/plsel/quest_results.c 52
+S D7BB40 2C src/plsel/quest_results.c 53
+S D7BB70 5 src/plsel/quest_results.c 55
+S D7BB78 3 src/plsel/quest_results.c 56
+S D7BB80 3 src/plsel/quest_results.c 57
+S D7BB88 2 src/plsel/quest_results.c 58
+S D7BB90 3 src/plsel/quest_results.c 59
+S D7BB98 7 src/plsel/quest_results.c 60
+S D7BBA0 7 src/plsel/quest_results.c 61
+S D7BBA8 3 src/plsel/quest_results.c 62
+S D7BBB0 3 src/plsel/quest_results.c 63
+S D7BBB8 3 src/plsel/quest_results.c 64
+S D7BBC0 6 src/plsel/quest_results.c 65
+S D7BBC8 B src/plsel/quest_results.c 66
+S D7BBD8 F src/plsel/quest_results.c 67
+S D7BBF0 13 src/plsel/quest_results.c 68
+S D7BC10 1B src/plsel/quest_results.c 69
+S D7BC30 17 src/plsel/quest_results.c 70
+S D7BC50 20 src/plsel/quest_results.c 71
+S D7BC70 8 src/plsel/quest_results.c 73
+S D7BC80 54 src/plsel/gallery_scene.c 5
+S D7BCE0 20 src/plsel/gallery_scene.c 7
+S D7BD00 18 src/plsel/gallery_scene.c 9
+S D7BD20 18 src/plsel/gallery_scene.c 11
+S D7BD38 6 src/plsel/gallery_scene.c 13
+S D7BD40 40 src/plsel/gallery_scene.c 14
+N gPlselPresetPlayers D75F80 20 src/plsel/plsel.c
+N gPlselWeaponIconUVs D75FB0 58 src/plsel/plsel.c
+N gPlselListPanel D76010 20 src/plsel/plsel.c
+N gPlselEquipIconIds D76030 10 src/plsel/plsel.c
+N gPlselWeaponIconColors D75FA0 10 src/plsel/plsel.c
+N gPlselFmtString D795A8 3 src/plsel/plsel.c
+N gPlselSlotColors D76008 8 src/plsel/plsel.c
+N gPlselChatWin D76040 18 src/plsel/plsel.c
+N gPlselFmtConcat D79598 5 src/plsel/plsel.c
+N gPlselMenuInputs D760A0 18 src/plsel/player_menu.c
+N gPlselMenuListBox D760E0 1C src/plsel/player_menu.c
+N gPlselMenuOpens D76080 20 src/plsel/player_menu.c
+N gPlselStagePagePanel D76060 20 src/plsel/player_menu.c
+N gPlselMenuHelpOnline D760C0 10 src/plsel/player_menu.c
+N gPlselMenuHelpOffline D760B8 8 src/plsel/player_menu.c
+N gPlselMenuDraws D760D0 10 src/plsel/player_menu.c
+N gEndingSpriteGif D78AC0 50 src/plsel/ending.c
+N gEndingObjDefs_3 D780F0 C0 src/plsel/ending.c
+N gEndingObjDefs_1 D77FF0 C0 src/plsel/ending.c
+N gEndingObjDefs_0 D779B0 2E8 src/plsel/ending.c
+N gEndingCells_1 D77F90 60 src/plsel/ending.c
+N gEndingCells_7 D787B0 80 src/plsel/ending.c
+N gEndingObjDefs D789E0 40 src/plsel/ending.c
+N gEndingObjPlaces D76120 60 src/plsel/ending.c
+N gEndingCells_4 D781B0 40 src/plsel/ending.c
+N gEndingObjDefs_7 D78830 150 src/plsel/ending.c
+N gEndingGlyphs D77400 258 src/plsel/ending.c
+N gEndingObjDefs_6 D789A0 18 src/plsel/ending.c
+N gEndingPoints D76180 20 src/plsel/ending.c
+N gEndingObjDefs_9 D78980 18 src/plsel/ending.c
+N gEndingObjPlaces2 D78A20 60 src/plsel/ending.c
+N gEndingCells_8 D782B0 30 src/plsel/ending.c
+N gEndingCells_5B D784E0 A0 src/plsel/ending.c
+N gEndingObjDefs_10 D789C0 18 src/plsel/ending.c
+N gEndingObjDefs_13 D783F0 78 src/plsel/ending.c
+N gEndingSteps D77280 180 src/plsel/ending.c
+N gEndingObjDefs_8 D782E0 108 src/plsel/ending.c
+N gEndingRoll D761A0 102C src/plsel/ending.c
+N gEndingCells_5A D78470 70 src/plsel/ending.c
+N gEndingGlyphColors D76100 20 src/plsel/ending.c
+N gEndingObjDefs_5 D78580 228 src/plsel/ending.c
+N gEndingObjDefs_4 D781F0 C0 src/plsel/ending.c
+N gEndingObjDefs_2 D77720 1C8 src/plsel/ending.c
+N gEndingCells_2 D77660 C0 src/plsel/ending.c
+N gEndingCells_3 D780B0 40 src/plsel/ending.c
+N gEndingObjDefs_11 D77CA0 2E8 src/plsel/ending.c
+N gEndingPictureUV D78A80 40 src/plsel/ending.c
+N gEndingPics D771D0 B0 src/plsel/ending.c
+N gEndingCells_0 D778F0 C0 src/plsel/ending.c
+N gPlselAwardTblC D78FB0 20 src/plsel/quest_results.c
+N gPlselResPanels_4 D78B90 1C src/plsel/quest_results.c
+N gPlselCountAwards D78F60 10 src/plsel/quest_results.c
+N gPlselResPanels_7 D78BF0 1C src/plsel/quest_results.c
+N gPlselPageFmt D7BBC0 6 src/plsel/quest_results.c
+N gPlselResPanels_0 D78B10 1C src/plsel/quest_results.c
+N gPlselResPanels_5 D78BB0 1C src/plsel/quest_results.c
+N gPlselItemBoxHintIcon D78EC8 8 src/plsel/quest_results.c
+N gPlselItemBoxWin D78E90 20 src/plsel/quest_results.c
+N gPlselAwardTblA D78F70 20 src/plsel/quest_results.c
+N gPlselOfflineAwardsB D79000 10 src/plsel/quest_results.c
+N gPlselFlagUnlocks D78C80 90 src/plsel/quest_results.c
+N gPlselTrainingAwards D78FD0 28 src/plsel/quest_results.c
+N gPlselSaveRecPanel2 D792F0 1C src/plsel/quest_results.c
+N gPlselSaveRecWinA D792B0 20 src/plsel/quest_results.c
+N gPlselRankAwardRanks D78F00 20 src/plsel/quest_results.c
+N gPlselResultsBgIcon D78ED8 8 src/plsel/quest_results.c
+N gPlselItemBoxNextIcon D78ED0 8 src/plsel/quest_results.c
+N gPlselOfflineAwardsE D79180 B0 src/plsel/quest_results.c
+N gPlselAwardTblB D78F90 20 src/plsel/quest_results.c
+N gPlselArrowUp D7BBB0 3 src/plsel/quest_results.c
+N gPlselHuntAwards D78D80 F0 src/plsel/quest_results.c
+N gPlselQuestUnlockIds D79368 8 src/plsel/quest_results.c
+N gPlselSaveRecWinB D792D0 20 src/plsel/quest_results.c
+N gPlselDrillNoticeStages D78E70 20 src/plsel/quest_results.c
+N gPlselResultsBgDepth D79250 20 src/plsel/quest_results.c
+N gPlselResPanels_3 D78B70 1C src/plsel/quest_results.c
+N gPlselOfflineAwardsD D790D0 B0 src/plsel/quest_results.c
+N gPlselRewardSteps D78C60 11 src/plsel/quest_results.c
+N gPlselArenaRecordChances D78D10 70 src/plsel/quest_results.c
+N gPlselResPanels_6 D78BD0 1C src/plsel/quest_results.c
+N gPlselOfflineAwardsA D78FF8 8 src/plsel/quest_results.c
+N gPlselArrowDown D7BBB8 3 src/plsel/quest_results.c
+N gPlselResPanels D78C10 20 src/plsel/quest_results.c
+N gPlselSaveRecText D79290 18 src/plsel/quest_results.c
+N gPlselQuestUnlocks2 D79340 28 src/plsel/quest_results.c
+N gPlselPointsFmt D7BBA0 7 src/plsel/quest_results.c
+N gPlselQuestUnlocks1 D79320 20 src/plsel/quest_results.c
+N gPlselStrFmt D7BB38 3 src/plsel/quest_results.c
+N gPlselItemBoxTimeWin D78EB0 18 src/plsel/quest_results.c
+N gPlselSaveRecPanel D79270 20 src/plsel/quest_results.c
+N gPlselQuestUnlocks0 D79310 10 src/plsel/quest_results.c
+N gPlselResPanels_2 D78B50 1C src/plsel/quest_results.c
+N gPlselNameCountFmt D7BB98 7 src/plsel/quest_results.c
+N gPlselPadSpace D7BB88 2 src/plsel/quest_results.c
+N gPlselItemBoxFrame D78EE0 14 src/plsel/quest_results.c
+N gPlselRewardTbl D78C30 22 src/plsel/quest_results.c
+N gPlselRankAwards D78F20 40 src/plsel/quest_results.c
+N gPlselPercentMark D7BBA8 3 src/plsel/quest_results.c
+N gPlselOfflineAwardsC D79010 C0 src/plsel/quest_results.c
+N gPlselAwardTblD D79230 20 src/plsel/quest_results.c
+N gPlselResPanels_1 D78B30 1C src/plsel/quest_results.c
+N gPlselValueSep D7BB90 3 src/plsel/quest_results.c
+N D_00D7BD40 D7BD40 40 src/plsel/gallery_scene.c
+N gGalexQuests D79370 170 src/plsel/gallery_scene.c
+N gGalexEntryPairs D794E0 A0 src/plsel/gallery_scene.c
+R D76080 s PouchMenu_Open 0
+R D76084 s PersonalStatus_Open 0
+R D76088 s EquipStatus_Open 0
+R D7608C s QuestMenu_Begin 0
+R D76090 s Plsel_OpenStagePage 0
+R D760A0 s PouchMenu_Update 0
+R D760A4 s PersonalStatus_Update 0
+R D760A8 s EquipStatus_Update 0
+R D760AC s QuestMenu_Update 0
+R D760B0 s Plsel_StagePageInput 0
+R D760D0 s Plsel_DrawPouchPage 0
+R D760D4 s PersonalStatus_Draw 0
+R D760D8 s EquipStatus_Draw 0
+R D760DC s QuestMenu_DrawInfo 0
+R D760EC s D_00446F70 0
+R D761A8 p D795D8
+R D761B4 p D795F0
+R D761CC p D79608
+R D761D8 p D79618
+R D761E4 p D79630
+R D761F0 p D79648
+R D761FC p D79658
+R D76208 p D79670
+R D76214 p D79688
+R D76220 p D79698
+R D7622C p D796B0
+R D76238 p D796C8
+R D76244 p D796E0
+R D76250 p D796F0
+R D7625C p D79700
+R D76274 p D79710
+R D76280 p D79728
+R D7628C p D79730
+R D76298 p D79740
+R D762A4 p D79760
+R D762B0 p D79778
+R D762BC p D79780
+R D762C8 p D797A0
+R D762D4 p D797B8
+R D762E0 p D797D0
+R D762EC p D797F0
+R D76304 p D79810
+R D76310 p D79828
+R D7631C p D79830
+R D76328 p D79838
+R D76340 p D79850
+R D7634C p D79868
+R D76358 p D79870
+R D76364 p D79888
+R D76370 p D79890
+R D7637C p D798A0
+R D76388 p D798B8
+R D76394 p D798C8
+R D763A0 p D798E0
+R D763B8 p D79900
+R D763C4 p D79918
+R D763D0 p D79928
+R D763DC p D79938
+R D763E8 p D79948
+R D763F4 p D79950
+R D76400 p D79960
+R D7640C p D79970
+R D76418 p D79980
+R D76430 p D79990
+R D7643C p D799A0
+R D76448 p D799B0
+R D76454 p D799C0
+R D76460 p D799D0
+R D7646C p D799F0
+R D76478 p D79A00
+R D76490 p D79A10
+R D7649C p D79A20
+R D764A8 p D79A30
+R D764C0 p D79A40
+R D764CC p D79A58
+R D764D8 p D79A68
+R D764F0 p D79A80
+R D764FC p D79A90
+R D76508 p D79A98
+R D76514 p D79AA0
+R D76520 p D79AB0
+R D7652C p D79AC8
+R D76538 p D79AD8
+R D76544 p D79AE8
+R D76550 p D79AF8
+R D76574 p D79B08
+R D76580 p D79B20
+R D7658C p D79B38
+R D76598 p D79B48
+R D765A4 p D79B58
+R D765B0 p D79B68
+R D765BC p D79B78
+R D765C8 p D79B88
+R D765D4 p D79B90
+R D765E0 p D79BA0
+R D765EC p D79BB0
+R D765F8 p D79BC0
+R D76604 p D79BD0
+R D76610 p D79BF0
+R D7661C p D79C00
+R D76628 p D79C10
+R D76634 p D79C28
+R D76640 p D79C40
+R D7664C p D79C60
+R D76658 p D79C80
+R D7667C p D79C90
+R D76688 p D79CA0
+R D76694 p D79CB0
+R D766A0 p D79CB8
+R D766AC p D79CC8
+R D766B8 p D79CE0
+R D766C4 p D79D00
+R D766D0 p D79D18
+R D766DC p D79D28
+R D766E8 p D79D40
+R D766F4 p D79D50
+R D76700 p D79D68
+R D76718 p D79D78
+R D76724 p D79D88
+R D76730 p D79DA0
+R D7673C p D79DC0
+R D76748 p D79DD0
+R D76754 p D79DF0
+R D76760 p D79E00
+R D7676C p D79E20
+R D76784 p D79E30
+R D76790 p D79E48
+R D7679C p D79E50
+R D767A8 p D79E58
+R D767B4 p D79E68
+R D767C0 p D79E78
+R D767CC p D79E80
+R D767D8 p D79E90
+R D767E4 p D79EB0
+R D767F0 p D79EC0
+R D767FC p D79ED0
+R D76808 p D79F00
+R D76814 p D79F40
+R D76820 p D79F80
+R D7682C p D79FB0
+R D76838 p D79FF0
+R D76844 p D7A018
+R D76850 p D7A020
+R D7685C p D7A050
+R D76868 p D7A088
+R D76874 p D7A090
+R D76880 p D7A0D0
+R D7688C p D7A108
+R D76898 p D7A110
+R D768A4 p D7A150
+R D768B0 p D7A170
+R D768BC p D7A1A0
+R D768C8 p D7A1B8
+R D768D4 p D7A1C0
+R D768E0 p D7A1D8
+R D768EC p D7A1E0
+R D76904 p D7A1F0
+R D76910 p D7A210
+R D7691C p D79E00
+R D76928 p D7A230
+R D76934 p D7A250
+R D76940 p D7A290
+R D7694C p D7A2B0
+R D76958 p D7A2D0
+R D76964 p D7A2F0
+R D76970 p D7A310
+R D7697C p D7A340
+R D76988 p D7A360
+R D76994 p D7A380
+R D769A0 p D7A3A0
+R D769AC p D7A3C0
+R D769C4 p D7A3F0
+R D769D0 p D7A410
+R D769DC p D7A420
+R D769E8 p D7A438
+R D769F4 p D7A450
+R D76A00 p D7A468
+R D76A18 p D79CA0
+R D76A24 p D7A478
+R D76A30 p D7A488
+R D76A3C p D7A498
+R D76A48 p D7A4A8
+R D76A54 p D7A4B8
+R D76A60 p D7A4D0
+R D76A6C p D7A4F0
+R D76A78 p D7A510
+R D76A84 p D7A520
+R D76A90 p D7A538
+R D76A9C p D7A550
+R D76AA8 p D7A560
+R D76AB4 p D7A570
+R D76AC0 p D7A590
+R D76ACC p D7A5A0
+R D76AD8 p D7A5C0
+R D76AE4 p D7A5F0
+R D76B14 p D7A620
+R D76B20 p D7A630
+R D76B2C p D7A670
+R D76B38 p D7A6A0
+R D76B44 p D7A6D0
+R D76B50 p D7A700
+R D76B5C p D7A710
+R D76B68 p D7A730
+R D76B80 p D7A740
+R D76B8C p D7A750
+R D76BA4 p D7A758
+R D76BB0 p D7A770
+R D76BC8 p D7A790
+R D76BE0 p D7A7A8
+R D76BF8 p D7A7C0
+R D76C04 p D7A7D0
+R D76C10 p D7A800
+R D76C1C p D7A830
+R D76C28 p D7A860
+R D76C34 p D7A890
+R D76C40 p D7A8B0
+R D76C4C p D7A8D0
+R D76C58 p D7A900
+R D76C64 p D7A930
+R D76C70 p D7A960
+R D76C7C p D7A990
+R D76C88 p D7A9C0
+R D76C94 p D7A9F0
+R D76CA0 p D7AA20
+R D76CAC p D7AA50
+R D76CC4 p D7AA80
+R D76CD0 p D7AAA0
+R D76CDC p D7AAE0
+R D76CF4 p D7AB10
+R D76D00 p D7AB30
+R D76D0C p D7AB70
+R D76D18 p D7AB90
+R D76D24 p D7ABD0
+R D76D30 p D7ABF0
+R D76D3C p D7AC20
+R D76D48 p D7AC40
+R D76D54 p D7AC80
+R D76D60 p D7ACB0
+R D76D6C p D7ACE0
+R D76D78 p D7AD20
+R D76D84 p D7AD50
+R D76D90 p D7AD90
+R D76D9C p D7ADC0
+R D76DA8 p D7ADF0
+R D76DC0 p D7AB70
+R D76DCC p D7AE20
+R D76DD8 p D7AE50
+R D76DE4 p D7AE70
+R D76DF0 p D7AC20
+R D76DFC p D7AEA0
+R D76E08 p D7AED0
+R D76E14 p D7AF00
+R D76E20 p D7AF30
+R D76E2C p D7AF60
+R D76E38 p D7AF90
+R D76E44 p D7AFC0
+R D76E50 p D7AFF0
+R D76E68 p D7AB70
+R D76E74 p D7B020
+R D76E80 p D7ABD0
+R D76E8C p D7B050
+R D76E98 p D7B080
+R D76EA4 p D7B0A0
+R D76EB0 p D7AC20
+R D76EBC p D7B0E0
+R D76EC8 p D7B110
+R D76ED4 p D7B140
+R D76EE0 p D7B180
+R D76EEC p D7B1B0
+R D76EF8 p D7B1E0
+R D76F04 p D7B210
+R D76F10 p D7B240
+R D76F1C p D7B270
+R D76F28 p D7B2A0
+R D76F34 p D7B2D0
+R D76F4C p D7B300
+R D76F58 p D7AB70
+R D76F64 p D7B330
+R D76F70 p D7B370
+R D76F7C p D7B390
+R D76F88 p D7B3C0
+R D76F94 p D7B3E0
+R D76FA0 p D7B420
+R D76FAC p D7B440
+R D76FB8 p D7B470
+R D76FC4 p D7B490
+R D76FD0 p D7B4C0
+R D76FDC p D7B4F0
+R D76FE8 p D7B510
+R D76FF4 p D7ABD0
+R D77000 p D7B550
+R D7700C p D7B580
+R D77018 p D7B5B0
+R D77024 p D7B5E0
+R D77030 p D7B600
+R D7703C p D7B630
+R D77048 p D7B650
+R D77054 p D7B680
+R D77060 p D7B6B0
+R D7706C p D7B6E0
+R D77078 p D7B710
+R D77090 p D7B750
+R D7709C p D7B770
+R D770A8 p D7B7A0
+R D770B4 p D7B7E0
+R D770C0 p D7B810
+R D770CC p D7B840
+R D770E4 p D7B878
+R D770F0 p D7B890
+R D770FC p D7B8C0
+R D77108 p D7B8F0
+R D77114 p D7B920
+R D77120 p D7B950
+R D77150 p D7B980
+R D7715C p D7B9A0
+R D77174 p D7B9C8
+R D77180 p D7B9E0
+R D77198 p D7BA08
+R D771A4 p D7BA20
+R D77734 s gEndingCells_2 0
+R D7774C s gEndingCells_2 0
+R D77764 s gEndingCells_2 0
+R D7777C s gEndingCells_2 0
+R D77794 s gEndingCells_2 0
+R D777AC s gEndingCells_2 0
+R D777C4 s gEndingCells_2 0
+R D777DC s gEndingCells_2 0
+R D777F4 s gEndingCells_2 0
+R D7780C s gEndingCells_2 0
+R D77824 s gEndingCells_2 0
+R D7783C s gEndingCells_2 0
+R D77854 s gEndingCells_2 0
+R D7786C s gEndingCells_2 0
+R D77884 s gEndingCells_2 0
+R D7789C s gEndingCells_2 0
+R D778B4 s gEndingCells_2 0
+R D778CC s gEndingCells_2 0
+R D778E4 s gEndingCells_2 0
+R D779C4 s gEndingCells_0 0
+R D779DC s gEndingCells_0 0
+R D779F4 s gEndingCells_0 0
+R D77A0C s gEndingCells_0 0
+R D77A24 s gEndingCells_0 0
+R D77A3C s gEndingCells_0 0
+R D77A54 s gEndingCells_0 0
+R D77A6C s gEndingCells_0 0
+R D77A84 s gEndingCells_0 0
+R D77A9C s gEndingCells_0 0
+R D77AB4 s gEndingCells_0 0
+R D77ACC s gEndingCells_0 0
+R D77AE4 s gEndingCells_0 0
+R D77AFC s gEndingCells_0 0
+R D77B14 s gEndingCells_0 0
+R D77B2C s gEndingCells_0 0
+R D77B44 s gEndingCells_0 0
+R D77B5C s gEndingCells_0 0
+R D77B74 s gEndingCells_0 0
+R D77B8C s gEndingCells_0 0
+R D77BA4 s gEndingCells_0 0
+R D77BBC s gEndingCells_0 0
+R D77BD4 s gEndingCells_0 0
+R D77BEC s gEndingCells_0 0
+R D77C04 s gEndingCells_0 0
+R D77C1C s gEndingCells_0 0
+R D77C34 s gEndingCells_0 0
+R D77C4C s gEndingCells_0 0
+R D77C64 s gEndingCells_0 0
+R D77C7C s gEndingCells_0 0
+R D77C94 s gEndingCells_0 0
+R D77CB4 s gEndingCells_0 0
+R D77CCC s gEndingCells_0 0
+R D77CE4 s gEndingCells_0 0
+R D77CFC s gEndingCells_0 0
+R D77D14 s gEndingCells_0 0
+R D77D2C s gEndingCells_0 0
+R D77D44 s gEndingCells_0 0
+R D77D5C s gEndingCells_0 0
+R D77D74 s gEndingCells_0 0
+R D77D8C s gEndingCells_0 0
+R D77DA4 s gEndingCells_0 0
+R D77DBC s gEndingCells_0 0
+R D77DD4 s gEndingCells_0 0
+R D77DEC s gEndingCells_0 0
+R D77E04 s gEndingCells_0 0
+R D77E1C s gEndingCells_0 0
+R D77E34 s gEndingCells_0 0
+R D77E4C s gEndingCells_0 0
+R D77E64 s gEndingCells_0 0
+R D77E7C s gEndingCells_0 0
+R D77E94 s gEndingCells_0 0
+R D77EAC s gEndingCells_0 0
+R D77EC4 s gEndingCells_0 0
+R D77EDC s gEndingCells_0 0
+R D77EF4 s gEndingCells_0 0
+R D77F0C s gEndingCells_0 0
+R D77F24 s gEndingCells_0 0
+R D77F3C s gEndingCells_0 0
+R D77F54 s gEndingCells_0 0
+R D77F6C s gEndingCells_0 0
+R D77F84 s gEndingCells_0 0
+R D78004 s gEndingCells_1 0
+R D7801C s gEndingCells_1 0
+R D78034 s gEndingCells_1 0
+R D7804C s gEndingCells_1 0
+R D78064 s gEndingCells_1 0
+R D7807C s gEndingCells_1 0
+R D78094 s gEndingCells_1 0
+R D780AC s gEndingCells_1 0
+R D78104 s gEndingCells_3 0
+R D7811C s gEndingCells_3 0
+R D78134 s gEndingCells_3 0
+R D7814C s gEndingCells_3 0
+R D78164 s gEndingCells_3 0
+R D7817C s gEndingCells_3 0
+R D78194 s gEndingCells_3 0
+R D781AC s gEndingCells_3 0
+R D78204 s gEndingCells_4 0
+R D7821C s gEndingCells_4 0
+R D78234 s gEndingCells_4 0
+R D7824C s gEndingCells_4 0
+R D78264 s gEndingCells_4 0
+R D7827C s gEndingCells_4 0
+R D78294 s gEndingCells_4 0
+R D782AC s gEndingCells_4 0
+R D782F4 s gEndingCells_8 0
+R D7830C s gEndingCells_8 0
+R D78324 s gEndingCells_8 0
+R D7833C s gEndingCells_8 0
+R D78354 s gEndingCells_8 0
+R D7836C s gEndingCells_8 0
+R D78384 s gEndingCells_8 0
+R D7839C s gEndingCells_8 0
+R D783B4 s gEndingCells_8 0
+R D783CC s gEndingCells_8 0
+R D783E4 s gEndingCells_8 0
+R D78404 s gEndingCells_8 0
+R D7841C s gEndingCells_8 0
+R D78434 s gEndingCells_8 0
+R D7844C s gEndingCells_8 0
+R D78464 s gEndingCells_8 0
+R D78594 s gEndingCells_5A 0
+R D785AC s gEndingCells_5A 0
+R D785C4 s gEndingCells_5A 0
+R D785DC s gEndingCells_5A 0
+R D785F4 s gEndingCells_5A 0
+R D7860C s gEndingCells_5A 0
+R D78624 s gEndingCells_5A 0
+R D7863C s gEndingCells_5A 0
+R D78654 s gEndingCells_5A 0
+R D7866C s gEndingCells_5A 0
+R D78684 s gEndingCells_5B 0
+R D7869C s gEndingCells_5B 0
+R D786B4 s gEndingCells_5B 0
+R D786CC s gEndingCells_5B 0
+R D786E4 s gEndingCells_5B 0
+R D786FC s gEndingCells_5B 0
+R D78714 s gEndingCells_5B 0
+R D7872C s gEndingCells_5B 0
+R D78744 s gEndingCells_5B 0
+R D7875C s gEndingCells_5B 0
+R D78774 s gEndingCells_5B 0
+R D7878C s gEndingCells_5B 0
+R D787A4 s gEndingCells_5B 0
+R D78844 s gEndingCells_7 0
+R D7885C s gEndingCells_7 0
+R D78874 s gEndingCells_7 0
+R D7888C s gEndingCells_7 0
+R D788A4 s gEndingCells_7 0
+R D788BC s gEndingCells_7 0
+R D788D4 s gEndingCells_7 0
+R D788EC s gEndingCells_7 0
+R D78904 s gEndingCells_7 0
+R D7891C s gEndingCells_7 0
+R D78934 s gEndingCells_7 0
+R D7894C s gEndingCells_7 0
+R D78964 s gEndingCells_7 0
+R D7897C s gEndingCells_7 0
+R D78994 s gEndingCells_7 0
+R D789B4 s gEndingCells_7 0
+R D789D4 s gEndingCells_7 0
+R D789E0 s gEndingObjDefs_0 0
+R D789E4 s gEndingObjDefs_1 0
+R D789E8 s gEndingObjDefs_2 0
+R D789EC s gEndingObjDefs_3 0
+R D789F0 s gEndingObjDefs_4 0
+R D789F4 s gEndingObjDefs_5 0
+R D789F8 s gEndingObjDefs_6 0
+R D789FC s gEndingObjDefs_7 0
+R D78A00 s gEndingObjDefs_8 0
+R D78A04 s gEndingObjDefs_9 0
+R D78A08 s gEndingObjDefs_10 0
+R D78A0C s gEndingObjDefs_11 0
+R D78A10 s gEndingObjDefs_11 0
+R D78A14 s gEndingObjDefs_13 0
+R D78C10 s gPlselResPanels_0 0
+R D78C14 s gPlselResPanels_1 0
+R D78C18 s gPlselResPanels_2 0
+R D78C1C s gPlselResPanels_3 0
+R D78C20 s gPlselResPanels_4 0
+R D78C24 s gPlselResPanels_5 0
+R D78C28 s gPlselResPanels_6 0
+R D78C2C s gPlselResPanels_7 0
+R D78EAC s gHelpTexts_6 20
+R D7928C s gArenaEmPenMenuTexts 0
+J D79580 Plsel_SelectTask 68 src/plsel/plsel.c @228
+J D79584 Plsel_SelectTask 78 src/plsel/plsel.c @228
+J D79588 Plsel_SelectTask 88 src/plsel/plsel.c @228
+J D7958C Plsel_SelectTask 98 src/plsel/plsel.c @228
+J D79590 Plsel_SelectTask A8 src/plsel/plsel.c @228
+J D79594 Plsel_SelectTask B8 src/plsel/plsel.c @228
+J D7BA70 Ending_SpawnObjects 70 src/plsel/ending.c @752
+J D7BA74 Ending_SpawnObjects C0 src/plsel/ending.c @752
+J D7BA78 Ending_SpawnObjects 110 src/plsel/ending.c @752
+J D7BA7C Ending_SpawnObjects 160 src/plsel/ending.c @752
+J D7BA80 Ending_SpawnObjects 238 src/plsel/ending.c @752
+J D7BA84 Ending_SpawnObjects 290 src/plsel/ending.c @752
+J D7BA88 Ending_SpawnObjects 2D8 src/plsel/ending.c @752
+J D7BA8C Ending_SpawnObjects 328 src/plsel/ending.c @752
+J D7BA90 Ending_SpawnObjects 370 src/plsel/ending.c @752
+J D7BA94 Ending_SpawnObjects 3F8 src/plsel/ending.c @752
+J D7BA98 Ending_SpawnObjects 450 src/plsel/ending.c @752
+J D7BA9C Ending_SpawnObjects 4A8 src/plsel/ending.c @752
+J D7BAA0 Ending_MoveObjects 50 src/plsel/ending.c @937
+J D7BAA4 Ending_MoveObjects A8 src/plsel/ending.c @937
+J D7BAA8 Ending_MoveObjects 120 src/plsel/ending.c @937
+J D7BAAC Ending_MoveObjects 1E0 src/plsel/ending.c @937
+J D7BAB0 Ending_MoveObjects 2A8 src/plsel/ending.c @937
+J D7BAB4 Ending_MoveObjects 340 src/plsel/ending.c @937
+J D7BAB8 Ending_MoveObjects 408 src/plsel/ending.c @937
+J D7BABC Ending_MoveObjects 488 src/plsel/ending.c @937
+J D7BAC0 Ending_MoveObjects 668 src/plsel/ending.c @937
+J D7BAC4 Ending_MoveObjects 6D0 src/plsel/ending.c @937
+J D7BAD0 Plsel_ResultsUpdate 60 src/plsel/quest_results.c @858
+J D7BAD4 Plsel_ResultsUpdate E40 src/plsel/quest_results.c @858
+J D7BAD8 Plsel_ResultsUpdate E70 src/plsel/quest_results.c @858
+J D7BADC Plsel_ResultsUpdate 720 src/plsel/quest_results.c @858
+J D7BAE0 Plsel_ResultsUpdate 780 src/plsel/quest_results.c @858
+J D7BAE4 Plsel_ResultsUpdate 880 src/plsel/quest_results.c @858
+J D7BAE8 Plsel_ResultsUpdate 8F0 src/plsel/quest_results.c @858
+J D7BAEC Plsel_ResultsUpdate 930 src/plsel/quest_results.c @858
+J D7BAF0 Plsel_ResultsUpdate 9A8 src/plsel/quest_results.c @858
+J D7BAF4 Plsel_ResultsUpdate A18 src/plsel/quest_results.c @858
+J D7BAF8 Plsel_ResultsUpdate A60 src/plsel/quest_results.c @858
+J D7BAFC Plsel_ResultsUpdate AE8 src/plsel/quest_results.c @858
+J D7BB00 Plsel_ResultsUpdate B58 src/plsel/quest_results.c @858
+J D7BB04 Plsel_ResultsUpdate BA8 src/plsel/quest_results.c @858
+J D7BB08 Plsel_ResultsUpdate C20 src/plsel/quest_results.c @858
+J D7BB0C Plsel_ResultsUpdate C90 src/plsel/quest_results.c @858
+J D7BB10 Plsel_ResultsUpdate D20 src/plsel/quest_results.c @858
+J D7BB14 Plsel_ResultsUpdate D98 src/plsel/quest_results.c @858
+J D7BB18 Plsel_ResultsUpdate E00 src/plsel/quest_results.c @858
+J D7BB1C Plsel_ResultsUpdate CD8 src/plsel/quest_results.c @858
+J D7BB20 Plsel_ResultsUpdate CE8 src/plsel/quest_results.c @858
+J D7BB24 Plsel_ResultsUpdate F28 src/plsel/quest_results.c @858
+J D7BB28 Plsel_ResultsUpdate F98 src/plsel/quest_results.c @858
+J D7BB2C Plsel_ResultsUpdate FE0 src/plsel/quest_results.c @858
+J D7BB30 Plsel_ResultsUpdate 1020 src/plsel/quest_results.c @858
+J D7BB34 Plsel_ResultsUpdate 1060 src/plsel/quest_results.c @858
+J D7BB40 Plsel_CategoryIsShared 28 src/plsel/quest_results.c @1299
+J D7BB44 Plsel_CategoryIsShared 28 src/plsel/quest_results.c @1299
+J D7BB48 Plsel_CategoryIsShared 30 src/plsel/quest_results.c @1299
+J D7BB4C Plsel_CategoryIsShared 30 src/plsel/quest_results.c @1299
+J D7BB50 Plsel_CategoryIsShared 28 src/plsel/quest_results.c @1299
+J D7BB54 Plsel_CategoryIsShared 28 src/plsel/quest_results.c @1299
+J D7BB58 Plsel_CategoryIsShared 28 src/plsel/quest_results.c @1299
+J D7BB5C Plsel_CategoryIsShared 28 src/plsel/quest_results.c @1299
+J D7BB60 Plsel_CategoryIsShared 28 src/plsel/quest_results.c @1299
+J D7BB64 Plsel_CategoryIsShared 28 src/plsel/quest_results.c @1299
+J D7BB68 Plsel_CategoryIsShared 28 src/plsel/quest_results.c @1299
+J D7BC50 Plsel_BuildResultText 80 src/plsel/quest_results.c @2288
+J D7BC54 Plsel_BuildResultText 980 src/plsel/quest_results.c @2288
+J D7BC58 Plsel_BuildResultText 2C0 src/plsel/quest_results.c @2288
+J D7BC5C Plsel_BuildResultText E10 src/plsel/quest_results.c @2288
+J D7BC60 Plsel_BuildResultText 11C0 src/plsel/quest_results.c @2288
+J D7BC64 Plsel_BuildResultText 16A8 src/plsel/quest_results.c @2288
+J D7BC68 Plsel_BuildResultText 2278 src/plsel/quest_results.c @2288
+J D7BC6C Plsel_BuildResultText 1D38 src/plsel/quest_results.c @2288
+J D7BC80 Galex_QuestTask 2F0 src/plsel/gallery_scene.c @161
+J D7BC84 Galex_QuestTask 338 src/plsel/gallery_scene.c @161
+J D7BC88 Galex_QuestTask 370 src/plsel/gallery_scene.c @161
+J D7BC8C Galex_QuestTask 398 src/plsel/gallery_scene.c @161
+J D7BC90 Galex_QuestTask 3F8 src/plsel/gallery_scene.c @161
+J D7BC94 Galex_QuestTask 430 src/plsel/gallery_scene.c @161
+J D7BC98 Galex_QuestTask 458 src/plsel/gallery_scene.c @161
+J D7BC9C Galex_QuestTask 4B8 src/plsel/gallery_scene.c @161
+J D7BCA0 Galex_QuestTask 530 src/plsel/gallery_scene.c @161
+J D7BCA4 Galex_QuestTask 458 src/plsel/gallery_scene.c @161
+J D7BCA8 Galex_QuestTask 4B8 src/plsel/gallery_scene.c @161
+J D7BCAC Galex_QuestTask 530 src/plsel/gallery_scene.c @161
+J D7BCB0 Galex_QuestTask 458 src/plsel/gallery_scene.c @161
+J D7BCB4 Galex_QuestTask 4B8 src/plsel/gallery_scene.c @161
+J D7BCB8 Galex_QuestTask 530 src/plsel/gallery_scene.c @161
+J D7BCBC Galex_QuestTask 458 src/plsel/gallery_scene.c @161
+J D7BCC0 Galex_QuestTask 4B8 src/plsel/gallery_scene.c @161
+J D7BCC4 Galex_QuestTask 530 src/plsel/gallery_scene.c @161
+J D7BCC8 Galex_QuestTask 580 src/plsel/gallery_scene.c @161
+J D7BCCC Galex_QuestTask 5B0 src/plsel/gallery_scene.c @161
+J D7BCD0 Galex_QuestTask 5E8 src/plsel/gallery_scene.c @161
+J D7BCE0 Galex_QuestTask B0 src/plsel/gallery_scene.c @160
+J D7BCE4 Galex_QuestTask F0 src/plsel/gallery_scene.c @160
+J D7BCE8 Galex_QuestTask 2B8 src/plsel/gallery_scene.c @160
+J D7BCEC Galex_QuestTask 640 src/plsel/gallery_scene.c @160
+J D7BCF0 Galex_QuestTask 6E0 src/plsel/gallery_scene.c @160
+J D7BCF4 Galex_QuestTask 750 src/plsel/gallery_scene.c @160
+J D7BCF8 Galex_QuestTask 828 src/plsel/gallery_scene.c @160
+J D7BCFC Galex_QuestTask 890 src/plsel/gallery_scene.c @160
+J D7BD00 Galex_TourIndex 38 src/plsel/gallery_scene.c @173
+J D7BD04 Galex_TourIndex 40 src/plsel/gallery_scene.c @173
+J D7BD08 Galex_TourIndex 48 src/plsel/gallery_scene.c @173
+J D7BD0C Galex_TourIndex 50 src/plsel/gallery_scene.c @173
+J D7BD10 Galex_TourIndex 58 src/plsel/gallery_scene.c @173
+J D7BD14 Galex_TourIndex 60 src/plsel/gallery_scene.c @173
+J D7BD20 Galex_StartTourCamera 38 src/plsel/gallery_scene.c @185
+J D7BD24 Galex_StartTourCamera 60 src/plsel/gallery_scene.c @185
+J D7BD28 Galex_StartTourCamera 88 src/plsel/gallery_scene.c @185
+J D7BD2C Galex_StartTourCamera B0 src/plsel/gallery_scene.c @185
+J D7BD30 Galex_StartTourCamera D8 src/plsel/gallery_scene.c @185
+J D7BD34 Galex_StartTourCamera 100 src/plsel/gallery_scene.c @185

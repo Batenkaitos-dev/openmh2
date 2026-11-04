@@ -1,0 +1,7 @@
+// Overlay 5, nethttp.bin: OpenSSL-derived crypto and SSL code linked with
+// libhttps (no version string; its source paths name bio, bn, dh, dsa, rsa,
+// x509 and ssl), text 0x90AFE8-0x94FE80; asm piece net/openssl. It starts
+// after the last libhttps function (0x90AEF8), which prints with scePrintf;
+// the functions after it call only OpenSSL's own.
+// Library code, kept as assembly: public API names only, where the binary
+// shows them. Format: name = 0xADDRESS; // attributes

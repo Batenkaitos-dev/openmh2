@@ -1,0 +1,178 @@
+/*
+ * The game menu's mail page (online): its list of four entries (the mail
+ * box, a new short mail, the short mail from the last one kept, the mail
+ * block list; MAIL_ENTRY_*). GameMenu_OpenMail opens it, GameMenu_UpdateMail
+ * runs it and GameMenu_DrawMail draws it; each entry runs its own menu
+ * (MailMenu_*, ShortMail_*, BlockList_*), which draws itself. The game
+ * menu's tables pair the three handlers.
+ * The .data holds the page's list window.
+ */
+#include "common.h"
+#include "game_menu.h"
+#include "hud.h"
+#include "lobby_menu.h"
+#include "pad.h"
+#include "sound.h"
+#include "em.h"
+#include "lobby_globals.h"
+#include "lobby_state.h"
+#include "window.h"
+#include "item_shop.h"
+#include "lobby_util.h"
+#include "mail_block_list.h"
+#include "mail_menu.h"
+#include "menu_util.h"
+#include "short_mail.h"
+
+
+/* The objects of other files and modules this file's tables point to
+ */
+extern char * gMailboxMenuTexts[4];
+/* prototypes */
+struct ListPanel;
+/* unit's own declaration: the cursor is declared s32 (the definition takes an s16): declared s16, GameMenu_DrawMail's call builds differently from the game's code */
+void ListPanel_Draw(struct ListPanel *b, s16 *pos, char *title, s32 sel);
+extern ListPanel gMailPanel;
+extern LobbyMenu *gLobbyMenu;
+/* end of prototypes */
+
+/* The game menu's open handler for the mail page: its own list at its first
+ * entry, with its help line. Returns 0. */
+s32 GameMenu_OpenMail(void *unused)
+{
+    gSubMenuWork->subStep = 0;
+    gSubMenuWork->subEntry = 0;
+    gHelpShow = 1;
+    gHelpPage = HELP_PAGE_LOBBY;
+    gHelpLine = MAIL_HELP_LINE;
+    return 0;
+}
+
+/* The mail page's input, by GameMenu.subStep:
+ * - 0, its list: PAD_START closes the game menu; up and down move over the
+ *   four entries, each with its help line; PAD_CIRCLE opens the entry's
+ *   menu: the mail box (MailMenu_Open), a new short mail with the addressee's
+ *   id to type (ShortMail_Open's flag 1), the saved short mail (flags 1 and
+ *   8: the form starts from the mail kept last), or the mail block list.
+ * - 1, the entry's menu runs: cancelled (MENU_CANCEL) it goes back to the
+ *   list; ended or closed (MENU_UNDONE, MENU_CLOSE) the game menu closes,
+ *   the mail box first giving the hunter back the field control.
+ * The help window shows only on the list. Returns the buttons left for the
+ * game menu: 0 once the page used them, else pad (PAD_CROSS on the list goes
+ * back to the game menu's list). */
+u16 GameMenu_UpdateMail(u16 pad)
+{
+    u8 *cur;
+    GameMenu *menu;
+
+    switch (gSubMenuWork->subStep) {
+    case 0:
+        if (pad & PAD_START) {
+            GameMenu_Back();
+            return 0;
+        }
+        Menu_CursorUpDown(&gSubMenuWork->subEntry, pad, MAIL_ENTRIES);
+        menu = gSubMenuWork;
+        gHelpLine = menu->subEntry + MAIL_HELP_LINE;
+        cur = &menu->subEntry;
+        if (pad & PAD_CIRCLE) {
+            switch (*cur) {
+            case MAIL_ENTRY_BOX:
+                menu->subStep++;
+                MailMenu_Open();
+                break;
+            case MAIL_ENTRY_NEW:
+                menu->subStep++;
+                ShortMail_Open(NULL, NULL, SHORT_MAIL_TYPE_ID);
+                break;
+            case MAIL_ENTRY_SAVED:
+                menu->subStep++;
+                ShortMail_Open(NULL, NULL, SHORT_MAIL_TYPE_ID | SHORT_MAIL_SAVED);
+                break;
+            case MAIL_ENTRY_BLOCK_LIST:
+                menu->subStep++;
+                BlockList_Open();
+                break;
+            }
+            Sound_PlaySeFlat(SE_SLOT_SYSTEM, SE_SYS_CONFIRM, 0);
+        }
+        break;
+    case 1:
+        switch (gSubMenuWork->subEntry) {
+        case MAIL_ENTRY_BOX:
+            switch (MailMenu_Update(pad)) {
+            case MENU_CANCEL:
+                gSubMenuWork->subStep--;
+                return 0;
+            case MENU_UNDONE:
+            case MENU_CLOSE:
+                gFieldControl = 1;
+                pad = PAD_START;
+                break;
+            case MENU_RUNNING:
+                return 0;
+            }
+            break;
+        case MAIL_ENTRY_NEW:
+        case MAIL_ENTRY_SAVED:
+            switch (ShortMail_Step(pad)) {
+            case MENU_CANCEL:
+                gSubMenuWork->subStep--;
+                return 0;
+            case MENU_UNDONE:
+            case MENU_CLOSE:
+                pad = PAD_START;
+                break;
+            case MENU_RUNNING:
+                return 0;
+            }
+            break;
+        case MAIL_ENTRY_BLOCK_LIST:
+            switch (BlockList_Update(pad)) {
+            case MENU_CANCEL:
+                gSubMenuWork->subStep--;
+                return 0;
+            case MENU_UNDONE:
+            case MENU_CLOSE:
+                pad = PAD_START;
+                break;
+            case MENU_RUNNING:
+                return 0;
+            }
+            break;
+        }
+        if (pad & PAD_START) {
+            GameMenu_Back();
+            pad = 0;
+        }
+        break;
+    }
+    if (gSubMenuWork->subStep == 0) {
+        gHelpShow = 1;
+    } else {
+        gHelpShow = 0;
+    }
+    return pad;
+}
+
+/* Draws the mail page: on its list, the game menu's list dimmed and the
+ * page's list window with its cursor; an open entry's menu draws itself. */
+void GameMenu_DrawMail(void)
+{
+    u8 step;
+
+    step = gSubMenuWork->subStep;
+    switch (step) {
+    case 0:
+        GameMenu_DrawList(1);
+        ListPanel_Draw(&gMailPanel, (s16 *)0, (char *)0, (s32) gSubMenuWork->subEntry);
+        
+    case 1: /* an entry's menu is open: it draws itself */
+        break;
+    }
+}
+
+/* The mail page's list window. */
+ListPanel gMailPanel = {
+#include "lobby/007F2070.inc"
+};

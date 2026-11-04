@@ -1,0 +1,10 @@
+@ cdata yn
+C
+S AD5B40 4000 src/yn/yn_card.c 4
+S AD9B40 4 src/yn/yn_card.c 5
+S AD9B50 130 src/yn/yn_main.c 426
+S AD9C80 40500 src/yn/yn_main.c 427
+N gYnCardDirBuf AD5B40 4000 src/yn/yn_card.c
+N gYnWork AD9B40 4 src/yn/yn_card.c
+N gYnSetupGuideArg AD9B50 130 src/yn/yn_main.c
+N gYnWorkBuf AD9C80 40500 src/yn/yn_main.c

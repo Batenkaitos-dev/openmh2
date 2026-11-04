@@ -1,0 +1,6 @@
+// Overlay 5, nethttp.bin: Sony's base64 (version 3020, by its id string in
+// .data at 0x94FE80, the overlay's first data), text 0x8FAE80-0x8FB130: two
+// functions, with the encoder and decoder tables at 0x94FE90; asm piece
+// net/base64. Its first function is the overlay's entry, nethttp_entry.
+// Library code, kept as assembly: public API names only, where the binary
+// shows them. Format: name = 0xADDRESS; // attributes

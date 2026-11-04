@@ -1,0 +1,18 @@
+@ cdata sub_main
+C
+S 59BF80 1 src/sub_main/net_if.c 14
+S 59BF88 4 src/sub_main/net_if.c 15
+S 59BF90 4 src/sub_main/net_if.c 16
+S 59BF98 4 src/sub_main/net_if.c 17
+S 59BFA0 4 src/sub_main/net_if.c 18
+S 59BFA8 7 src/sub_main/net_if.c 19
+S 59BFB0 100 src/sub_main/net_if.c 20
+S 59C0B0 100 src/sub_main/net_if.c 21
+N gModemInitChat 59C0B0 100 src/sub_main/net_if.c
+N gModemChat2 59BFB0 100 src/sub_main/net_if.c
+N gNetPendingEvent 59BF88 4 src/sub_main/net_if.c
+N gNetIfNoErrorCheck 59BF98 4 src/sub_main/net_if.c
+N gNetIfError 59BFA0 4 src/sub_main/net_if.c
+N gNetIfStarted 59BFA8 7 src/sub_main/net_if.c
+N gNetIfState 59BF90 4 src/sub_main/net_if.c
+N gNetEventPending 59BF80 1 src/sub_main/net_if.c

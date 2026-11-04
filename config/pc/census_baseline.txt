@@ -1,0 +1,1940 @@
+# tools/pc/census.py baseline: ARCH, FILE, KIND, COUNT. Counts only go down
+# (census.py --update refuses to raise one)..
+# i686 and x86_64: Linux's clang. mingw: llvm-mingw's clang, from a run on Windows (census.py --platform windows).
+i686	src/game/ambient_life.c	warn conditional-uninitialized	1
+i686	src/game/ambient_life.c	warn float-conversion	3
+i686	src/game/ambient_life.c	warn implicit-int-float-conversion	1
+i686	src/game/ambient_life.c	warn tautological-constant-out-of-range-compare	1
+i686	src/game/area_objects.c	warn conditional-uninitialized	7
+i686	src/game/area_objects.c	warn float-conversion	1
+i686	src/game/area_objects.c	warn implicit-int-float-conversion	9
+i686	src/game/area_scenery.c	warn conditional-uninitialized	13
+i686	src/game/area_scenery.c	warn float-conversion	6
+i686	src/game/area_scenery.c	warn implicit-int-float-conversion	1
+i686	src/game/attack_families.c	warn conditional-uninitialized	11
+i686	src/game/attack_families.c	warn float-conversion	36
+i686	src/game/attack_families.c	warn implicit-int-float-conversion	28
+i686	src/game/attack_objects.c	warn float-conversion	7
+i686	src/game/attack_objects.c	warn implicit-int-float-conversion	6
+i686	src/game/bowgun_shot.c	warn float-conversion	5
+i686	src/game/bowgun_shot.c	warn implicit-int-float-conversion	11
+i686	src/game/dust_flash_effects.c	warn cast-function-type-strict	1
+i686	src/game/dust_flash_effects.c	warn conditional-uninitialized	11
+i686	src/game/dust_flash_effects.c	warn float-conversion	17
+i686	src/game/dust_flash_effects.c	warn implicit-int-float-conversion	25
+i686	src/game/dust_flash_effects.c	warn tautological-constant-out-of-range-compare	1
+i686	src/game/elder_attacks.c	warn conditional-uninitialized	5
+i686	src/game/elder_attacks.c	warn float-conversion	4
+i686	src/game/elder_attacks.c	warn implicit-int-float-conversion	14
+i686	src/game/elder_attacks.c	warn visibility	2
+i686	src/game/em_apceros.c	warn implicit-int-float-conversion	14
+i686	src/game/em_blangonga.c	warn float-conversion	10
+i686	src/game/em_blangonga.c	warn implicit-int-float-conversion	1
+i686	src/game/em_cephadrome.c	warn conditional-uninitialized	1
+i686	src/game/em_cephadrome.c	warn float-conversion	4
+i686	src/game/em_cephadrome.c	warn implicit-int-float-conversion	15
+i686	src/game/em_chameleos.c	warn float-conversion	2
+i686	src/game/em_chameleos.c	warn implicit-int-float-conversion	5
+i686	src/game/em_chameleos_states.c	warn float-conversion	3
+i686	src/game/em_common.c	warn conditional-uninitialized	6
+i686	src/game/em_common.c	warn implicit-int-float-conversion	1
+i686	src/game/em_common.c	warn tautological-constant-out-of-range-compare	7
+i686	src/game/em_damage.c	warn float-conversion	4
+i686	src/game/em_diablos.c	warn float-conversion	4
+i686	src/game/em_diablos.c	warn implicit-int-float-conversion	3
+i686	src/game/em_drome.c	warn float-conversion	1
+i686	src/game/em_drome.c	warn tautological-constant-out-of-range-compare	1
+i686	src/game/em_effect_attack.c	warn conditional-uninitialized	5
+i686	src/game/em_effect_attack.c	warn float-conversion	5
+i686	src/game/em_effect_attack.c	warn implicit-int-float-conversion	28
+i686	src/game/em_fatalis.c	warn float-conversion	2
+i686	src/game/em_fatalis_states.c	warn float-conversion	1
+i686	src/game/em_garuga.c	warn float-conversion	3
+i686	src/game/em_garuga.c	warn implicit-int-float-conversion	4
+i686	src/game/em_gravios.c	warn float-conversion	1
+i686	src/game/em_gravios.c	warn implicit-int-float-conversion	4
+i686	src/game/em_helpers.c	warn conditional-uninitialized	1
+i686	src/game/em_helpers.c	warn float-conversion	4
+i686	src/game/em_helpers.c	warn implicit-int-float-conversion	11
+i686	src/game/em_hermitaur.c	warn conditional-uninitialized	1
+i686	src/game/em_hermitaur.c	warn float-conversion	3
+i686	src/game/em_hermitaur.c	warn implicit-int-float-conversion	1
+i686	src/game/em_impact_attack.c	warn float-conversion	1
+i686	src/game/em_khezu.c	warn float-conversion	1
+i686	src/game/em_khezu.c	warn implicit-int-float-conversion	4
+i686	src/game/em_kind38.c	warn implicit-int-float-conversion	1
+i686	src/game/em_kushala.c	warn implicit-int-float-conversion	9
+i686	src/game/em_kushala_states.c	warn float-conversion	5
+i686	src/game/em_kushala_states.c	warn implicit-int-float-conversion	1
+i686	src/game/em_kutku.c	warn conditional-uninitialized	1
+i686	src/game/em_kutku.c	warn float-conversion	4
+i686	src/game/em_kutku.c	warn implicit-int-float-conversion	4
+i686	src/game/em_melynx.c	warn implicit-int-float-conversion	1
+i686	src/game/em_plesioth.c	warn float-conversion	2
+i686	src/game/em_plesioth.c	warn implicit-int-float-conversion	12
+i686	src/game/em_ranged_attack.c	warn conditional-uninitialized	4
+i686	src/game/em_ranged_attack.c	warn float-conversion	1
+i686	src/game/em_ranged_attack.c	warn implicit-int-float-conversion	28
+i686	src/game/em_rathalos.c	warn conditional-uninitialized	1
+i686	src/game/em_rathalos.c	warn float-conversion	4
+i686	src/game/em_rathalos.c	warn implicit-int-float-conversion	4
+i686	src/game/em_remobra.c	warn implicit-int-float-conversion	2
+i686	src/game/em_script.c	warn conditional-uninitialized	5
+i686	src/game/em_script.c	warn implicit-int-float-conversion	1
+i686	src/game/em_shakalaka.c	warn implicit-int-float-conversion	6
+i686	src/game/em_velociprey.c	warn conditional-uninitialized	2
+i686	src/game/em_velociprey.c	warn tautological-constant-out-of-range-compare	1
+i686	src/game/em_vespoid.c	warn implicit-int-float-conversion	4
+i686	src/game/em_yamatsukami.c	warn float-conversion	1
+i686	src/game/em_yamatsukami.c	warn implicit-int-float-conversion	5
+i686	src/game/explosion.c	warn float-conversion	1
+i686	src/game/gunlance_teostra_chameleos.c	warn conditional-uninitialized	3
+i686	src/game/gunlance_teostra_chameleos.c	warn float-conversion	12
+i686	src/game/gunlance_teostra_chameleos.c	warn implicit-int-float-conversion	2
+i686	src/game/hit_effects.c	warn conditional-uninitialized	14
+i686	src/game/hit_effects.c	warn float-conversion	25
+i686	src/game/hit_effects.c	warn implicit-int-float-conversion	20
+i686	src/game/horn_gunlance_bow.c	warn float-conversion	1
+i686	src/game/monster_effects.c	warn conditional-uninitialized	14
+i686	src/game/monster_effects.c	warn float-conversion	22
+i686	src/game/monster_effects.c	warn implicit-int-float-conversion	13
+i686	src/game/player_effects.c	warn conditional-uninitialized	18
+i686	src/game/player_effects.c	warn float-conversion	25
+i686	src/game/player_effects.c	warn implicit-int-float-conversion	10
+i686	src/game/player_hit.c	warn float-conversion	2
+i686	src/game/player_states.c	warn conditional-uninitialized	2
+i686	src/game/player_states.c	warn float-conversion	2
+i686	src/game/shakalaka_teostra_bulldrome.c	warn float-conversion	3
+i686	src/game/stage_objects.c	warn conditional-uninitialized	12
+i686	src/game/stage_objects.c	warn float-conversion	6
+i686	src/game/stage_objects.c	warn implicit-int-float-conversion	10
+i686	src/gm_sub/gm_em.c	warn conditional-uninitialized	1
+i686	src/gm_sub/gm_em.c	warn implicit-int-float-conversion	3
+i686	src/gm_sub/qnet.c	warn conditional-uninitialized	1
+i686	src/gm_sub/qnet.c	warn float-conversion	4
+i686	src/gm_sub/qnet_if.c	warn cast-function-type-strict	3
+i686	src/gm_sub/qnet_if.c	warn implicit-int-float-conversion	2
+i686	src/lobby/area_list.c	warn float-conversion	2
+i686	src/lobby/arena_menu.c	warn conditional-uninitialized	1
+i686	src/lobby/armor_forge.c	warn conditional-uninitialized	2
+i686	src/lobby/bait_menu.c	warn conditional-uninitialized	1
+i686	src/lobby/box_menu_draw.c	warn conditional-uninitialized	7
+i686	src/lobby/box_menu_draw.c	warn constant-conversion	2
+i686	src/lobby/box_menu_draw.c	warn float-conversion	20
+i686	src/lobby/box_menu_draw.c	warn implicit-int-float-conversion	2
+i686	src/lobby/browser_draw.c	warn conditional-uninitialized	3
+i686	src/lobby/browser_draw.c	warn float-conversion	147
+i686	src/lobby/browser_draw.c	warn implicit-int-float-conversion	14
+i686	src/lobby/browser_draw.c	warn tautological-constant-out-of-range-compare	1
+i686	src/lobby/browser_packets.c	warn float-conversion	7
+i686	src/lobby/browser_prims.c	warn float-conversion	10
+i686	src/lobby/browser_util.c	warn implicit-float-conversion	1
+i686	src/lobby/chat_log.c	warn float-conversion	1
+i686	src/lobby/combine_shop.c	warn conditional-uninitialized	1
+i686	src/lobby/combine_shop.c	warn float-conversion	1
+i686	src/lobby/deco_counter.c	warn conditional-uninitialized	2
+i686	src/lobby/deco_counter.c	warn implicit-int-float-conversion	4
+i686	src/lobby/dialog_steps.c	warn float-conversion	10
+i686	src/lobby/dojo_menu.c	warn conditional-uninitialized	1
+i686	src/lobby/drink_contest.c	warn conditional-uninitialized	5
+i686	src/lobby/drink_contest.c	warn float-conversion	21
+i686	src/lobby/drink_contest.c	warn implicit-int-float-conversion	8
+i686	src/lobby/drink_mug.c	warn conditional-uninitialized	1
+i686	src/lobby/drink_mug.c	warn float-conversion	7
+i686	src/lobby/falling_leaves.c	warn float-conversion	2
+i686	src/lobby/forge_upgrades.c	warn conditional-uninitialized	1
+i686	src/lobby/friend_list.c	warn conditional-uninitialized	1
+i686	src/lobby/gallery_objects.c	warn conditional-uninitialized	9
+i686	src/lobby/gallery_objects.c	warn float-conversion	6
+i686	src/lobby/gallery_objects.c	warn implicit-int-float-conversion	9
+i686	src/lobby/gallery_targets.c	warn conditional-uninitialized	3
+i686	src/lobby/gallery_targets.c	warn float-conversion	1
+i686	src/lobby/gallery_targets.c	warn implicit-int-float-conversion	1
+i686	src/lobby/game_menu.c	warn cast-function-type-strict	35
+i686	src/lobby/game_menu.c	warn conditional-uninitialized	2
+i686	src/lobby/hair_menu.c	warn conditional-uninitialized	2
+i686	src/lobby/house_props.c	warn conditional-uninitialized	1
+i686	src/lobby/html_attr_readers.c	warn logical-not-parentheses	1
+i686	src/lobby/ingredient_list.c	warn conditional-uninitialized	1
+i686	src/lobby/item_box_menu.c	warn conditional-uninitialized	1
+i686	src/lobby/item_shop.c	warn float-conversion	1
+i686	src/lobby/item_shop.c	warn out-of-scope-function	1
+i686	src/lobby/kitchen.c	warn float-conversion	4
+i686	src/lobby/kitchen.c	warn implicit-int-float-conversion	4
+i686	src/lobby/layout_cells.c	warn conditional-uninitialized	1
+i686	src/lobby/layout_cells.c	warn logical-not-parentheses	1
+i686	src/lobby/layout_text.c	warn logical-not-parentheses	1
+i686	src/lobby/lobby_dialog_box.c	warn float-conversion	4
+i686	src/lobby/lobby_disconnect.c	warn cast-function-type-strict	2
+i686	src/lobby/lobby_routes.c	warn conditional-uninitialized	1
+i686	src/lobby/lobby_screen.c	warn cast-function-type-strict	5
+i686	src/lobby/lobby_util.c	warn float-conversion	2
+i686	src/lobby/lobby_world.c	warn array-bounds	6
+i686	src/lobby/lobby_world.c	warn float-conversion	12
+i686	src/lobby/lobby_world.c	warn implicit-int-float-conversion	7
+i686	src/lobby/market.c	warn conditional-uninitialized	1
+i686	src/lobby/market.c	warn float-conversion	2
+i686	src/lobby/market.c	warn implicit-int-float-conversion	1
+i686	src/lobby/menu_sheets.c	warn conditional-uninitialized	4
+i686	src/lobby/menu_sheets.c	warn float-conversion	4
+i686	src/lobby/menu_widgets.c	warn float-conversion	3
+i686	src/lobby/menu_widgets.c	warn implicit-int-float-conversion	1
+i686	src/lobby/mine_model_objects.c	warn conditional-uninitialized	5
+i686	src/lobby/minigame_draw.c	warn float-conversion	18
+i686	src/lobby/minigame_draw.c	warn implicit-int-float-conversion	1
+i686	src/lobby/move_menu.c	warn deprecated-non-prototype	1
+i686	src/lobby/name_search.c	warn conditional-uninitialized	1
+i686	src/lobby/name_search.c	warn switch	1
+i686	src/lobby/name_tags.c	warn float-conversion	11
+i686	src/lobby/name_tags.c	warn implicit-int-float-conversion	3
+i686	src/lobby/net_file_save.c	warn float-conversion	4
+i686	src/lobby/net_file_save.c	warn implicit-int-float-conversion	4
+i686	src/lobby/net_file_save.c	warn switch	2
+i686	src/lobby/net_level_requests.c	warn conditional-uninitialized	7
+i686	src/lobby/net_msg_pages.c	warn conditional-uninitialized	1
+i686	src/lobby/net_msg_pages.c	warn float-conversion	6
+i686	src/lobby/net_msg_pages.c	warn implicit-int-float-conversion	2
+i686	src/lobby/net_screen_draw.c	warn float-conversion	5
+i686	src/lobby/net_screen_draw.c	warn implicit-int-float-conversion	1
+i686	src/lobby/net_screen_draw.c	warn tautological-constant-out-of-range-compare	2
+i686	src/lobby/net_setup_steps.c	warn float-conversion	3
+i686	src/lobby/net_setup_steps.c	warn implicit-int-float-conversion	3
+i686	src/lobby/page_draw_cmds.c	warn tautological-constant-out-of-range-compare	7
+i686	src/lobby/page_focus.c	warn float-conversion	9
+i686	src/lobby/page_focus.c	warn implicit-int-float-conversion	17
+i686	src/lobby/page_frame.c	warn conditional-uninitialized	1
+i686	src/lobby/page_input.c	warn conditional-uninitialized	2
+i686	src/lobby/page_input.c	warn float-conversion	10
+i686	src/lobby/page_input.c	warn implicit-int-float-conversion	8
+i686	src/lobby/page_input.c	warn tautological-constant-out-of-range-compare	2
+i686	src/lobby/pet_states.c	warn implicit-int-float-conversion	4
+i686	src/lobby/pets.c	warn conditional-uninitialized	3
+i686	src/lobby/place_info.c	warn conditional-uninitialized	1
+i686	src/lobby/portal_steps.c	warn cast-function-type-strict	2
+i686	src/lobby/portal_steps.c	warn float-conversion	2
+i686	src/lobby/quest_offers.c	warn conditional-uninitialized	4
+i686	src/lobby/records_draw.c	warn conditional-uninitialized	1
+i686	src/lobby/records_lists.c	warn conditional-uninitialized	3
+i686	src/lobby/shooting_gallery.c	warn conditional-uninitialized	1
+i686	src/lobby/shooting_gallery.c	warn float-conversion	5
+i686	src/lobby/song_menu.c	warn conditional-uninitialized	1
+i686	src/lobby/town_lock_on.c	warn implicit-int-float-conversion	11
+i686	src/lobby/town_msg.c	warn conditional-uninitialized	1
+i686	src/lobby/town_msg.c	warn float-conversion	1
+i686	src/lobby/town_senders.c	warn cast-function-type-strict	1
+i686	src/lobby/town_senders.c	warn conditional-uninitialized	1
+i686	src/lobby/town_senders.c	warn float-conversion	20
+i686	src/lobby/townspeople.c	warn conditional-uninitialized	1
+i686	src/lobby/village_clock.c	warn conditional-uninitialized	2
+i686	src/lobby/village_clock.c	warn float-conversion	5
+i686	src/lobby/village_clock.c	warn implicit-int-float-conversion	4
+i686	src/lobby/weapon_forge.c	warn conditional-uninitialized	3
+i686	src/lobby/weapon_forge.c	warn implicit-int-float-conversion	2
+i686	src/lobby/word_filter.c	warn logical-not-parentheses	1
+i686	src/main/cse_rpc.c	warn conditional-uninitialized	1
+i686	src/main/dma_packets.c	warn conditional-uninitialized	2
+i686	src/main/dma_queue.c	warn conditional-uninitialized	4
+i686	src/main/file_queue.c	warn cast-function-type-strict	4
+i686	src/main/file_queue.c	warn tautological-pointer-compare	1
+i686	src/main/gs_regs.c	warn conditional-uninitialized	3
+i686	src/main/gs_tex_regs.c	warn implicit-int-float-conversion	2
+i686	src/main/heap.c	warn parentheses	2
+i686	src/main/image_pixels.c	warn conditional-uninitialized	1
+i686	src/main/mem_util.c	warn parentheses	1
+i686	src/main/packet_tim2.c	warn conditional-uninitialized	1
+i686	src/main/pad.c	warn implicit-float-conversion	1
+i686	src/main/pad_port.c	warn float-conversion	2
+i686	src/main/pad_port.c	warn implicit-float-conversion	1
+i686	src/main/prim.c	warn float-conversion	16
+i686	src/main/prim.c	warn implicit-int-float-conversion	44
+i686	src/main/render_state.c	warn implicit-int-float-conversion	1
+i686	src/main/save_helpers.c	warn conditional-uninitialized	1
+i686	src/main/sound.c	warn float-conversion	4
+i686	src/main/sound.c	warn implicit-int-float-conversion	3
+i686	src/main/sound_effects.c	warn float-conversion	3
+i686	src/main/stream_play.c	warn float-conversion	2
+i686	src/main/texconv.c	warn conditional-uninitialized	5
+i686	src/main/texture.c	warn conditional-uninitialized	1
+i686	src/nethttp/http_front.c	warn conditional-uninitialized	1
+i686	src/nethttp/http_front.c	warn logical-not-parentheses	1
+i686	src/nethttp/http_front.c	warn shorten-64-to-32	2
+i686	src/plsel/ending.c	warn float-conversion	9
+i686	src/plsel/ending.c	warn implicit-int-float-conversion	6
+i686	src/plsel/gallery_scene.c	warn conditional-uninitialized	1
+i686	src/plsel/player_menu.c	warn cast-function-type-strict	1
+i686	src/plsel/plsel.c	warn float-conversion	5
+i686	src/plsel/plsel.c	warn implicit-int-float-conversion	5
+i686	src/plsel/quest_results.c	warn cast-function-type-strict	13
+i686	src/plsel/quest_results.c	warn conditional-uninitialized	2
+i686	src/plsel/quest_results.c	warn float-conversion	24
+i686	src/plsel/quest_results.c	warn implicit-int-float-conversion	17
+i686	src/select/select_boot.c	warn float-conversion	1
+i686	src/select/select_chara.c	warn conditional-uninitialized	2
+i686	src/select/select_chara.c	warn int-to-void-pointer-cast	2
+i686	src/select/select_chara.c	warn logical-not-parentheses	3
+i686	src/select/select_gallery.c	warn float-conversion	7
+i686	src/select/select_gallery.c	warn implicit-int-float-conversion	3
+i686	src/select/select_gallery.c	warn logical-not-parentheses	3
+i686	src/select/select_ngword.c	warn logical-not-parentheses	1
+i686	src/select/select_option.c	warn conditional-uninitialized	1
+i686	src/select/select_option.c	warn float-conversion	4
+i686	src/select/select_option.c	warn implicit-int-float-conversion	11
+i686	src/select/select_parts.c	warn implicit-int-float-conversion	1
+i686	src/select/select_psp.c	warn conditional-uninitialized	1
+i686	src/select/select_psp.c	warn float-conversion	22
+i686	src/select/select_psp.c	warn implicit-int-float-conversion	13
+i686	src/select/select_psp.c	warn logical-not-parentheses	7
+i686	src/select/select_title.c	warn float-conversion	14
+i686	src/select/select_title.c	warn implicit-int-float-conversion	7
+i686	src/select/select_title.c	warn logical-not-parentheses	1
+i686	src/sub_main/anim_curve.c	warn conditional-uninitialized	1
+i686	src/sub_main/area_anim.c	warn implicit-int-float-conversion	1
+i686	src/sub_main/area_collision.c	warn conditional-uninitialized	9
+i686	src/sub_main/area_collision.c	warn float-conversion	14
+i686	src/sub_main/area_draw.c	warn conditional-uninitialized	10
+i686	src/sub_main/area_draw.c	warn float-conversion	31
+i686	src/sub_main/area_draw.c	warn implicit-int-float-conversion	27
+i686	src/sub_main/area_draw.c	warn logical-not-parentheses	1
+i686	src/sub_main/area_update.c	warn conditional-uninitialized	6
+i686	src/sub_main/bone_effects.c	warn conditional-uninitialized	2
+i686	src/sub_main/bone_effects.c	warn float-conversion	1
+i686	src/sub_main/bone_effects.c	warn implicit-int-float-conversion	1
+i686	src/sub_main/cam_areas.c	warn float-conversion	1
+i686	src/sub_main/cam_areas.c	warn implicit-int-float-conversion	6
+i686	src/sub_main/cam_collide.c	warn unused-value	1
+i686	src/sub_main/cam_fixed.c	warn implicit-int-float-conversion	1
+i686	src/sub_main/cam_follow.c	warn conditional-uninitialized	1
+i686	src/sub_main/cam_follow.c	warn float-conversion	1
+i686	src/sub_main/cam_rail.c	warn conditional-uninitialized	1
+i686	src/sub_main/cam_rail.c	warn float-conversion	3
+i686	src/sub_main/cam_script.c	warn conditional-uninitialized	2
+i686	src/sub_main/cam_script.c	warn float-conversion	2
+i686	src/sub_main/cam_script.c	warn implicit-int-float-conversion	8
+i686	src/sub_main/camera_view.c	warn implicit-int-float-conversion	1
+i686	src/sub_main/card_menu.c	warn cast-function-type-strict	1
+i686	src/sub_main/card_menu.c	warn conditional-uninitialized	4
+i686	src/sub_main/card_task.c	warn cast-function-type-strict	1
+i686	src/sub_main/chat_box.c	warn float-conversion	1
+i686	src/sub_main/chat_phrases.c	warn conditional-uninitialized	2
+i686	src/sub_main/chat_phrases.c	warn constant-conversion	7
+i686	src/sub_main/combine.c	warn deprecated-non-prototype	1
+i686	src/sub_main/draw_helpers.c	warn float-conversion	6
+i686	src/sub_main/draw_slots.c	warn float-conversion	1
+i686	src/sub_main/draw_slots.c	warn implicit-int-float-conversion	1
+i686	src/sub_main/em_body.c	warn conditional-uninitialized	1
+i686	src/sub_main/em_body.c	warn float-conversion	3
+i686	src/sub_main/em_body.c	warn implicit-int-float-conversion	5
+i686	src/sub_main/engine_math.c	warn float-conversion	2
+i686	src/sub_main/engine_math.c	warn implicit-int-float-conversion	16
+i686	src/sub_main/engine_util.c	warn conditional-uninitialized	2
+i686	src/sub_main/equip_parts.c	warn float-conversion	14
+i686	src/sub_main/equip_parts.c	warn implicit-int-float-conversion	1
+i686	src/sub_main/equip_preview.c	warn conditional-uninitialized	1
+i686	src/sub_main/equip_preview.c	warn float-conversion	1
+i686	src/sub_main/equip_save.c	warn conditional-uninitialized	3
+i686	src/sub_main/equip_save.c	warn float-conversion	9
+i686	src/sub_main/equip_save.c	warn implicit-int-float-conversion	3
+i686	src/sub_main/field_objects.c	warn conditional-uninitialized	1
+i686	src/sub_main/field_objects.c	warn float-conversion	1
+i686	src/sub_main/file_load.c	warn conditional-uninitialized	1
+i686	src/sub_main/fishing.c	warn float-conversion	26
+i686	src/sub_main/fishing.c	warn implicit-int-float-conversion	4
+i686	src/sub_main/font.c	warn float-conversion	5
+i686	src/sub_main/font.c	warn shorten-64-to-32	3
+i686	src/sub_main/game_util.c	warn constant-conversion	1
+i686	src/sub_main/hit_detection.c	warn float-conversion	4
+i686	src/sub_main/hit_geometry.c	warn conditional-uninitialized	2
+i686	src/sub_main/hit_spark.c	warn conditional-uninitialized	6
+i686	src/sub_main/hit_spark.c	warn float-conversion	1
+i686	src/sub_main/hit_spark.c	warn implicit-int-float-conversion	6
+i686	src/sub_main/hud.c	warn cast-function-type-strict	27
+i686	src/sub_main/hud.c	warn float-conversion	101
+i686	src/sub_main/hud.c	warn implicit-float-conversion	9
+i686	src/sub_main/hud.c	warn implicit-int-float-conversion	12
+i686	src/sub_main/hud.c	warn logical-not-parentheses	1
+i686	src/sub_main/hud_init.c	warn cast-function-type-strict	14
+i686	src/sub_main/item_use.c	warn float-conversion	2
+i686	src/sub_main/kbd.c	warn constant-conversion	2
+i686	src/sub_main/kbd.c	warn float-conversion	4
+i686	src/sub_main/kbd.c	warn implicit-int-float-conversion	4
+i686	src/sub_main/kbd.c	warn shorten-64-to-32	1
+i686	src/sub_main/kbd.c	warn tautological-constant-out-of-range-compare	3
+i686	src/sub_main/kbd_cand_box.c	warn float-conversion	6
+i686	src/sub_main/kbd_cand_box.c	warn implicit-int-float-conversion	4
+i686	src/sub_main/kbd_input.c	warn float-conversion	7
+i686	src/sub_main/kbd_input.c	warn implicit-int-float-conversion	6
+i686	src/sub_main/kbd_input.c	warn tautological-constant-out-of-range-compare	5
+i686	src/sub_main/loading_screen.c	warn conditional-uninitialized	1
+i686	src/sub_main/loading_screen.c	warn float-conversion	5
+i686	src/sub_main/loading_screen.c	warn implicit-int-float-conversion	1
+i686	src/sub_main/lock_on_mark.c	warn implicit-int-float-conversion	1
+i686	src/sub_main/menu_util.c	warn constant-conversion	1
+i686	src/sub_main/menu_windows.c	warn conditional-uninitialized	3
+i686	src/sub_main/menu_windows.c	warn constant-conversion	2
+i686	src/sub_main/menu_windows.c	warn deprecated-non-prototype	1
+i686	src/sub_main/menu_windows.c	warn float-conversion	17
+i686	src/sub_main/menu_windows.c	warn implicit-int-float-conversion	18
+i686	src/sub_main/model_draw.c	warn conditional-uninitialized	6
+i686	src/sub_main/model_draw.c	warn implicit-int-float-conversion	3
+i686	src/sub_main/model_file.c	warn conditional-uninitialized	2
+i686	src/sub_main/model_file.c	warn float-conversion	1
+i686	src/sub_main/model_setup.c	warn conditional-uninitialized	1
+i686	src/sub_main/motion.c	warn conditional-uninitialized	2
+i686	src/sub_main/motion.c	warn implicit-int-float-conversion	4
+i686	src/sub_main/movie.c	warn conditional-uninitialized	1
+i686	src/sub_main/movie.c	warn float-conversion	1
+i686	src/sub_main/movie.c	warn implicit-int-float-conversion	1
+i686	src/sub_main/net_connection.c	warn cast-function-type-strict	3
+i686	src/sub_main/net_if.c	warn conditional-uninitialized	1
+i686	src/sub_main/net_sockets.c	warn conditional-uninitialized	1
+i686	src/sub_main/part_effects.c	warn conditional-uninitialized	2
+i686	src/sub_main/part_effects.c	warn implicit-int-float-conversion	11
+i686	src/sub_main/player_draw.c	warn conditional-uninitialized	5
+i686	src/sub_main/player_draw.c	warn float-conversion	6
+i686	src/sub_main/player_draw.c	warn implicit-int-float-conversion	3
+i686	src/sub_main/player_looks.c	warn cast-function-type-strict	1
+i686	src/sub_main/player_motion_fx.c	warn implicit-int-float-conversion	6
+i686	src/sub_main/player_parts.c	warn deprecated-non-prototype	1
+i686	src/sub_main/player_stats.c	warn float-conversion	8
+i686	src/sub_main/player_stats.c	warn implicit-int-float-conversion	8
+i686	src/sub_main/quest_rules.c	warn float-conversion	3
+i686	src/sub_main/rand.c	warn implicit-int-float-conversion	1
+i686	src/sub_main/scene.c	warn array-bounds	1
+i686	src/sub_main/shadow.c	warn conditional-uninitialized	2
+i686	src/sub_main/shadow.c	warn implicit-int-float-conversion	1
+i686	src/sub_main/shake.c	warn float-conversion	4
+i686	src/sub_main/spark_fx.c	warn conditional-uninitialized	2
+i686	src/sub_main/sprite_queue.c	warn float-conversion	30
+i686	src/sub_main/sprite_queue.c	warn implicit-int-float-conversion	3
+i686	src/sub_main/sys_main.c	warn constant-conversion	1
+i686	src/sub_main/text_layer.c	warn implicit-int-float-conversion	2
+i686	src/sub_main/unk_2FB0C0.c	warn logical-not-parentheses	1
+i686	src/sub_main/unk_2FB0C0.c	warn shorten-64-to-32	2
+i686	src/sub_main/unk_2FE1F0.c	warn logical-not-parentheses	1
+i686	src/sub_main/unk_303EF0.c	warn tautological-constant-out-of-range-compare	1
+i686	src/sub_main/vec_math.c	warn float-conversion	1
+i686	src/sub_main/vec_math.c	warn implicit-int-float-conversion	1
+i686	src/yn/yn_main.c	warn float-conversion	1
+i686	src/yn/yn_main.c	warn implicit-int-float-conversion	1
+i686	src/yn/yn_main.c	warn logical-not-parentheses	2
+i686	src/yn/yn_netcnf.c	warn logical-not-parentheses	1
+i686	src/yn/yn_netcnf.c	warn unsequenced	1
+mingw	src/game/ambient_life.c	warn conditional-uninitialized	1
+mingw	src/game/ambient_life.c	warn float-conversion	3
+mingw	src/game/ambient_life.c	warn implicit-int-float-conversion	1
+mingw	src/game/ambient_life.c	warn tautological-constant-out-of-range-compare	1
+mingw	src/game/area_objects.c	warn conditional-uninitialized	7
+mingw	src/game/area_objects.c	warn float-conversion	1
+mingw	src/game/area_objects.c	warn implicit-int-float-conversion	9
+mingw	src/game/area_scenery.c	warn conditional-uninitialized	13
+mingw	src/game/area_scenery.c	warn float-conversion	6
+mingw	src/game/area_scenery.c	warn implicit-int-float-conversion	1
+mingw	src/game/attack_families.c	warn conditional-uninitialized	11
+mingw	src/game/attack_families.c	warn float-conversion	36
+mingw	src/game/attack_families.c	warn implicit-int-float-conversion	28
+mingw	src/game/attack_objects.c	warn float-conversion	7
+mingw	src/game/attack_objects.c	warn implicit-int-float-conversion	6
+mingw	src/game/bowgun_shot.c	warn float-conversion	5
+mingw	src/game/bowgun_shot.c	warn implicit-int-float-conversion	11
+mingw	src/game/dust_flash_effects.c	warn cast-function-type-strict	1
+mingw	src/game/dust_flash_effects.c	warn conditional-uninitialized	11
+mingw	src/game/dust_flash_effects.c	warn float-conversion	17
+mingw	src/game/dust_flash_effects.c	warn implicit-int-float-conversion	25
+mingw	src/game/dust_flash_effects.c	warn tautological-constant-out-of-range-compare	1
+mingw	src/game/elder_attacks.c	warn conditional-uninitialized	5
+mingw	src/game/elder_attacks.c	warn float-conversion	4
+mingw	src/game/elder_attacks.c	warn implicit-int-float-conversion	14
+mingw	src/game/elder_attacks.c	warn visibility	2
+mingw	src/game/em_apceros.c	warn implicit-int-float-conversion	14
+mingw	src/game/em_blangonga.c	warn float-conversion	10
+mingw	src/game/em_blangonga.c	warn implicit-int-float-conversion	1
+mingw	src/game/em_cephadrome.c	warn conditional-uninitialized	1
+mingw	src/game/em_cephadrome.c	warn float-conversion	4
+mingw	src/game/em_cephadrome.c	warn implicit-int-float-conversion	15
+mingw	src/game/em_chameleos.c	warn float-conversion	2
+mingw	src/game/em_chameleos.c	warn implicit-int-float-conversion	5
+mingw	src/game/em_chameleos_states.c	warn float-conversion	3
+mingw	src/game/em_common.c	warn conditional-uninitialized	6
+mingw	src/game/em_common.c	warn implicit-int-float-conversion	1
+mingw	src/game/em_common.c	warn tautological-constant-out-of-range-compare	7
+mingw	src/game/em_damage.c	warn float-conversion	4
+mingw	src/game/em_diablos.c	warn float-conversion	4
+mingw	src/game/em_diablos.c	warn implicit-int-float-conversion	3
+mingw	src/game/em_drome.c	warn float-conversion	1
+mingw	src/game/em_drome.c	warn tautological-constant-out-of-range-compare	1
+mingw	src/game/em_effect_attack.c	warn conditional-uninitialized	5
+mingw	src/game/em_effect_attack.c	warn float-conversion	5
+mingw	src/game/em_effect_attack.c	warn implicit-int-float-conversion	28
+mingw	src/game/em_fatalis.c	warn float-conversion	2
+mingw	src/game/em_fatalis_states.c	warn float-conversion	1
+mingw	src/game/em_garuga.c	warn float-conversion	3
+mingw	src/game/em_garuga.c	warn implicit-int-float-conversion	4
+mingw	src/game/em_gravios.c	warn float-conversion	1
+mingw	src/game/em_gravios.c	warn implicit-int-float-conversion	4
+mingw	src/game/em_helpers.c	warn conditional-uninitialized	1
+mingw	src/game/em_helpers.c	warn float-conversion	4
+mingw	src/game/em_helpers.c	warn implicit-int-float-conversion	11
+mingw	src/game/em_hermitaur.c	warn conditional-uninitialized	1
+mingw	src/game/em_hermitaur.c	warn float-conversion	3
+mingw	src/game/em_hermitaur.c	warn implicit-int-float-conversion	1
+mingw	src/game/em_impact_attack.c	warn float-conversion	1
+mingw	src/game/em_khezu.c	warn float-conversion	1
+mingw	src/game/em_khezu.c	warn implicit-int-float-conversion	4
+mingw	src/game/em_kind38.c	warn implicit-int-float-conversion	1
+mingw	src/game/em_kushala.c	warn implicit-int-float-conversion	9
+mingw	src/game/em_kushala_states.c	warn float-conversion	5
+mingw	src/game/em_kushala_states.c	warn implicit-int-float-conversion	1
+mingw	src/game/em_kutku.c	warn conditional-uninitialized	1
+mingw	src/game/em_kutku.c	warn float-conversion	4
+mingw	src/game/em_kutku.c	warn implicit-int-float-conversion	4
+mingw	src/game/em_melynx.c	warn implicit-int-float-conversion	1
+mingw	src/game/em_plesioth.c	warn float-conversion	2
+mingw	src/game/em_plesioth.c	warn implicit-int-float-conversion	12
+mingw	src/game/em_ranged_attack.c	warn conditional-uninitialized	5
+mingw	src/game/em_ranged_attack.c	warn float-conversion	1
+mingw	src/game/em_ranged_attack.c	warn implicit-int-float-conversion	28
+mingw	src/game/em_rathalos.c	warn conditional-uninitialized	1
+mingw	src/game/em_rathalos.c	warn float-conversion	4
+mingw	src/game/em_rathalos.c	warn implicit-int-float-conversion	4
+mingw	src/game/em_remobra.c	warn implicit-int-float-conversion	2
+mingw	src/game/em_script.c	warn conditional-uninitialized	5
+mingw	src/game/em_script.c	warn implicit-int-float-conversion	1
+mingw	src/game/em_shakalaka.c	warn implicit-int-float-conversion	6
+mingw	src/game/em_velociprey.c	warn conditional-uninitialized	2
+mingw	src/game/em_velociprey.c	warn tautological-constant-out-of-range-compare	1
+mingw	src/game/em_vespoid.c	warn implicit-int-float-conversion	4
+mingw	src/game/em_yamatsukami.c	warn float-conversion	1
+mingw	src/game/em_yamatsukami.c	warn implicit-int-float-conversion	5
+mingw	src/game/explosion.c	warn float-conversion	1
+mingw	src/game/gunlance_teostra_chameleos.c	warn conditional-uninitialized	3
+mingw	src/game/gunlance_teostra_chameleos.c	warn float-conversion	12
+mingw	src/game/gunlance_teostra_chameleos.c	warn implicit-int-float-conversion	2
+mingw	src/game/hit_effects.c	warn conditional-uninitialized	14
+mingw	src/game/hit_effects.c	warn float-conversion	25
+mingw	src/game/hit_effects.c	warn implicit-int-float-conversion	20
+mingw	src/game/horn_gunlance_bow.c	warn float-conversion	1
+mingw	src/game/monster_effects.c	warn conditional-uninitialized	14
+mingw	src/game/monster_effects.c	warn float-conversion	22
+mingw	src/game/monster_effects.c	warn implicit-int-float-conversion	13
+mingw	src/game/player_effects.c	warn conditional-uninitialized	18
+mingw	src/game/player_effects.c	warn float-conversion	25
+mingw	src/game/player_effects.c	warn implicit-int-float-conversion	10
+mingw	src/game/player_hit.c	warn float-conversion	2
+mingw	src/game/player_states.c	warn conditional-uninitialized	2
+mingw	src/game/player_states.c	warn float-conversion	2
+mingw	src/game/shakalaka_teostra_bulldrome.c	warn float-conversion	3
+mingw	src/game/stage_objects.c	warn conditional-uninitialized	12
+mingw	src/game/stage_objects.c	warn float-conversion	6
+mingw	src/game/stage_objects.c	warn implicit-int-float-conversion	10
+mingw	src/gm_sub/gm_em.c	warn conditional-uninitialized	1
+mingw	src/gm_sub/gm_em.c	warn implicit-int-float-conversion	3
+mingw	src/gm_sub/qnet.c	warn conditional-uninitialized	1
+mingw	src/gm_sub/qnet.c	warn float-conversion	4
+mingw	src/gm_sub/qnet_if.c	warn cast-function-type-strict	3
+mingw	src/gm_sub/qnet_if.c	warn implicit-int-float-conversion	2
+mingw	src/lobby/area_list.c	warn float-conversion	2
+mingw	src/lobby/arena_menu.c	warn conditional-uninitialized	1
+mingw	src/lobby/armor_forge.c	warn conditional-uninitialized	3
+mingw	src/lobby/bait_menu.c	warn conditional-uninitialized	1
+mingw	src/lobby/box_menu_draw.c	warn conditional-uninitialized	7
+mingw	src/lobby/box_menu_draw.c	warn constant-conversion	2
+mingw	src/lobby/box_menu_draw.c	warn float-conversion	20
+mingw	src/lobby/box_menu_draw.c	warn implicit-int-float-conversion	2
+mingw	src/lobby/browser_draw.c	warn conditional-uninitialized	3
+mingw	src/lobby/browser_draw.c	warn float-conversion	147
+mingw	src/lobby/browser_draw.c	warn implicit-int-float-conversion	14
+mingw	src/lobby/browser_draw.c	warn tautological-constant-out-of-range-compare	1
+mingw	src/lobby/browser_packets.c	warn float-conversion	7
+mingw	src/lobby/browser_prims.c	warn float-conversion	10
+mingw	src/lobby/browser_util.c	warn implicit-float-conversion	1
+mingw	src/lobby/chat_log.c	warn float-conversion	1
+mingw	src/lobby/combine_shop.c	warn conditional-uninitialized	1
+mingw	src/lobby/combine_shop.c	warn float-conversion	1
+mingw	src/lobby/deco_counter.c	warn conditional-uninitialized	2
+mingw	src/lobby/deco_counter.c	warn implicit-int-float-conversion	4
+mingw	src/lobby/dialog_steps.c	warn float-conversion	10
+mingw	src/lobby/dojo_menu.c	warn conditional-uninitialized	1
+mingw	src/lobby/drink_contest.c	warn conditional-uninitialized	5
+mingw	src/lobby/drink_contest.c	warn float-conversion	21
+mingw	src/lobby/drink_contest.c	warn implicit-int-float-conversion	8
+mingw	src/lobby/drink_mug.c	warn conditional-uninitialized	1
+mingw	src/lobby/drink_mug.c	warn float-conversion	7
+mingw	src/lobby/falling_leaves.c	warn float-conversion	2
+mingw	src/lobby/forge_upgrades.c	warn conditional-uninitialized	1
+mingw	src/lobby/friend_list.c	warn conditional-uninitialized	1
+mingw	src/lobby/gallery_objects.c	warn conditional-uninitialized	9
+mingw	src/lobby/gallery_objects.c	warn float-conversion	6
+mingw	src/lobby/gallery_objects.c	warn implicit-int-float-conversion	9
+mingw	src/lobby/gallery_targets.c	warn conditional-uninitialized	3
+mingw	src/lobby/gallery_targets.c	warn float-conversion	1
+mingw	src/lobby/gallery_targets.c	warn implicit-int-float-conversion	1
+mingw	src/lobby/game_menu.c	warn cast-function-type-strict	35
+mingw	src/lobby/game_menu.c	warn conditional-uninitialized	2
+mingw	src/lobby/hair_menu.c	warn conditional-uninitialized	2
+mingw	src/lobby/house_props.c	warn conditional-uninitialized	1
+mingw	src/lobby/html_attr_readers.c	warn logical-not-parentheses	1
+mingw	src/lobby/ingredient_list.c	warn conditional-uninitialized	1
+mingw	src/lobby/item_box_menu.c	warn conditional-uninitialized	1
+mingw	src/lobby/item_shop.c	warn float-conversion	1
+mingw	src/lobby/item_shop.c	warn out-of-scope-function	1
+mingw	src/lobby/kitchen.c	warn float-conversion	4
+mingw	src/lobby/kitchen.c	warn implicit-int-float-conversion	4
+mingw	src/lobby/layout_cells.c	warn conditional-uninitialized	1
+mingw	src/lobby/layout_cells.c	warn logical-not-parentheses	1
+mingw	src/lobby/layout_text.c	warn logical-not-parentheses	1
+mingw	src/lobby/lobby_dialog_box.c	warn float-conversion	4
+mingw	src/lobby/lobby_disconnect.c	warn cast-function-type-strict	2
+mingw	src/lobby/lobby_routes.c	warn conditional-uninitialized	1
+mingw	src/lobby/lobby_screen.c	warn cast-function-type-strict	5
+mingw	src/lobby/lobby_util.c	warn float-conversion	2
+mingw	src/lobby/lobby_world.c	warn array-bounds	6
+mingw	src/lobby/lobby_world.c	warn float-conversion	12
+mingw	src/lobby/lobby_world.c	warn implicit-int-float-conversion	7
+mingw	src/lobby/market.c	warn conditional-uninitialized	1
+mingw	src/lobby/market.c	warn float-conversion	2
+mingw	src/lobby/market.c	warn implicit-int-float-conversion	1
+mingw	src/lobby/menu_sheets.c	warn conditional-uninitialized	4
+mingw	src/lobby/menu_sheets.c	warn float-conversion	4
+mingw	src/lobby/menu_widgets.c	warn float-conversion	3
+mingw	src/lobby/menu_widgets.c	warn implicit-int-float-conversion	1
+mingw	src/lobby/mine_model_objects.c	warn conditional-uninitialized	5
+mingw	src/lobby/minigame_draw.c	warn float-conversion	18
+mingw	src/lobby/minigame_draw.c	warn implicit-int-float-conversion	1
+mingw	src/lobby/move_menu.c	warn deprecated-non-prototype	1
+mingw	src/lobby/name_search.c	warn conditional-uninitialized	1
+mingw	src/lobby/name_search.c	warn switch	1
+mingw	src/lobby/name_tags.c	warn float-conversion	11
+mingw	src/lobby/name_tags.c	warn implicit-int-float-conversion	3
+mingw	src/lobby/net_file_save.c	warn float-conversion	4
+mingw	src/lobby/net_file_save.c	warn implicit-int-float-conversion	4
+mingw	src/lobby/net_file_save.c	warn switch	2
+mingw	src/lobby/net_level_requests.c	warn conditional-uninitialized	7
+mingw	src/lobby/net_msg_pages.c	warn conditional-uninitialized	1
+mingw	src/lobby/net_msg_pages.c	warn float-conversion	6
+mingw	src/lobby/net_msg_pages.c	warn implicit-int-float-conversion	2
+mingw	src/lobby/net_screen_draw.c	warn float-conversion	5
+mingw	src/lobby/net_screen_draw.c	warn implicit-int-float-conversion	1
+mingw	src/lobby/net_screen_draw.c	warn tautological-constant-out-of-range-compare	2
+mingw	src/lobby/net_setup_steps.c	warn float-conversion	3
+mingw	src/lobby/net_setup_steps.c	warn implicit-int-float-conversion	3
+mingw	src/lobby/page_draw_cmds.c	warn tautological-constant-out-of-range-compare	7
+mingw	src/lobby/page_focus.c	warn float-conversion	9
+mingw	src/lobby/page_focus.c	warn implicit-int-float-conversion	17
+mingw	src/lobby/page_frame.c	warn conditional-uninitialized	1
+mingw	src/lobby/page_input.c	warn conditional-uninitialized	2
+mingw	src/lobby/page_input.c	warn float-conversion	10
+mingw	src/lobby/page_input.c	warn implicit-int-float-conversion	8
+mingw	src/lobby/page_input.c	warn tautological-constant-out-of-range-compare	2
+mingw	src/lobby/pet_states.c	warn implicit-int-float-conversion	4
+mingw	src/lobby/pets.c	warn conditional-uninitialized	3
+mingw	src/lobby/place_info.c	warn conditional-uninitialized	1
+mingw	src/lobby/portal_steps.c	warn cast-function-type-strict	2
+mingw	src/lobby/portal_steps.c	warn float-conversion	2
+mingw	src/lobby/quest_offers.c	warn conditional-uninitialized	4
+mingw	src/lobby/records_draw.c	warn conditional-uninitialized	1
+mingw	src/lobby/records_lists.c	warn conditional-uninitialized	3
+mingw	src/lobby/shooting_gallery.c	warn conditional-uninitialized	1
+mingw	src/lobby/shooting_gallery.c	warn float-conversion	5
+mingw	src/lobby/song_menu.c	warn conditional-uninitialized	1
+mingw	src/lobby/town_lock_on.c	warn implicit-int-float-conversion	11
+mingw	src/lobby/town_msg.c	warn conditional-uninitialized	1
+mingw	src/lobby/town_msg.c	warn float-conversion	1
+mingw	src/lobby/town_senders.c	warn cast-function-type-strict	1
+mingw	src/lobby/town_senders.c	warn conditional-uninitialized	1
+mingw	src/lobby/town_senders.c	warn float-conversion	20
+mingw	src/lobby/townspeople.c	warn conditional-uninitialized	1
+mingw	src/lobby/village_clock.c	warn conditional-uninitialized	2
+mingw	src/lobby/village_clock.c	warn float-conversion	5
+mingw	src/lobby/village_clock.c	warn implicit-int-float-conversion	4
+mingw	src/lobby/weapon_forge.c	warn conditional-uninitialized	3
+mingw	src/lobby/weapon_forge.c	warn implicit-int-float-conversion	2
+mingw	src/lobby/word_filter.c	warn logical-not-parentheses	1
+mingw	src/main/cse_rpc.c	warn conditional-uninitialized	1
+mingw	src/main/dma_packets.c	warn conditional-uninitialized	2
+mingw	src/main/dma_queue.c	warn conditional-uninitialized	4
+mingw	src/main/file_queue.c	warn cast-function-type-strict	4
+mingw	src/main/file_queue.c	warn tautological-pointer-compare	1
+mingw	src/main/gs_regs.c	warn conditional-uninitialized	3
+mingw	src/main/gs_tex_regs.c	warn implicit-int-float-conversion	2
+mingw	src/main/heap.c	warn parentheses	2
+mingw	src/main/image_pixels.c	warn conditional-uninitialized	1
+mingw	src/main/mem_util.c	warn parentheses	1
+mingw	src/main/packet_tim2.c	warn conditional-uninitialized	1
+mingw	src/main/pad.c	warn implicit-float-conversion	1
+mingw	src/main/pad_port.c	warn float-conversion	2
+mingw	src/main/pad_port.c	warn implicit-float-conversion	1
+mingw	src/main/prim.c	warn float-conversion	16
+mingw	src/main/prim.c	warn implicit-int-float-conversion	44
+mingw	src/main/render_state.c	warn implicit-int-float-conversion	1
+mingw	src/main/save_helpers.c	warn conditional-uninitialized	1
+mingw	src/main/sound.c	warn float-conversion	4
+mingw	src/main/sound.c	warn implicit-int-float-conversion	3
+mingw	src/main/sound_effects.c	warn float-conversion	3
+mingw	src/main/stream_play.c	warn float-conversion	2
+mingw	src/main/texconv.c	warn conditional-uninitialized	5
+mingw	src/main/texture.c	warn conditional-uninitialized	1
+mingw	src/nethttp/http_front.c	warn conditional-uninitialized	1
+mingw	src/nethttp/http_front.c	warn logical-not-parentheses	1
+mingw	src/nethttp/http_front.c	warn shorten-64-to-32	2
+mingw	src/plsel/ending.c	warn float-conversion	9
+mingw	src/plsel/ending.c	warn implicit-int-float-conversion	6
+mingw	src/plsel/gallery_scene.c	warn conditional-uninitialized	1
+mingw	src/plsel/player_menu.c	warn cast-function-type-strict	1
+mingw	src/plsel/plsel.c	warn float-conversion	5
+mingw	src/plsel/plsel.c	warn implicit-int-float-conversion	5
+mingw	src/plsel/quest_results.c	warn cast-function-type-strict	13
+mingw	src/plsel/quest_results.c	warn conditional-uninitialized	2
+mingw	src/plsel/quest_results.c	warn float-conversion	24
+mingw	src/plsel/quest_results.c	warn implicit-int-float-conversion	17
+mingw	src/select/select_boot.c	warn float-conversion	1
+mingw	src/select/select_chara.c	warn conditional-uninitialized	2
+mingw	src/select/select_chara.c	warn int-to-void-pointer-cast	2
+mingw	src/select/select_chara.c	warn logical-not-parentheses	3
+mingw	src/select/select_gallery.c	warn float-conversion	7
+mingw	src/select/select_gallery.c	warn implicit-int-float-conversion	3
+mingw	src/select/select_gallery.c	warn logical-not-parentheses	3
+mingw	src/select/select_ngword.c	warn logical-not-parentheses	1
+mingw	src/select/select_option.c	warn conditional-uninitialized	1
+mingw	src/select/select_option.c	warn float-conversion	4
+mingw	src/select/select_option.c	warn implicit-int-float-conversion	11
+mingw	src/select/select_parts.c	warn implicit-int-float-conversion	1
+mingw	src/select/select_psp.c	warn conditional-uninitialized	1
+mingw	src/select/select_psp.c	warn float-conversion	22
+mingw	src/select/select_psp.c	warn implicit-int-float-conversion	13
+mingw	src/select/select_psp.c	warn logical-not-parentheses	7
+mingw	src/select/select_title.c	warn float-conversion	14
+mingw	src/select/select_title.c	warn implicit-int-float-conversion	7
+mingw	src/select/select_title.c	warn logical-not-parentheses	1
+mingw	src/sub_main/anim_curve.c	warn conditional-uninitialized	1
+mingw	src/sub_main/area_anim.c	warn implicit-int-float-conversion	1
+mingw	src/sub_main/area_collision.c	warn conditional-uninitialized	9
+mingw	src/sub_main/area_collision.c	warn float-conversion	14
+mingw	src/sub_main/area_draw.c	warn conditional-uninitialized	10
+mingw	src/sub_main/area_draw.c	warn float-conversion	31
+mingw	src/sub_main/area_draw.c	warn implicit-int-float-conversion	27
+mingw	src/sub_main/area_draw.c	warn logical-not-parentheses	1
+mingw	src/sub_main/area_update.c	warn conditional-uninitialized	6
+mingw	src/sub_main/bone_effects.c	warn conditional-uninitialized	2
+mingw	src/sub_main/bone_effects.c	warn float-conversion	1
+mingw	src/sub_main/bone_effects.c	warn implicit-int-float-conversion	1
+mingw	src/sub_main/cam_areas.c	warn float-conversion	1
+mingw	src/sub_main/cam_areas.c	warn implicit-int-float-conversion	6
+mingw	src/sub_main/cam_collide.c	warn unused-value	1
+mingw	src/sub_main/cam_fixed.c	warn implicit-int-float-conversion	1
+mingw	src/sub_main/cam_follow.c	warn conditional-uninitialized	1
+mingw	src/sub_main/cam_follow.c	warn float-conversion	1
+mingw	src/sub_main/cam_rail.c	warn conditional-uninitialized	1
+mingw	src/sub_main/cam_rail.c	warn float-conversion	3
+mingw	src/sub_main/cam_script.c	warn conditional-uninitialized	2
+mingw	src/sub_main/cam_script.c	warn float-conversion	2
+mingw	src/sub_main/cam_script.c	warn implicit-int-float-conversion	8
+mingw	src/sub_main/camera_view.c	warn implicit-int-float-conversion	1
+mingw	src/sub_main/card_menu.c	warn cast-function-type-strict	1
+mingw	src/sub_main/card_menu.c	warn conditional-uninitialized	4
+mingw	src/sub_main/card_task.c	warn cast-function-type-strict	1
+mingw	src/sub_main/chat_box.c	warn float-conversion	1
+mingw	src/sub_main/chat_phrases.c	warn conditional-uninitialized	2
+mingw	src/sub_main/chat_phrases.c	warn constant-conversion	7
+mingw	src/sub_main/combine.c	warn deprecated-non-prototype	1
+mingw	src/sub_main/draw_helpers.c	warn float-conversion	6
+mingw	src/sub_main/draw_slots.c	warn float-conversion	1
+mingw	src/sub_main/draw_slots.c	warn implicit-int-float-conversion	1
+mingw	src/sub_main/em_body.c	warn conditional-uninitialized	1
+mingw	src/sub_main/em_body.c	warn float-conversion	3
+mingw	src/sub_main/em_body.c	warn implicit-int-float-conversion	5
+mingw	src/sub_main/engine_math.c	warn float-conversion	2
+mingw	src/sub_main/engine_math.c	warn implicit-int-float-conversion	16
+mingw	src/sub_main/engine_util.c	warn conditional-uninitialized	2
+mingw	src/sub_main/equip_parts.c	warn float-conversion	14
+mingw	src/sub_main/equip_parts.c	warn implicit-int-float-conversion	1
+mingw	src/sub_main/equip_preview.c	warn conditional-uninitialized	1
+mingw	src/sub_main/equip_preview.c	warn float-conversion	1
+mingw	src/sub_main/equip_save.c	warn conditional-uninitialized	3
+mingw	src/sub_main/equip_save.c	warn float-conversion	9
+mingw	src/sub_main/equip_save.c	warn implicit-int-float-conversion	3
+mingw	src/sub_main/field_objects.c	warn conditional-uninitialized	1
+mingw	src/sub_main/field_objects.c	warn float-conversion	1
+mingw	src/sub_main/file_load.c	warn conditional-uninitialized	1
+mingw	src/sub_main/fishing.c	warn float-conversion	26
+mingw	src/sub_main/fishing.c	warn implicit-int-float-conversion	4
+mingw	src/sub_main/font.c	warn float-conversion	5
+mingw	src/sub_main/font.c	warn shorten-64-to-32	3
+mingw	src/sub_main/game_util.c	warn constant-conversion	1
+mingw	src/sub_main/hit_detection.c	warn float-conversion	4
+mingw	src/sub_main/hit_geometry.c	warn conditional-uninitialized	2
+mingw	src/sub_main/hit_spark.c	warn conditional-uninitialized	6
+mingw	src/sub_main/hit_spark.c	warn float-conversion	1
+mingw	src/sub_main/hit_spark.c	warn implicit-int-float-conversion	6
+mingw	src/sub_main/hud.c	warn cast-function-type-strict	27
+mingw	src/sub_main/hud.c	warn float-conversion	101
+mingw	src/sub_main/hud.c	warn implicit-float-conversion	9
+mingw	src/sub_main/hud.c	warn implicit-int-float-conversion	12
+mingw	src/sub_main/hud.c	warn logical-not-parentheses	1
+mingw	src/sub_main/hud_init.c	warn cast-function-type-strict	14
+mingw	src/sub_main/item_use.c	warn float-conversion	2
+mingw	src/sub_main/kbd.c	warn constant-conversion	2
+mingw	src/sub_main/kbd.c	warn float-conversion	4
+mingw	src/sub_main/kbd.c	warn implicit-int-float-conversion	4
+mingw	src/sub_main/kbd.c	warn shorten-64-to-32	1
+mingw	src/sub_main/kbd.c	warn tautological-constant-out-of-range-compare	3
+mingw	src/sub_main/kbd_cand_box.c	warn float-conversion	6
+mingw	src/sub_main/kbd_cand_box.c	warn implicit-int-float-conversion	4
+mingw	src/sub_main/kbd_input.c	warn float-conversion	7
+mingw	src/sub_main/kbd_input.c	warn implicit-int-float-conversion	6
+mingw	src/sub_main/kbd_input.c	warn tautological-constant-out-of-range-compare	5
+mingw	src/sub_main/loading_screen.c	warn conditional-uninitialized	1
+mingw	src/sub_main/loading_screen.c	warn float-conversion	5
+mingw	src/sub_main/loading_screen.c	warn implicit-int-float-conversion	1
+mingw	src/sub_main/lock_on_mark.c	warn implicit-int-float-conversion	1
+mingw	src/sub_main/menu_util.c	warn constant-conversion	1
+mingw	src/sub_main/menu_windows.c	warn conditional-uninitialized	3
+mingw	src/sub_main/menu_windows.c	warn constant-conversion	2
+mingw	src/sub_main/menu_windows.c	warn deprecated-non-prototype	1
+mingw	src/sub_main/menu_windows.c	warn float-conversion	17
+mingw	src/sub_main/menu_windows.c	warn implicit-int-float-conversion	18
+mingw	src/sub_main/model_draw.c	warn conditional-uninitialized	6
+mingw	src/sub_main/model_draw.c	warn implicit-int-float-conversion	3
+mingw	src/sub_main/model_file.c	warn conditional-uninitialized	2
+mingw	src/sub_main/model_file.c	warn float-conversion	1
+mingw	src/sub_main/model_setup.c	warn conditional-uninitialized	1
+mingw	src/sub_main/motion.c	warn conditional-uninitialized	2
+mingw	src/sub_main/motion.c	warn implicit-int-float-conversion	4
+mingw	src/sub_main/movie.c	warn conditional-uninitialized	1
+mingw	src/sub_main/movie.c	warn float-conversion	1
+mingw	src/sub_main/movie.c	warn implicit-int-float-conversion	1
+mingw	src/sub_main/net_connection.c	warn cast-function-type-strict	3
+mingw	src/sub_main/net_if.c	warn conditional-uninitialized	1
+mingw	src/sub_main/net_sockets.c	warn conditional-uninitialized	1
+mingw	src/sub_main/part_effects.c	warn conditional-uninitialized	2
+mingw	src/sub_main/part_effects.c	warn implicit-int-float-conversion	11
+mingw	src/sub_main/player_draw.c	warn conditional-uninitialized	5
+mingw	src/sub_main/player_draw.c	warn float-conversion	6
+mingw	src/sub_main/player_draw.c	warn implicit-int-float-conversion	3
+mingw	src/sub_main/player_looks.c	warn cast-function-type-strict	1
+mingw	src/sub_main/player_motion_fx.c	warn implicit-int-float-conversion	6
+mingw	src/sub_main/player_parts.c	warn deprecated-non-prototype	1
+mingw	src/sub_main/player_stats.c	warn float-conversion	8
+mingw	src/sub_main/player_stats.c	warn implicit-int-float-conversion	8
+mingw	src/sub_main/quest_rules.c	warn float-conversion	3
+mingw	src/sub_main/rand.c	warn implicit-int-float-conversion	1
+mingw	src/sub_main/scene.c	warn array-bounds	1
+mingw	src/sub_main/shadow.c	warn conditional-uninitialized	2
+mingw	src/sub_main/shadow.c	warn implicit-int-float-conversion	1
+mingw	src/sub_main/shake.c	warn float-conversion	4
+mingw	src/sub_main/spark_fx.c	warn conditional-uninitialized	2
+mingw	src/sub_main/sprite_queue.c	warn float-conversion	30
+mingw	src/sub_main/sprite_queue.c	warn implicit-int-float-conversion	3
+mingw	src/sub_main/sys_main.c	warn constant-conversion	1
+mingw	src/sub_main/text_layer.c	warn implicit-int-float-conversion	2
+mingw	src/sub_main/unk_2FB0C0.c	warn logical-not-parentheses	1
+mingw	src/sub_main/unk_2FB0C0.c	warn shorten-64-to-32	2
+mingw	src/sub_main/unk_2FE1F0.c	warn logical-not-parentheses	1
+mingw	src/sub_main/unk_303EF0.c	warn tautological-constant-out-of-range-compare	1
+mingw	src/sub_main/vec_math.c	warn float-conversion	1
+mingw	src/sub_main/vec_math.c	warn implicit-int-float-conversion	1
+mingw	src/yn/yn_main.c	warn float-conversion	1
+mingw	src/yn/yn_main.c	warn implicit-int-float-conversion	1
+mingw	src/yn/yn_main.c	warn logical-not-parentheses	2
+mingw	src/yn/yn_netcnf.c	warn logical-not-parentheses	1
+mingw	src/yn/yn_netcnf.c	warn unsequenced	1
+x86_64	build/assets/lbguild/lbguild.c	error struct size check	20
+x86_64	src/game/ambient_life.c	error struct size check	28
+x86_64	src/game/ambient_life.c	warn float-conversion	3
+x86_64	src/game/ambient_life.c	warn implicit-int-float-conversion	1
+x86_64	src/game/ambient_life.c	warn pointer-to-int-cast	11
+x86_64	src/game/ambient_life.c	warn tautological-constant-out-of-range-compare	1
+x86_64	src/game/area_objects.c	error struct size check	28
+x86_64	src/game/area_objects.c	warn float-conversion	1
+x86_64	src/game/area_objects.c	warn implicit-int-float-conversion	9
+x86_64	src/game/area_objects.c	warn pointer-to-int-cast	26
+x86_64	src/game/area_scenery.c	error struct size check	32
+x86_64	src/game/area_scenery.c	warn float-conversion	6
+x86_64	src/game/area_scenery.c	warn implicit-int-float-conversion	1
+x86_64	src/game/area_scenery.c	warn int-to-pointer-cast	6
+x86_64	src/game/area_scenery.c	warn pointer-to-int-cast	29
+x86_64	src/game/area_scenery.c	warn void-pointer-to-int-cast	1
+x86_64	src/game/attack_families.c	error struct size check	37
+x86_64	src/game/attack_families.c	warn float-conversion	36
+x86_64	src/game/attack_families.c	warn implicit-int-float-conversion	28
+x86_64	src/game/attack_families.c	warn pointer-to-int-cast	26
+x86_64	src/game/attack_families.c	warn void-pointer-to-int-cast	4
+x86_64	src/game/attack_objects.c	error struct size check	25
+x86_64	src/game/attack_objects.c	warn float-conversion	7
+x86_64	src/game/attack_objects.c	warn implicit-int-float-conversion	6
+x86_64	src/game/attack_objects.c	warn int-to-pointer-cast	1
+x86_64	src/game/attack_objects.c	warn pointer-to-int-cast	10
+x86_64	src/game/attack_objects.c	warn void-pointer-to-int-cast	2
+x86_64	src/game/bowgun_shot.c	error struct size check	32
+x86_64	src/game/bowgun_shot.c	warn float-conversion	5
+x86_64	src/game/bowgun_shot.c	warn implicit-int-float-conversion	11
+x86_64	src/game/bowgun_shot.c	warn pointer-to-int-cast	10
+x86_64	src/game/bowgun_shot.c	warn void-pointer-to-int-cast	3
+x86_64	src/game/dust_flash_effects.c	error struct size check	43
+x86_64	src/game/dust_flash_effects.c	warn cast-function-type-strict	1
+x86_64	src/game/dust_flash_effects.c	warn float-conversion	17
+x86_64	src/game/dust_flash_effects.c	warn implicit-int-float-conversion	25
+x86_64	src/game/dust_flash_effects.c	warn int-to-void-pointer-cast	2
+x86_64	src/game/dust_flash_effects.c	warn pointer-to-int-cast	8
+x86_64	src/game/dust_flash_effects.c	warn tautological-constant-out-of-range-compare	1
+x86_64	src/game/elder_attacks.c	error struct size check	32
+x86_64	src/game/elder_attacks.c	warn float-conversion	4
+x86_64	src/game/elder_attacks.c	warn implicit-int-float-conversion	14
+x86_64	src/game/elder_attacks.c	warn pointer-to-int-cast	6
+x86_64	src/game/elder_attacks.c	warn visibility	2
+x86_64	src/game/em_anteka.c	error struct size check	24
+x86_64	src/game/em_apceros.c	error struct size check	26
+x86_64	src/game/em_apceros.c	warn implicit-int-float-conversion	14
+x86_64	src/game/em_blangonga.c	error struct size check	25
+x86_64	src/game/em_blangonga.c	warn float-conversion	10
+x86_64	src/game/em_blangonga.c	warn implicit-int-float-conversion	1
+x86_64	src/game/em_blangonga.c	warn int-to-pointer-cast	11
+x86_64	src/game/em_blangonga.c	warn int-to-void-pointer-cast	1
+x86_64	src/game/em_blangonga.c	warn pointer-to-int-cast	3
+x86_64	src/game/em_bulldrome.c	error struct size check	39
+x86_64	src/game/em_cephadrome.c	error struct size check	28
+x86_64	src/game/em_cephadrome.c	warn float-conversion	4
+x86_64	src/game/em_cephadrome.c	warn implicit-int-float-conversion	15
+x86_64	src/game/em_cephadrome.c	warn int-to-pointer-cast	9
+x86_64	src/game/em_cephadrome.c	warn int-to-void-pointer-cast	1
+x86_64	src/game/em_cephadrome.c	warn pointer-to-int-cast	8
+x86_64	src/game/em_chameleos.c	error struct size check	41
+x86_64	src/game/em_chameleos.c	warn float-conversion	2
+x86_64	src/game/em_chameleos.c	warn implicit-int-float-conversion	5
+x86_64	src/game/em_chameleos.c	warn int-to-pointer-cast	9
+x86_64	src/game/em_chameleos.c	warn pointer-to-int-cast	7
+x86_64	src/game/em_chameleos_states.c	error struct size check	21
+x86_64	src/game/em_chameleos_states.c	warn float-conversion	3
+x86_64	src/game/em_common.c	error struct size check	32
+x86_64	src/game/em_common.c	warn implicit-int-float-conversion	1
+x86_64	src/game/em_common.c	warn int-to-pointer-cast	7
+x86_64	src/game/em_common.c	warn pointer-to-int-cast	7
+x86_64	src/game/em_common.c	warn tautological-constant-out-of-range-compare	7
+x86_64	src/game/em_damage.c	error struct size check	24
+x86_64	src/game/em_damage.c	warn float-conversion	4
+x86_64	src/game/em_diablos.c	error struct size check	26
+x86_64	src/game/em_diablos.c	warn float-conversion	4
+x86_64	src/game/em_diablos.c	warn implicit-int-float-conversion	3
+x86_64	src/game/em_drome.c	error struct size check	25
+x86_64	src/game/em_drome.c	warn float-conversion	1
+x86_64	src/game/em_drome.c	warn int-to-pointer-cast	13
+x86_64	src/game/em_drome.c	warn pointer-to-int-cast	2
+x86_64	src/game/em_drome.c	warn tautological-constant-out-of-range-compare	1
+x86_64	src/game/em_effect_attack.c	error struct size check	34
+x86_64	src/game/em_effect_attack.c	warn float-conversion	5
+x86_64	src/game/em_effect_attack.c	warn implicit-int-float-conversion	28
+x86_64	src/game/em_effect_attack.c	warn pointer-to-int-cast	13
+x86_64	src/game/em_fatalis.c	error struct size check	33
+x86_64	src/game/em_fatalis.c	warn float-conversion	2
+x86_64	src/game/em_fatalis_states.c	error struct size check	20
+x86_64	src/game/em_fatalis_states.c	warn float-conversion	1
+x86_64	src/game/em_felyne_cart.c	error struct size check	24
+x86_64	src/game/em_garuga.c	error struct size check	26
+x86_64	src/game/em_garuga.c	warn float-conversion	3
+x86_64	src/game/em_garuga.c	warn implicit-int-float-conversion	4
+x86_64	src/game/em_garuga.c	warn int-to-pointer-cast	8
+x86_64	src/game/em_garuga.c	warn pointer-to-int-cast	2
+x86_64	src/game/em_gravios.c	error struct size check	26
+x86_64	src/game/em_gravios.c	warn float-conversion	1
+x86_64	src/game/em_gravios.c	warn implicit-int-float-conversion	4
+x86_64	src/game/em_gravios.c	warn int-to-pointer-cast	10
+x86_64	src/game/em_gravios.c	warn pointer-to-int-cast	4
+x86_64	src/game/em_helpers.c	error struct size check	25
+x86_64	src/game/em_helpers.c	warn float-conversion	4
+x86_64	src/game/em_helpers.c	warn implicit-int-float-conversion	11
+x86_64	src/game/em_hermitaur.c	error struct size check	25
+x86_64	src/game/em_hermitaur.c	warn float-conversion	3
+x86_64	src/game/em_hermitaur.c	warn implicit-int-float-conversion	1
+x86_64	src/game/em_hermitaur.c	warn int-to-pointer-cast	3
+x86_64	src/game/em_hermitaur.c	warn pointer-to-int-cast	25
+x86_64	src/game/em_impact_attack.c	error struct size check	24
+x86_64	src/game/em_impact_attack.c	warn float-conversion	1
+x86_64	src/game/em_impact_attack.c	warn pointer-to-int-cast	1
+x86_64	src/game/em_khezu.c	error struct size check	26
+x86_64	src/game/em_khezu.c	warn float-conversion	1
+x86_64	src/game/em_khezu.c	warn implicit-int-float-conversion	4
+x86_64	src/game/em_khezu.c	warn int-to-pointer-cast	1
+x86_64	src/game/em_khezu.c	warn int-to-void-pointer-cast	1
+x86_64	src/game/em_khezu.c	warn pointer-to-int-cast	8
+x86_64	src/game/em_kind1d.c	error struct size check	24
+x86_64	src/game/em_kind38.c	error struct size check	24
+x86_64	src/game/em_kind38.c	warn implicit-int-float-conversion	1
+x86_64	src/game/em_kirin.c	error struct size check	25
+x86_64	src/game/em_kushala.c	error struct size check	33
+x86_64	src/game/em_kushala.c	warn implicit-int-float-conversion	9
+x86_64	src/game/em_kushala.c	warn int-to-pointer-cast	8
+x86_64	src/game/em_kushala.c	warn pointer-to-int-cast	2
+x86_64	src/game/em_kushala_states.c	error struct size check	20
+x86_64	src/game/em_kushala_states.c	warn float-conversion	5
+x86_64	src/game/em_kushala_states.c	warn implicit-int-float-conversion	1
+x86_64	src/game/em_kushala_states.c	warn int-to-pointer-cast	4
+x86_64	src/game/em_kushala_states.c	warn pointer-to-int-cast	9
+x86_64	src/game/em_kutku.c	error struct size check	31
+x86_64	src/game/em_kutku.c	warn float-conversion	4
+x86_64	src/game/em_kutku.c	warn implicit-int-float-conversion	4
+x86_64	src/game/em_kutku.c	warn int-to-pointer-cast	8
+x86_64	src/game/em_kutku.c	warn pointer-to-int-cast	18
+x86_64	src/game/em_laoshan.c	error struct size check	34
+x86_64	src/game/em_melynx.c	error struct size check	28
+x86_64	src/game/em_melynx.c	warn implicit-int-float-conversion	1
+x86_64	src/game/em_melynx.c	warn pointer-to-int-cast	1
+x86_64	src/game/em_mosswine.c	error struct size check	24
+x86_64	src/game/em_plesioth.c	error struct size check	35
+x86_64	src/game/em_plesioth.c	warn float-conversion	2
+x86_64	src/game/em_plesioth.c	warn implicit-int-float-conversion	12
+x86_64	src/game/em_plesioth.c	warn int-to-pointer-cast	1
+x86_64	src/game/em_plesioth.c	warn int-to-void-pointer-cast	1
+x86_64	src/game/em_plesioth.c	warn pointer-to-int-cast	7
+x86_64	src/game/em_ranged_attack.c	error initializer element is not a compile-time constant	1
+x86_64	src/game/em_ranged_attack.c	error struct size check	32
+x86_64	src/game/em_ranged_attack.c	warn float-conversion	1
+x86_64	src/game/em_ranged_attack.c	warn implicit-int-float-conversion	28
+x86_64	src/game/em_ranged_attack.c	warn int-to-void-pointer-cast	10
+x86_64	src/game/em_ranged_attack.c	warn pointer-to-int-cast	35
+x86_64	src/game/em_ranged_attack.c	warn void-pointer-to-int-cast	1
+x86_64	src/game/em_rathalos.c	error struct size check	27
+x86_64	src/game/em_rathalos.c	warn float-conversion	4
+x86_64	src/game/em_rathalos.c	warn implicit-int-float-conversion	4
+x86_64	src/game/em_rathalos.c	warn int-to-pointer-cast	9
+x86_64	src/game/em_rathalos.c	warn pointer-to-int-cast	21
+x86_64	src/game/em_remobra.c	error struct size check	24
+x86_64	src/game/em_remobra.c	warn implicit-int-float-conversion	2
+x86_64	src/game/em_script.c	error struct size check	26
+x86_64	src/game/em_script.c	warn implicit-int-float-conversion	1
+x86_64	src/game/em_script.c	warn int-to-pointer-cast	18
+x86_64	src/game/em_script.c	warn pointer-to-int-cast	7
+x86_64	src/game/em_shakalaka.c	error struct size check	24
+x86_64	src/game/em_shakalaka.c	warn implicit-int-float-conversion	6
+x86_64	src/game/em_shengaoren.c	error struct size check	33
+x86_64	src/game/em_shengaoren.c	warn int-to-pointer-cast	2
+x86_64	src/game/em_shengaoren.c	warn pointer-to-int-cast	77
+x86_64	src/game/em_shengaoren_states.c	error struct size check	20
+x86_64	src/game/em_sight.c	error struct size check	32
+x86_64	src/game/em_sight.c	warn pointer-to-int-cast	1
+x86_64	src/game/em_status.c	error struct size check	24
+x86_64	src/game/em_trader.c	error struct size check	32
+x86_64	src/game/em_velociprey.c	error struct size check	24
+x86_64	src/game/em_velociprey.c	warn int-to-pointer-cast	102
+x86_64	src/game/em_velociprey.c	warn pointer-to-int-cast	3
+x86_64	src/game/em_velociprey.c	warn tautological-constant-out-of-range-compare	1
+x86_64	src/game/em_vespoid.c	error struct size check	21
+x86_64	src/game/em_vespoid.c	warn implicit-int-float-conversion	4
+x86_64	src/game/em_vespoid.c	warn int-to-pointer-cast	44
+x86_64	src/game/em_vespoid.c	warn pointer-to-int-cast	1
+x86_64	src/game/em_yamatsukami.c	error struct size check	34
+x86_64	src/game/em_yamatsukami.c	warn float-conversion	1
+x86_64	src/game/em_yamatsukami.c	warn implicit-int-float-conversion	5
+x86_64	src/game/explosion.c	error struct size check	23
+x86_64	src/game/explosion.c	warn float-conversion	1
+x86_64	src/game/explosion.c	warn void-pointer-to-int-cast	6
+x86_64	src/game/gunlance_teostra_chameleos.c	error struct size check	24
+x86_64	src/game/gunlance_teostra_chameleos.c	warn float-conversion	12
+x86_64	src/game/gunlance_teostra_chameleos.c	warn implicit-int-float-conversion	2
+x86_64	src/game/gunlance_teostra_chameleos.c	warn pointer-to-int-cast	5
+x86_64	src/game/gunlance_teostra_chameleos.c	warn void-pointer-to-int-cast	1
+x86_64	src/game/hit_effects.c	error struct size check	50
+x86_64	src/game/hit_effects.c	warn float-conversion	25
+x86_64	src/game/hit_effects.c	warn implicit-int-float-conversion	20
+x86_64	src/game/hit_effects.c	warn pointer-to-int-cast	35
+x86_64	src/game/horn_gunlance_bow.c	error struct size check	37
+x86_64	src/game/horn_gunlance_bow.c	warn float-conversion	1
+x86_64	src/game/monster_effects.c	error struct size check	39
+x86_64	src/game/monster_effects.c	warn float-conversion	22
+x86_64	src/game/monster_effects.c	warn implicit-int-float-conversion	13
+x86_64	src/game/monster_effects.c	warn pointer-to-int-cast	27
+x86_64	src/game/msg_event.c	error struct size check	33
+x86_64	src/game/msg_event.c	warn int-to-pointer-cast	5
+x86_64	src/game/msg_event.c	warn pointer-to-int-cast	4
+x86_64	src/game/player_effects.c	error struct size check	39
+x86_64	src/game/player_effects.c	warn float-conversion	25
+x86_64	src/game/player_effects.c	warn implicit-int-float-conversion	10
+x86_64	src/game/player_effects.c	warn int-to-pointer-cast	2
+x86_64	src/game/player_effects.c	warn int-to-void-pointer-cast	1
+x86_64	src/game/player_effects.c	warn pointer-to-int-cast	18
+x86_64	src/game/player_hit.c	error struct size check	23
+x86_64	src/game/player_hit.c	warn float-conversion	2
+x86_64	src/game/player_states.c	error struct size check	45
+x86_64	src/game/player_states.c	warn float-conversion	2
+x86_64	src/game/player_states.c	warn int-to-pointer-cast	6
+x86_64	src/game/player_states.c	warn pointer-to-int-cast	14
+x86_64	src/game/scene_events.c	error struct size check	37
+x86_64	src/game/shakalaka_teostra_bulldrome.c	error struct size check	24
+x86_64	src/game/shakalaka_teostra_bulldrome.c	warn float-conversion	3
+x86_64	src/game/shakalaka_teostra_bulldrome.c	warn pointer-to-int-cast	3
+x86_64	src/game/stage_objects.c	error struct size check	45
+x86_64	src/game/stage_objects.c	warn float-conversion	6
+x86_64	src/game/stage_objects.c	warn implicit-int-float-conversion	10
+x86_64	src/game/stage_objects.c	warn pointer-to-int-cast	12
+x86_64	src/game/volcano_hazard.c	error struct size check	23
+x86_64	src/game/weapon_states.c	error struct size check	32
+x86_64	src/gm_sub/gm_em.c	error struct size check	31
+x86_64	src/gm_sub/gm_em.c	warn implicit-int-float-conversion	3
+x86_64	src/gm_sub/gm_em.c	warn int-to-pointer-cast	1
+x86_64	src/gm_sub/gm_em.c	warn pointer-to-int-cast	38
+x86_64	src/gm_sub/gm_load.c	error struct size check	26
+x86_64	src/gm_sub/gm_load.c	warn int-to-pointer-cast	3
+x86_64	src/gm_sub/gm_load.c	warn pointer-to-int-cast	5
+x86_64	src/gm_sub/gm_main.c	error struct size check	32
+x86_64	src/gm_sub/qnet.c	error struct size check	1
+x86_64	src/gm_sub/qnet.c	warn float-conversion	4
+x86_64	src/gm_sub/qnet.c	warn int-to-pointer-cast	2
+x86_64	src/gm_sub/qnet.c	warn pointer-to-int-cast	2
+x86_64	src/gm_sub/qnet.c	warn shorten-64-to-32	1
+x86_64	src/gm_sub/qnet_if.c	error struct size check	31
+x86_64	src/gm_sub/qnet_if.c	warn cast-function-type-strict	3
+x86_64	src/gm_sub/qnet_if.c	warn implicit-int-float-conversion	2
+x86_64	src/gm_sub/qnet_sync.c	error struct size check	41
+x86_64	src/lobby/area_board.c	error struct size check	34
+x86_64	src/lobby/area_board.c	warn pointer-to-int-cast	4
+x86_64	src/lobby/area_list.c	error struct size check	35
+x86_64	src/lobby/area_list.c	warn float-conversion	2
+x86_64	src/lobby/area_list.c	warn pointer-to-int-cast	3
+x86_64	src/lobby/area_menu.c	error struct size check	34
+x86_64	src/lobby/area_search.c	error struct size check	34
+x86_64	src/lobby/arena_cup.c	error struct size check	65
+x86_64	src/lobby/arena_cup.c	warn int-to-pointer-cast	4
+x86_64	src/lobby/arena_cup.c	warn int-to-void-pointer-cast	1
+x86_64	src/lobby/arena_cup.c	warn pointer-to-int-cast	3
+x86_64	src/lobby/arena_menu.c	error struct size check	35
+x86_64	src/lobby/arm_wrestling.c	error struct size check	52
+x86_64	src/lobby/armor_forge.c	error struct size check	48
+x86_64	src/lobby/bait_menu.c	error struct size check	42
+x86_64	src/lobby/bed_menu.c	error struct size check	44
+x86_64	src/lobby/bird_flock.c	error struct size check	34
+x86_64	src/lobby/box_menu_draw.c	error struct size check	43
+x86_64	src/lobby/box_menu_draw.c	warn constant-conversion	2
+x86_64	src/lobby/box_menu_draw.c	warn float-conversion	20
+x86_64	src/lobby/box_menu_draw.c	warn implicit-int-float-conversion	2
+x86_64	src/lobby/box_menu_draw.c	warn int-to-pointer-cast	3
+x86_64	src/lobby/box_menu_draw.c	warn pointer-to-int-cast	2
+x86_64	src/lobby/box_skill_lists.c	error struct size check	32
+x86_64	src/lobby/box_sort.c	error struct size check	30
+x86_64	src/lobby/browser_cache.c	error struct size check	45
+x86_64	src/lobby/browser_cache.c	warn int-to-pointer-cast	10
+x86_64	src/lobby/browser_cache.c	warn pointer-to-int-cast	4
+x86_64	src/lobby/browser_dialogs.c	error struct size check	36
+x86_64	src/lobby/browser_draw.c	error struct size check	45
+x86_64	src/lobby/browser_draw.c	warn float-conversion	147
+x86_64	src/lobby/browser_draw.c	warn implicit-int-float-conversion	14
+x86_64	src/lobby/browser_draw.c	warn tautological-constant-out-of-range-compare	1
+x86_64	src/lobby/browser_error_page.c	error struct size check	10
+x86_64	src/lobby/browser_frame.c	error struct size check	38
+x86_64	src/lobby/browser_nav.c	error struct size check	39
+x86_64	src/lobby/browser_packets.c	error struct size check	11
+x86_64	src/lobby/browser_packets.c	warn float-conversion	7
+x86_64	src/lobby/browser_prims.c	error struct size check	5
+x86_64	src/lobby/browser_prims.c	warn float-conversion	10
+x86_64	src/lobby/browser_urls.c	error struct size check	8
+x86_64	src/lobby/browser_urls.c	warn shorten-64-to-32	1
+x86_64	src/lobby/browser_util.c	error struct size check	10
+x86_64	src/lobby/browser_util.c	warn implicit-float-conversion	1
+x86_64	src/lobby/browser_util.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/browser_util.c	warn pointer-to-int-cast	2
+x86_64	src/lobby/chat_log.c	error struct size check	41
+x86_64	src/lobby/chat_log.c	warn float-conversion	1
+x86_64	src/lobby/chat_send.c	error struct size check	39
+x86_64	src/lobby/chat_state.c	error struct size check	37
+x86_64	src/lobby/combine_shop.c	error struct size check	54
+x86_64	src/lobby/combine_shop.c	warn float-conversion	1
+x86_64	src/lobby/combine_shop.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/deco_counter.c	error struct size check	48
+x86_64	src/lobby/deco_counter.c	warn implicit-int-float-conversion	4
+x86_64	src/lobby/dialog_steps.c	error struct size check	43
+x86_64	src/lobby/dialog_steps.c	warn float-conversion	10
+x86_64	src/lobby/dojo_menu.c	error struct size check	56
+x86_64	src/lobby/drink_contest.c	error struct size check	49
+x86_64	src/lobby/drink_contest.c	warn float-conversion	21
+x86_64	src/lobby/drink_contest.c	warn implicit-int-float-conversion	8
+x86_64	src/lobby/drink_mug.c	error struct size check	33
+x86_64	src/lobby/drink_mug.c	warn float-conversion	7
+x86_64	src/lobby/elder_forecast.c	error struct size check	48
+x86_64	src/lobby/equip_shop.c	error struct size check	51
+x86_64	src/lobby/falling_leaves.c	error struct size check	36
+x86_64	src/lobby/falling_leaves.c	warn float-conversion	2
+x86_64	src/lobby/falling_leaves.c	warn pointer-to-int-cast	1
+x86_64	src/lobby/forge_upgrades.c	error struct size check	29
+x86_64	src/lobby/friend_add.c	error struct size check	30
+x86_64	src/lobby/friend_list.c	error struct size check	35
+x86_64	src/lobby/gallery_board.c	error struct size check	27
+x86_64	src/lobby/gallery_objects.c	error struct size check	57
+x86_64	src/lobby/gallery_objects.c	warn float-conversion	6
+x86_64	src/lobby/gallery_objects.c	warn implicit-int-float-conversion	9
+x86_64	src/lobby/gallery_objects.c	warn pointer-to-int-cast	2
+x86_64	src/lobby/gallery_targets.c	error struct size check	34
+x86_64	src/lobby/gallery_targets.c	warn float-conversion	1
+x86_64	src/lobby/gallery_targets.c	warn implicit-int-float-conversion	1
+x86_64	src/lobby/gallery_targets.c	warn pointer-to-int-cast	1
+x86_64	src/lobby/game_menu.c	error struct size check	44
+x86_64	src/lobby/game_menu.c	warn cast-function-type-strict	35
+x86_64	src/lobby/game_menu.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/game_menu.c	warn void-pointer-to-int-cast	1
+x86_64	src/lobby/game_menu_chat.c	error struct size check	42
+x86_64	src/lobby/game_menu_exit.c	error struct size check	10
+x86_64	src/lobby/game_menu_mail.c	error struct size check	33
+x86_64	src/lobby/game_menu_quit.c	error struct size check	43
+x86_64	src/lobby/group_board.c	error struct size check	35
+x86_64	src/lobby/group_board.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/group_board.c	warn pointer-to-int-cast	12
+x86_64	src/lobby/hair_menu.c	error struct size check	49
+x86_64	src/lobby/house_access.c	error struct size check	46
+x86_64	src/lobby/house_props.c	error struct size check	39
+x86_64	src/lobby/house_props.c	warn pointer-to-int-cast	1
+x86_64	src/lobby/html_attr_readers.c	error struct size check	9
+x86_64	src/lobby/html_attr_readers.c	warn logical-not-parentheses	1
+x86_64	src/lobby/html_body_attrs.c	error struct size check	4
+x86_64	src/lobby/html_form_tags.c	error struct size check	9
+x86_64	src/lobby/html_image_tags.c	error struct size check	4
+x86_64	src/lobby/html_link_font_select_tags.c	error struct size check	4
+x86_64	src/lobby/html_parse.c	error struct size check	11
+x86_64	src/lobby/html_table_tags.c	error struct size check	9
+x86_64	src/lobby/html_text_tags.c	error struct size check	9
+x86_64	src/lobby/hunter_card.c	error struct size check	43
+x86_64	src/lobby/hunter_info.c	error struct size check	48
+x86_64	src/lobby/hunter_info.c	warn pointer-to-int-cast	2
+x86_64	src/lobby/id_search.c	error struct size check	42
+x86_64	src/lobby/image_decode.c	error struct size check	7
+x86_64	src/lobby/inflate.c	warn shorten-64-to-32	1
+x86_64	src/lobby/infutil.c	error struct size check	19
+x86_64	src/lobby/ingredient_list.c	error struct size check	39
+x86_64	src/lobby/item_box_menu.c	error struct size check	46
+x86_64	src/lobby/item_box_menu.c	warn int-to-pointer-cast	2
+x86_64	src/lobby/item_box_menu.c	warn pointer-to-int-cast	3
+x86_64	src/lobby/item_shop.c	error struct size check	55
+x86_64	src/lobby/item_shop.c	warn float-conversion	1
+x86_64	src/lobby/item_shop.c	warn out-of-scope-function	1
+x86_64	src/lobby/kitchen.c	error struct size check	53
+x86_64	src/lobby/kitchen.c	warn float-conversion	4
+x86_64	src/lobby/kitchen.c	warn implicit-int-float-conversion	4
+x86_64	src/lobby/kitchen_guest.c	error struct size check	41
+x86_64	src/lobby/layout_cells.c	error struct size check	9
+x86_64	src/lobby/layout_cells.c	warn logical-not-parentheses	1
+x86_64	src/lobby/layout_cells.c	warn pointer-to-int-cast	1
+x86_64	src/lobby/layout_tables.c	error struct size check	4
+x86_64	src/lobby/layout_text.c	error struct size check	9
+x86_64	src/lobby/layout_text.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/layout_text.c	warn logical-not-parentheses	1
+x86_64	src/lobby/layout_text.c	warn pointer-to-int-cast	1
+x86_64	src/lobby/lobby_connect.c	error struct size check	43
+x86_64	src/lobby/lobby_dialog_box.c	error struct size check	40
+x86_64	src/lobby/lobby_dialog_box.c	warn float-conversion	4
+x86_64	src/lobby/lobby_dialog_box.c	warn int-to-pointer-cast	3
+x86_64	src/lobby/lobby_dialog_box.c	warn shorten-64-to-32	1
+x86_64	src/lobby/lobby_dialog_box.c	warn void-pointer-to-int-cast	3
+x86_64	src/lobby/lobby_disconnect.c	error struct size check	43
+x86_64	src/lobby/lobby_disconnect.c	warn cast-function-type-strict	2
+x86_64	src/lobby/lobby_enter.c	error struct size check	39
+x86_64	src/lobby/lobby_frame.c	error struct size check	46
+x86_64	src/lobby/lobby_leave_menus.c	error struct size check	44
+x86_64	src/lobby/lobby_login.c	error struct size check	43
+x86_64	src/lobby/lobby_login.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/lobby_login.c	warn void-pointer-to-int-cast	1
+x86_64	src/lobby/lobby_net.c	error struct size check	28
+x86_64	src/lobby/lobby_queries.c	error struct size check	34
+x86_64	src/lobby/lobby_room.c	error struct size check	35
+x86_64	src/lobby/lobby_routes.c	error struct size check	46
+x86_64	src/lobby/lobby_screen.c	error struct size check	63
+x86_64	src/lobby/lobby_screen.c	warn cast-function-type-strict	5
+x86_64	src/lobby/lobby_screen.c	warn int-to-void-pointer-cast	1
+x86_64	src/lobby/lobby_screen.c	warn pointer-to-int-cast	1
+x86_64	src/lobby/lobby_state.c	error struct size check	29
+x86_64	src/lobby/lobby_state.c	warn int-to-pointer-cast	4
+x86_64	src/lobby/lobby_state.c	warn pointer-to-int-cast	1
+x86_64	src/lobby/lobby_steps.c	error struct size check	35
+x86_64	src/lobby/lobby_steps.c	warn int-to-pointer-cast	8
+x86_64	src/lobby/lobby_town.c	error struct size check	41
+x86_64	src/lobby/lobby_util.c	error struct size check	37
+x86_64	src/lobby/lobby_util.c	warn float-conversion	2
+x86_64	src/lobby/lobby_village.c	error struct size check	34
+x86_64	src/lobby/lobby_web_users.c	error struct size check	37
+x86_64	src/lobby/lobby_web_users.c	warn pointer-to-int-cast	1
+x86_64	src/lobby/lobby_world.c	error struct size check	57
+x86_64	src/lobby/lobby_world.c	warn array-bounds	6
+x86_64	src/lobby/lobby_world.c	warn float-conversion	12
+x86_64	src/lobby/lobby_world.c	warn implicit-int-float-conversion	7
+x86_64	src/lobby/login_connect_leave.c	error struct size check	36
+x86_64	src/lobby/login_input.c	error struct size check	21
+x86_64	src/lobby/mail_block_list.c	error struct size check	34
+x86_64	src/lobby/mail_menu.c	error struct size check	35
+x86_64	src/lobby/market.c	error struct size check	53
+x86_64	src/lobby/market.c	warn float-conversion	2
+x86_64	src/lobby/market.c	warn implicit-int-float-conversion	1
+x86_64	src/lobby/member_card.c	error struct size check	43
+x86_64	src/lobby/member_list.c	error struct size check	34
+x86_64	src/lobby/menu_sheets.c	error struct size check	29
+x86_64	src/lobby/menu_sheets.c	warn float-conversion	4
+x86_64	src/lobby/menu_steps.c	error struct size check	42
+x86_64	src/lobby/menu_widgets.c	error struct size check	32
+x86_64	src/lobby/menu_widgets.c	warn float-conversion	3
+x86_64	src/lobby/menu_widgets.c	warn implicit-int-float-conversion	1
+x86_64	src/lobby/mine_model_objects.c	error struct size check	36
+x86_64	src/lobby/mine_model_objects.c	warn pointer-to-int-cast	2
+x86_64	src/lobby/minigame_draw.c	error struct size check	43
+x86_64	src/lobby/minigame_draw.c	warn float-conversion	18
+x86_64	src/lobby/minigame_draw.c	warn implicit-int-float-conversion	1
+x86_64	src/lobby/minigame_draw.c	warn pointer-to-int-cast	2
+x86_64	src/lobby/move_menu.c	error struct size check	34
+x86_64	src/lobby/move_menu.c	warn deprecated-non-prototype	1
+x86_64	src/lobby/move_menu.c	warn pointer-to-int-cast	2
+x86_64	src/lobby/music_actor.c	error struct size check	26
+x86_64	src/lobby/music_actor.c	warn pointer-to-int-cast	2
+x86_64	src/lobby/my_house.c	error struct size check	32
+x86_64	src/lobby/my_house.c	warn int-to-pointer-cast	2
+x86_64	src/lobby/my_house.c	warn pointer-to-int-cast	2
+x86_64	src/lobby/name_search.c	error struct size check	42
+x86_64	src/lobby/name_search.c	warn switch	1
+x86_64	src/lobby/name_tags.c	error struct size check	38
+x86_64	src/lobby/name_tags.c	warn float-conversion	11
+x86_64	src/lobby/name_tags.c	warn implicit-int-float-conversion	3
+x86_64	src/lobby/name_tags.c	warn pointer-to-int-cast	3
+x86_64	src/lobby/net_boxes.c	error struct size check	3
+x86_64	src/lobby/net_chat.c	error struct size check	26
+x86_64	src/lobby/net_chat.c	warn int-to-void-pointer-cast	4
+x86_64	src/lobby/net_chat.c	warn void-pointer-to-int-cast	1
+x86_64	src/lobby/net_downloads.c	error struct size check	26
+x86_64	src/lobby/net_downloads.c	warn int-to-void-pointer-cast	1
+x86_64	src/lobby/net_downloads.c	warn pointer-to-int-cast	1
+x86_64	src/lobby/net_file_save.c	error struct size check	30
+x86_64	src/lobby/net_file_save.c	warn float-conversion	4
+x86_64	src/lobby/net_file_save.c	warn implicit-int-float-conversion	4
+x86_64	src/lobby/net_file_save.c	warn int-to-pointer-cast	6
+x86_64	src/lobby/net_file_save.c	warn pointer-to-int-cast	5
+x86_64	src/lobby/net_file_save.c	warn switch	2
+x86_64	src/lobby/net_kbd.c	error struct size check	30
+x86_64	src/lobby/net_level0_list.c	error struct size check	26
+x86_64	src/lobby/net_level1_allowed_task.c	error struct size check	26
+x86_64	src/lobby/net_level1_list.c	error struct size check	26
+x86_64	src/lobby/net_level1_settings.c	error struct size check	27
+x86_64	src/lobby/net_level1_settings_task.c	error struct size check	26
+x86_64	src/lobby/net_level1_users_reply.c	error struct size check	26
+x86_64	src/lobby/net_level2_list.c	error struct size check	26
+x86_64	src/lobby/net_level2_records.c	error struct size check	27
+x86_64	src/lobby/net_level2_settings.c	error struct size check	27
+x86_64	src/lobby/net_level_requests.c	error struct size check	26
+x86_64	src/lobby/net_levels_enter.c	error struct size check	26
+x86_64	src/lobby/net_login.c	error struct size check	27
+x86_64	src/lobby/net_login.c	warn int-to-void-pointer-cast	1
+x86_64	src/lobby/net_login_start.c	error struct size check	26
+x86_64	src/lobby/net_msg_pages.c	error struct size check	22
+x86_64	src/lobby/net_msg_pages.c	warn float-conversion	6
+x86_64	src/lobby/net_msg_pages.c	warn implicit-int-float-conversion	2
+x86_64	src/lobby/net_msg_pages.c	warn shorten-64-to-32	12
+x86_64	src/lobby/net_party.c	error struct size check	28
+x86_64	src/lobby/net_patch.c	error struct size check	26
+x86_64	src/lobby/net_patch.c	warn pointer-to-int-cast	4
+x86_64	src/lobby/net_scene.c	error struct size check	43
+x86_64	src/lobby/net_screen.c	error struct size check	26
+x86_64	src/lobby/net_screen_draw.c	error struct size check	25
+x86_64	src/lobby/net_screen_draw.c	warn float-conversion	5
+x86_64	src/lobby/net_screen_draw.c	warn implicit-int-float-conversion	1
+x86_64	src/lobby/net_screen_draw.c	warn tautological-constant-out-of-range-compare	2
+x86_64	src/lobby/net_setup.c	error struct size check	31
+x86_64	src/lobby/net_setup_patch.c	error struct size check	37
+x86_64	src/lobby/net_setup_patch.c	warn int-to-pointer-cast	7
+x86_64	src/lobby/net_setup_patch.c	warn pointer-to-int-cast	5
+x86_64	src/lobby/net_setup_steps.c	error struct size check	32
+x86_64	src/lobby/net_setup_steps.c	warn float-conversion	3
+x86_64	src/lobby/net_setup_steps.c	warn implicit-int-float-conversion	3
+x86_64	src/lobby/net_setup_steps.c	warn int-to-pointer-cast	2
+x86_64	src/lobby/net_users.c	error struct size check	27
+x86_64	src/lobby/npc_kind_tests.c	error struct size check	34
+x86_64	src/lobby/npc_motion_fx.c	error struct size check	43
+x86_64	src/lobby/npc_motion_sounds.c	error struct size check	36
+x86_64	src/lobby/npc_scenes.c	error struct size check	26
+x86_64	src/lobby/npc_spawn.c	error initializer element is not a compile-time constant	1
+x86_64	src/lobby/npc_spawn.c	error struct size check	21
+x86_64	src/lobby/npc_spawn.c	warn pointer-to-int-cast	10
+x86_64	src/lobby/npc_states.c	error struct size check	37
+x86_64	src/lobby/npc_states.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/npc_states.c	warn pointer-to-int-cast	1
+x86_64	src/lobby/offer_menu.c	error struct size check	53
+x86_64	src/lobby/official_desk.c	error struct size check	48
+x86_64	src/lobby/official_desk.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/official_desk.c	warn pointer-to-int-cast	1
+x86_64	src/lobby/online_mark.c	error struct size check	38
+x86_64	src/lobby/page_draw_cmds.c	error struct size check	9
+x86_64	src/lobby/page_draw_cmds.c	warn tautological-constant-out-of-range-compare	7
+x86_64	src/lobby/page_focus.c	error struct size check	39
+x86_64	src/lobby/page_focus.c	warn float-conversion	9
+x86_64	src/lobby/page_focus.c	warn implicit-int-float-conversion	17
+x86_64	src/lobby/page_focus.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/page_focus.c	warn pointer-to-int-cast	1
+x86_64	src/lobby/page_frame.c	error struct size check	43
+x86_64	src/lobby/page_input.c	error struct size check	43
+x86_64	src/lobby/page_input.c	warn float-conversion	10
+x86_64	src/lobby/page_input.c	warn implicit-int-float-conversion	8
+x86_64	src/lobby/page_input.c	warn int-to-pointer-cast	3
+x86_64	src/lobby/page_input.c	warn pointer-to-int-cast	3
+x86_64	src/lobby/page_input.c	warn tautological-constant-out-of-range-compare	2
+x86_64	src/lobby/page_objects.c	error struct size check	8
+x86_64	src/lobby/pet_states.c	error initializer element is not a compile-time constant	1
+x86_64	src/lobby/pet_states.c	error struct size check	42
+x86_64	src/lobby/pet_states.c	warn implicit-int-float-conversion	4
+x86_64	src/lobby/pet_states.c	warn int-to-pointer-cast	2
+x86_64	src/lobby/pet_states.c	warn pointer-to-int-cast	4
+x86_64	src/lobby/pets.c	error struct size check	66
+x86_64	src/lobby/pets.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/pets.c	warn void-pointer-to-int-cast	1
+x86_64	src/lobby/place_info.c	error struct size check	43
+x86_64	src/lobby/place_info.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/place_info_draw.c	error struct size check	30
+x86_64	src/lobby/portal_steps.c	error struct size check	30
+x86_64	src/lobby/portal_steps.c	warn cast-function-type-strict	2
+x86_64	src/lobby/portal_steps.c	warn float-conversion	2
+x86_64	src/lobby/quest_connect.c	error struct size check	27
+x86_64	src/lobby/quest_counter.c	error struct size check	49
+x86_64	src/lobby/quest_counter_draw.c	error struct size check	29
+x86_64	src/lobby/quest_desk.c	error struct size check	44
+x86_64	src/lobby/quest_desk_draw.c	error struct size check	43
+x86_64	src/lobby/quest_lookup.c	error struct size check	28
+x86_64	src/lobby/quest_lookup.c	warn int-to-pointer-cast	8
+x86_64	src/lobby/quest_lookup.c	warn pointer-to-int-cast	3
+x86_64	src/lobby/quest_offers.c	error struct size check	37
+x86_64	src/lobby/quest_order_terms.c	error struct size check	42
+x86_64	src/lobby/quit_menu.c	error struct size check	10
+x86_64	src/lobby/records_draw.c	error struct size check	58
+x86_64	src/lobby/records_lists.c	error struct size check	39
+x86_64	src/lobby/records_menu.c	error struct size check	43
+x86_64	src/lobby/server_list.c	error struct size check	34
+x86_64	src/lobby/server_menu.c	error struct size check	34
+x86_64	src/lobby/server_name.c	error struct size check	26
+x86_64	src/lobby/service_npc_states.c	error struct size check	34
+x86_64	src/lobby/ship_mine_menus.c	error struct size check	53
+x86_64	src/lobby/shooting_gallery.c	error struct size check	66
+x86_64	src/lobby/shooting_gallery.c	warn float-conversion	5
+x86_64	src/lobby/shooting_gallery.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/shooting_gallery.c	warn int-to-void-pointer-cast	1
+x86_64	src/lobby/shooting_gallery.c	warn pointer-to-int-cast	18
+x86_64	src/lobby/short_mail.c	error struct size check	43
+x86_64	src/lobby/song_menu.c	error struct size check	46
+x86_64	src/lobby/tag_text.c	error struct size check	20
+x86_64	src/lobby/talk.c	error struct size check	41
+x86_64	src/lobby/talk.c	warn int-to-pointer-cast	3
+x86_64	src/lobby/talk.c	warn pointer-to-int-cast	2
+x86_64	src/lobby/talk_scripts.c	error struct size check	54
+x86_64	src/lobby/town_area_change.c	error struct size check	59
+x86_64	src/lobby/town_frame.c	error struct size check	62
+x86_64	src/lobby/town_gesture_drink.c	error struct size check	32
+x86_64	src/lobby/town_gestures.c	error struct size check	34
+x86_64	src/lobby/town_guide.c	error struct size check	40
+x86_64	src/lobby/town_input.c	error struct size check	56
+x86_64	src/lobby/town_input.c	warn int-to-void-pointer-cast	1
+x86_64	src/lobby/town_input.c	warn void-pointer-to-int-cast	1
+x86_64	src/lobby/town_lock_on.c	error struct size check	35
+x86_64	src/lobby/town_lock_on.c	warn implicit-int-float-conversion	11
+x86_64	src/lobby/town_members.c	error struct size check	37
+x86_64	src/lobby/town_msg.c	error struct size check	54
+x86_64	src/lobby/town_msg.c	warn float-conversion	1
+x86_64	src/lobby/town_player_activities.c	error struct size check	48
+x86_64	src/lobby/town_player_activities.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/town_player_activities.c	warn int-to-void-pointer-cast	4
+x86_64	src/lobby/town_player_activities.c	warn pointer-to-int-cast	8
+x86_64	src/lobby/town_player_states.c	error struct size check	54
+x86_64	src/lobby/town_player_states.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/town_player_states.c	warn int-to-void-pointer-cast	1
+x86_64	src/lobby/town_player_states.c	warn pointer-to-int-cast	5
+x86_64	src/lobby/town_player_update.c	error struct size check	37
+x86_64	src/lobby/town_players.c	error struct size check	44
+x86_64	src/lobby/town_senders.c	error struct size check	44
+x86_64	src/lobby/town_senders.c	warn cast-function-type-strict	1
+x86_64	src/lobby/town_senders.c	warn float-conversion	20
+x86_64	src/lobby/town_senders.c	warn int-to-pointer-cast	3
+x86_64	src/lobby/town_senders.c	warn pointer-to-int-cast	3
+x86_64	src/lobby/town_senders.c	warn void-pointer-to-int-cast	2
+x86_64	src/lobby/townspeople.c	error struct size check	43
+x86_64	src/lobby/townspeople.c	warn int-to-pointer-cast	4
+x86_64	src/lobby/townspeople.c	warn pointer-to-int-cast	7
+x86_64	src/lobby/village_board.c	error struct size check	37
+x86_64	src/lobby/village_clock.c	error struct size check	37
+x86_64	src/lobby/village_clock.c	warn float-conversion	5
+x86_64	src/lobby/village_clock.c	warn implicit-int-float-conversion	4
+x86_64	src/lobby/village_cond.c	error struct size check	23
+x86_64	src/lobby/village_offers.c	error struct size check	37
+x86_64	src/lobby/village_progress.c	error struct size check	46
+x86_64	src/lobby/village_records.c	error struct size check	51
+x86_64	src/lobby/wanted.c	error struct size check	46
+x86_64	src/lobby/weapon_forge.c	error struct size check	48
+x86_64	src/lobby/weapon_forge.c	warn implicit-int-float-conversion	2
+x86_64	src/lobby/word_filter.c	error struct size check	38
+x86_64	src/lobby/word_filter.c	warn int-to-pointer-cast	1
+x86_64	src/lobby/word_filter.c	warn logical-not-parentheses	1
+x86_64	src/lobby/word_filter.c	warn pointer-to-int-cast	1
+x86_64	src/lobby/workshop_menu.c	error struct size check	44
+x86_64	src/main/adx_init.c	warn int-to-pointer-cast	1
+x86_64	src/main/adx_init.c	warn pointer-to-int-cast	1
+x86_64	src/main/afs_files.c	error initializer element is not a compile-time constant	1
+x86_64	src/main/afs_files.c	error struct size check	21
+x86_64	src/main/afs_files.c	warn pointer-to-int-cast	11
+x86_64	src/main/cse_cmd.c	warn int-to-void-pointer-cast	1
+x86_64	src/main/cse_rpc.c	warn conditional-uninitialized	1
+x86_64	src/main/display.c	error struct size check	2
+x86_64	src/main/display.c	warn int-to-void-pointer-cast	1
+x86_64	src/main/display.c	warn pointer-to-int-cast	1
+x86_64	src/main/display_util.c	error struct size check	20
+x86_64	src/main/dma_packets.c	error struct size check	1
+x86_64	src/main/dma_packets.c	warn pointer-to-int-cast	12
+x86_64	src/main/dma_queue.c	error struct size check	1
+x86_64	src/main/dma_queue.c	warn int-to-pointer-cast	6
+x86_64	src/main/dma_queue.c	warn int-to-void-pointer-cast	9
+x86_64	src/main/dma_queue.c	warn pointer-to-int-cast	4
+x86_64	src/main/dma_queue.c	warn void-pointer-to-int-cast	2
+x86_64	src/main/file_queue.c	error struct size check	27
+x86_64	src/main/file_queue.c	warn cast-function-type-strict	4
+x86_64	src/main/file_queue.c	warn tautological-pointer-compare	1
+x86_64	src/main/gs_regs.c	error struct size check	2
+x86_64	src/main/gs_regs.c	warn pointer-to-int-cast	6
+x86_64	src/main/gs_setup.c	error struct size check	3
+x86_64	src/main/gs_setup.c	warn pointer-to-int-cast	1
+x86_64	src/main/gs_tex_regs.c	error struct size check	3
+x86_64	src/main/gs_tex_regs.c	warn implicit-int-float-conversion	2
+x86_64	src/main/heap.c	warn int-to-pointer-cast	9
+x86_64	src/main/heap.c	warn int-to-void-pointer-cast	2
+x86_64	src/main/heap.c	warn parentheses	2
+x86_64	src/main/heap.c	warn pointer-to-int-cast	1
+x86_64	src/main/heap.c	warn void-pointer-to-int-cast	1
+x86_64	src/main/image_pixels.c	warn conditional-uninitialized	1
+x86_64	src/main/iop.c	error struct size check	1
+x86_64	src/main/iop.c	warn int-to-pointer-cast	3
+x86_64	src/main/iop.c	warn int-to-void-pointer-cast	1
+x86_64	src/main/iop.c	warn pointer-to-int-cast	3
+x86_64	src/main/iop.c	warn void-pointer-to-int-cast	1
+x86_64	src/main/main.c	error struct size check	22
+x86_64	src/main/main.c	warn int-to-pointer-cast	2
+x86_64	src/main/main.c	warn int-to-void-pointer-cast	2
+x86_64	src/main/main.c	warn pointer-to-int-cast	3
+x86_64	src/main/main_heap.c	warn int-to-pointer-cast	1
+x86_64	src/main/main_heap.c	warn int-to-void-pointer-cast	3
+x86_64	src/main/main_heap.c	warn void-pointer-to-int-cast	3
+x86_64	src/main/mem_util.c	error struct size check	6
+x86_64	src/main/mem_util.c	warn parentheses	1
+x86_64	src/main/packet_tim2.c	error struct size check	2
+x86_64	src/main/packet_tim2.c	warn int-to-pointer-cast	2
+x86_64	src/main/packet_tim2.c	warn pointer-to-int-cast	2
+x86_64	src/main/pad.c	error struct size check	1
+x86_64	src/main/pad.c	warn implicit-float-conversion	1
+x86_64	src/main/pad_port.c	error struct size check	1
+x86_64	src/main/pad_port.c	warn float-conversion	2
+x86_64	src/main/pad_port.c	warn implicit-float-conversion	1
+x86_64	src/main/prim.c	error struct size check	7
+x86_64	src/main/prim.c	warn float-conversion	16
+x86_64	src/main/prim.c	warn implicit-int-float-conversion	44
+x86_64	src/main/prim.c	warn pointer-to-int-cast	1
+x86_64	src/main/render_state.c	error struct size check	21
+x86_64	src/main/render_state.c	warn implicit-int-float-conversion	1
+x86_64	src/main/render_state.c	warn int-to-pointer-cast	12
+x86_64	src/main/render_state.c	warn pointer-to-int-cast	1
+x86_64	src/main/save_helpers.c	error struct size check	29
+x86_64	src/main/screen_tex.c	error struct size check	3
+x86_64	src/main/screen_tex.c	warn pointer-to-int-cast	3
+x86_64	src/main/screen_tex.c	warn void-pointer-to-int-cast	1
+x86_64	src/main/sound.c	error struct size check	21
+x86_64	src/main/sound.c	warn float-conversion	4
+x86_64	src/main/sound.c	warn implicit-int-float-conversion	3
+x86_64	src/main/sound.c	warn int-to-pointer-cast	3
+x86_64	src/main/sound.c	warn pointer-to-int-cast	3
+x86_64	src/main/sound_banks.c	error struct size check	21
+x86_64	src/main/sound_effects.c	error struct size check	25
+x86_64	src/main/sound_effects.c	warn float-conversion	3
+x86_64	src/main/stream_play.c	error struct size check	21
+x86_64	src/main/stream_play.c	warn float-conversion	2
+x86_64	src/main/texconv.c	error struct size check	2
+x86_64	src/main/texture.c	error struct size check	2
+x86_64	src/main/texture.c	warn pointer-to-int-cast	10
+x86_64	src/main/texture.c	warn void-pointer-to-int-cast	1
+x86_64	src/main/vram_slots.c	error struct size check	2
+x86_64	src/nethttp/http_front.c	error struct size check	33
+x86_64	src/nethttp/http_front.c	warn logical-not-parentheses	1
+x86_64	src/nethttp/http_front.c	warn pointer-to-int-cast	2
+x86_64	src/nethttp/http_front.c	warn shorten-64-to-32	2
+x86_64	src/plsel/ending.c	error struct size check	26
+x86_64	src/plsel/ending.c	warn float-conversion	9
+x86_64	src/plsel/ending.c	warn implicit-int-float-conversion	6
+x86_64	src/plsel/gallery_scene.c	error struct size check	47
+x86_64	src/plsel/gallery_scene.c	warn int-to-pointer-cast	3
+x86_64	src/plsel/gallery_scene.c	warn int-to-void-pointer-cast	13
+x86_64	src/plsel/player_menu.c	error initializer element is not a compile-time constant	2
+x86_64	src/plsel/player_menu.c	error struct size check	34
+x86_64	src/plsel/player_menu.c	warn cast-function-type-strict	1
+x86_64	src/plsel/player_menu.c	warn int-to-pointer-cast	2
+x86_64	src/plsel/player_menu.c	warn pointer-to-int-cast	9
+x86_64	src/plsel/plsel.c	error struct size check	58
+x86_64	src/plsel/plsel.c	warn float-conversion	5
+x86_64	src/plsel/plsel.c	warn implicit-int-float-conversion	5
+x86_64	src/plsel/plsel.c	warn int-to-pointer-cast	1
+x86_64	src/plsel/quest_results.c	error struct size check	40
+x86_64	src/plsel/quest_results.c	warn cast-function-type-strict	13
+x86_64	src/plsel/quest_results.c	warn float-conversion	24
+x86_64	src/plsel/quest_results.c	warn implicit-int-float-conversion	17
+x86_64	src/plsel/quest_results.c	warn int-to-pointer-cast	8
+x86_64	src/plsel/quest_results.c	warn void-pointer-to-int-cast	1
+x86_64	src/select/select_boot.c	error struct size check	34
+x86_64	src/select/select_boot.c	warn float-conversion	1
+x86_64	src/select/select_chara.c	error struct size check	49
+x86_64	src/select/select_chara.c	warn int-to-void-pointer-cast	2
+x86_64	src/select/select_chara.c	warn logical-not-parentheses	3
+x86_64	src/select/select_chara.c	warn pointer-to-int-cast	2
+x86_64	src/select/select_gallery.c	error struct size check	28
+x86_64	src/select/select_gallery.c	warn float-conversion	7
+x86_64	src/select/select_gallery.c	warn implicit-int-float-conversion	3
+x86_64	src/select/select_gallery.c	warn int-to-pointer-cast	1
+x86_64	src/select/select_gallery.c	warn logical-not-parentheses	3
+x86_64	src/select/select_gallery.c	warn pointer-to-int-cast	3
+x86_64	src/select/select_gallery.c	warn void-pointer-to-int-cast	1
+x86_64	src/select/select_ngword.c	error struct size check	22
+x86_64	src/select/select_ngword.c	warn logical-not-parentheses	1
+x86_64	src/select/select_option.c	error struct size check	43
+x86_64	src/select/select_option.c	warn float-conversion	4
+x86_64	src/select/select_option.c	warn implicit-int-float-conversion	11
+x86_64	src/select/select_parts.c	error struct size check	23
+x86_64	src/select/select_parts.c	warn implicit-int-float-conversion	1
+x86_64	src/select/select_psp.c	error struct size check	28
+x86_64	src/select/select_psp.c	warn float-conversion	22
+x86_64	src/select/select_psp.c	warn implicit-int-float-conversion	13
+x86_64	src/select/select_psp.c	warn logical-not-parentheses	7
+x86_64	src/select/select_title.c	error struct size check	29
+x86_64	src/select/select_title.c	warn float-conversion	14
+x86_64	src/select/select_title.c	warn implicit-int-float-conversion	7
+x86_64	src/select/select_title.c	warn int-to-pointer-cast	3
+x86_64	src/select/select_title.c	warn logical-not-parentheses	1
+x86_64	src/select/select_title.c	warn pointer-to-int-cast	1
+x86_64	src/select/select_title.c	warn shorten-64-to-32	1
+x86_64	src/sub_main/anim_curve.c	error struct size check	7
+x86_64	src/sub_main/anim_curve.c	warn int-to-pointer-cast	6
+x86_64	src/sub_main/anim_curve.c	warn pointer-to-int-cast	6
+x86_64	src/sub_main/anim_file.c	error struct size check	6
+x86_64	src/sub_main/anim_file.c	warn int-to-pointer-cast	4
+x86_64	src/sub_main/anim_file.c	warn pointer-to-int-cast	19
+x86_64	src/sub_main/anim_file.c	warn void-pointer-to-int-cast	1
+x86_64	src/sub_main/area_anim.c	error struct size check	28
+x86_64	src/sub_main/area_anim.c	warn implicit-int-float-conversion	1
+x86_64	src/sub_main/area_anim.c	warn pointer-to-int-cast	4
+x86_64	src/sub_main/area_anim.c	warn void-pointer-to-int-cast	6
+x86_64	src/sub_main/area_collision.c	error struct size check	32
+x86_64	src/sub_main/area_collision.c	warn float-conversion	14
+x86_64	src/sub_main/area_collision.c	warn int-to-pointer-cast	8
+x86_64	src/sub_main/area_collision.c	warn pointer-to-int-cast	25
+x86_64	src/sub_main/area_draw.c	error initializer element is not a compile-time constant	2
+x86_64	src/sub_main/area_draw.c	error struct size check	39
+x86_64	src/sub_main/area_draw.c	warn float-conversion	31
+x86_64	src/sub_main/area_draw.c	warn implicit-int-float-conversion	27
+x86_64	src/sub_main/area_draw.c	warn int-to-pointer-cast	4
+x86_64	src/sub_main/area_draw.c	warn logical-not-parentheses	1
+x86_64	src/sub_main/area_draw.c	warn pointer-to-int-cast	100
+x86_64	src/sub_main/area_position.c	error struct size check	24
+x86_64	src/sub_main/area_update.c	error initializer element is not a compile-time constant	1
+x86_64	src/sub_main/area_update.c	error struct size check	55
+x86_64	src/sub_main/area_update.c	warn int-to-pointer-cast	6
+x86_64	src/sub_main/area_update.c	warn pointer-to-int-cast	6
+x86_64	src/sub_main/bgm.c	error struct size check	39
+x86_64	src/sub_main/bone_effects.c	error struct size check	25
+x86_64	src/sub_main/bone_effects.c	warn float-conversion	1
+x86_64	src/sub_main/bone_effects.c	warn implicit-int-float-conversion	1
+x86_64	src/sub_main/bone_effects.c	warn pointer-to-int-cast	4
+x86_64	src/sub_main/bones.c	error struct size check	6
+x86_64	src/sub_main/bones.c	warn int-to-pointer-cast	7
+x86_64	src/sub_main/bones.c	warn int-to-void-pointer-cast	5
+x86_64	src/sub_main/bones.c	warn pointer-to-int-cast	7
+x86_64	src/sub_main/cam_aim.c	error struct size check	28
+x86_64	src/sub_main/cam_areas.c	error struct size check	34
+x86_64	src/sub_main/cam_areas.c	warn float-conversion	1
+x86_64	src/sub_main/cam_areas.c	warn implicit-int-float-conversion	6
+x86_64	src/sub_main/cam_collide.c	error struct size check	31
+x86_64	src/sub_main/cam_collide.c	warn unused-value	1
+x86_64	src/sub_main/cam_fixed.c	error struct size check	30
+x86_64	src/sub_main/cam_fixed.c	warn implicit-int-float-conversion	1
+x86_64	src/sub_main/cam_fixed.c	warn pointer-to-int-cast	2
+x86_64	src/sub_main/cam_follow.c	error struct size check	33
+x86_64	src/sub_main/cam_follow.c	warn float-conversion	1
+x86_64	src/sub_main/cam_helpers.c	error struct size check	28
+x86_64	src/sub_main/cam_paths.c	error struct size check	27
+x86_64	src/sub_main/cam_rail.c	error struct size check	27
+x86_64	src/sub_main/cam_rail.c	warn float-conversion	3
+x86_64	src/sub_main/cam_request.c	error struct size check	29
+x86_64	src/sub_main/cam_script.c	error struct size check	31
+x86_64	src/sub_main/cam_script.c	warn float-conversion	2
+x86_64	src/sub_main/cam_script.c	warn implicit-int-float-conversion	8
+x86_64	src/sub_main/cam_script.c	warn pointer-to-int-cast	1
+x86_64	src/sub_main/cam_shake.c	error struct size check	31
+x86_64	src/sub_main/cam_small_requests.c	error struct size check	33
+x86_64	src/sub_main/camera.c	error struct size check	27
+x86_64	src/sub_main/camera.c	warn int-to-pointer-cast	2
+x86_64	src/sub_main/camera.c	warn pointer-to-int-cast	9
+x86_64	src/sub_main/camera_view.c	error struct size check	27
+x86_64	src/sub_main/camera_view.c	warn implicit-int-float-conversion	1
+x86_64	src/sub_main/camera_view.c	warn pointer-to-int-cast	2
+x86_64	src/sub_main/card_menu.c	error struct size check	29
+x86_64	src/sub_main/card_menu.c	warn cast-function-type-strict	1
+x86_64	src/sub_main/card_menu.c	warn int-to-pointer-cast	42
+x86_64	src/sub_main/card_menu.c	warn int-to-void-pointer-cast	5
+x86_64	src/sub_main/card_menu.c	warn pointer-to-int-cast	26
+x86_64	src/sub_main/card_task.c	error struct size check	25
+x86_64	src/sub_main/card_task.c	warn cast-function-type-strict	1
+x86_64	src/sub_main/card_task.c	warn int-to-pointer-cast	1
+x86_64	src/sub_main/card_task.c	warn pointer-to-int-cast	1
+x86_64	src/sub_main/chat_box.c	error struct size check	39
+x86_64	src/sub_main/chat_box.c	warn float-conversion	1
+x86_64	src/sub_main/chat_box.c	warn int-to-pointer-cast	1
+x86_64	src/sub_main/chat_phrases.c	error struct size check	38
+x86_64	src/sub_main/chat_phrases.c	warn constant-conversion	7
+x86_64	src/sub_main/combine.c	error struct size check	30
+x86_64	src/sub_main/combine.c	warn deprecated-non-prototype	1
+x86_64	src/sub_main/dnas_check.c	error struct size check	24
+x86_64	src/sub_main/dnas_check.c	warn pointer-to-int-cast	2
+x86_64	src/sub_main/draw_helpers.c	error struct size check	8
+x86_64	src/sub_main/draw_helpers.c	warn float-conversion	6
+x86_64	src/sub_main/draw_slots.c	error struct size check	38
+x86_64	src/sub_main/draw_slots.c	warn float-conversion	1
+x86_64	src/sub_main/draw_slots.c	warn implicit-int-float-conversion	1
+x86_64	src/sub_main/draw_slots.c	warn int-to-pointer-cast	1
+x86_64	src/sub_main/draw_slots.c	warn pointer-to-int-cast	3
+x86_64	src/sub_main/em_body.c	error struct size check	29
+x86_64	src/sub_main/em_body.c	warn float-conversion	3
+x86_64	src/sub_main/em_body.c	warn implicit-int-float-conversion	5
+x86_64	src/sub_main/em_obj_lists.c	error struct size check	18
+x86_64	src/sub_main/em_own_task.c	error struct size check	24
+x86_64	src/sub_main/em_own_task.c	warn pointer-to-int-cast	2
+x86_64	src/sub_main/em_slots.c	error struct size check	20
+x86_64	src/sub_main/engine_math.c	error struct size check	6
+x86_64	src/sub_main/engine_math.c	warn float-conversion	2
+x86_64	src/sub_main/engine_math.c	warn implicit-int-float-conversion	16
+x86_64	src/sub_main/engine_util.c	error struct size check	6
+x86_64	src/sub_main/engine_util.c	warn int-to-pointer-cast	3
+x86_64	src/sub_main/engine_util.c	warn int-to-void-pointer-cast	1
+x86_64	src/sub_main/engine_util.c	warn pointer-to-int-cast	4
+x86_64	src/sub_main/equip_parts.c	error struct size check	38
+x86_64	src/sub_main/equip_parts.c	warn float-conversion	14
+x86_64	src/sub_main/equip_parts.c	warn implicit-int-float-conversion	1
+x86_64	src/sub_main/equip_preview.c	error struct size check	35
+x86_64	src/sub_main/equip_preview.c	warn float-conversion	1
+x86_64	src/sub_main/equip_preview.c	warn pointer-to-int-cast	11
+x86_64	src/sub_main/equip_save.c	error initializer element is not a compile-time constant	1
+x86_64	src/sub_main/equip_save.c	error struct size check	38
+x86_64	src/sub_main/equip_save.c	warn float-conversion	9
+x86_64	src/sub_main/equip_save.c	warn implicit-int-float-conversion	3
+x86_64	src/sub_main/equip_save.c	warn pointer-to-int-cast	5
+x86_64	src/sub_main/field_objects.c	error struct size check	32
+x86_64	src/sub_main/field_objects.c	warn float-conversion	1
+x86_64	src/sub_main/field_objects.c	warn pointer-to-int-cast	1
+x86_64	src/sub_main/file_load.c	error struct size check	28
+x86_64	src/sub_main/file_load.c	warn int-to-void-pointer-cast	1
+x86_64	src/sub_main/file_load.c	warn pointer-to-int-cast	5
+x86_64	src/sub_main/fishing.c	error struct size check	29
+x86_64	src/sub_main/fishing.c	warn float-conversion	26
+x86_64	src/sub_main/fishing.c	warn implicit-int-float-conversion	4
+x86_64	src/sub_main/fishing.c	warn pointer-to-int-cast	4
+x86_64	src/sub_main/font.c	error struct size check	8
+x86_64	src/sub_main/font.c	warn float-conversion	5
+x86_64	src/sub_main/font.c	warn int-to-pointer-cast	5
+x86_64	src/sub_main/font.c	warn pointer-to-int-cast	10
+x86_64	src/sub_main/font.c	warn shorten-64-to-32	4
+x86_64	src/sub_main/frame.c	error struct size check	31
+x86_64	src/sub_main/game_util.c	error struct size check	49
+x86_64	src/sub_main/game_util.c	warn constant-conversion	1
+x86_64	src/sub_main/gather.c	error struct size check	20
+x86_64	src/sub_main/hit_detection.c	error struct size check	27
+x86_64	src/sub_main/hit_detection.c	warn float-conversion	4
+x86_64	src/sub_main/hit_geometry.c	error struct size check	21
+x86_64	src/sub_main/hit_setup.c	error struct size check	22
+x86_64	src/sub_main/hit_setup.c	warn int-to-void-pointer-cast	1
+x86_64	src/sub_main/hit_spark.c	error struct size check	24
+x86_64	src/sub_main/hit_spark.c	warn float-conversion	1
+x86_64	src/sub_main/hit_spark.c	warn implicit-int-float-conversion	6
+x86_64	src/sub_main/hit_spark.c	warn pointer-to-int-cast	3
+x86_64	src/sub_main/hud.c	error struct size check	54
+x86_64	src/sub_main/hud.c	warn cast-function-type-strict	27
+x86_64	src/sub_main/hud.c	warn float-conversion	101
+x86_64	src/sub_main/hud.c	warn implicit-float-conversion	9
+x86_64	src/sub_main/hud.c	warn implicit-int-float-conversion	12
+x86_64	src/sub_main/hud.c	warn int-to-pointer-cast	5
+x86_64	src/sub_main/hud.c	warn logical-not-parentheses	1
+x86_64	src/sub_main/hud.c	warn pointer-to-int-cast	6
+x86_64	src/sub_main/hud_init.c	error struct size check	49
+x86_64	src/sub_main/hud_init.c	warn cast-function-type-strict	14
+x86_64	src/sub_main/hud_query.c	error struct size check	23
+x86_64	src/sub_main/item_use.c	error struct size check	38
+x86_64	src/sub_main/item_use.c	warn float-conversion	2
+x86_64	src/sub_main/kbd.c	error struct size check	34
+x86_64	src/sub_main/kbd.c	warn constant-conversion	2
+x86_64	src/sub_main/kbd.c	warn float-conversion	4
+x86_64	src/sub_main/kbd.c	warn implicit-int-float-conversion	4
+x86_64	src/sub_main/kbd.c	warn shorten-64-to-32	1
+x86_64	src/sub_main/kbd.c	warn tautological-constant-out-of-range-compare	3
+x86_64	src/sub_main/kbd_cand_box.c	error struct size check	26
+x86_64	src/sub_main/kbd_cand_box.c	warn float-conversion	6
+x86_64	src/sub_main/kbd_cand_box.c	warn implicit-int-float-conversion	4
+x86_64	src/sub_main/kbd_convert.c	error struct size check	26
+x86_64	src/sub_main/kbd_input.c	error struct size check	38
+x86_64	src/sub_main/kbd_input.c	warn float-conversion	7
+x86_64	src/sub_main/kbd_input.c	warn implicit-int-float-conversion	6
+x86_64	src/sub_main/kbd_input.c	warn tautological-constant-out-of-range-compare	5
+x86_64	src/sub_main/lights.c	error struct size check	24
+x86_64	src/sub_main/lights.c	warn pointer-to-int-cast	4
+x86_64	src/sub_main/loading_screen.c	error struct size check	21
+x86_64	src/sub_main/loading_screen.c	warn float-conversion	5
+x86_64	src/sub_main/loading_screen.c	warn implicit-int-float-conversion	1
+x86_64	src/sub_main/loading_screen.c	warn int-to-pointer-cast	4
+x86_64	src/sub_main/loading_screen.c	warn pointer-to-int-cast	6
+x86_64	src/sub_main/loading_screen.c	warn shorten-64-to-32	1
+x86_64	src/sub_main/lock_on_mark.c	error struct size check	28
+x86_64	src/sub_main/lock_on_mark.c	warn implicit-int-float-conversion	1
+x86_64	src/sub_main/menu_util.c	error struct size check	36
+x86_64	src/sub_main/menu_util.c	warn constant-conversion	1
+x86_64	src/sub_main/menu_windows.c	error struct size check	57
+x86_64	src/sub_main/menu_windows.c	warn constant-conversion	2
+x86_64	src/sub_main/menu_windows.c	warn deprecated-non-prototype	1
+x86_64	src/sub_main/menu_windows.c	warn float-conversion	17
+x86_64	src/sub_main/menu_windows.c	warn implicit-int-float-conversion	18
+x86_64	src/sub_main/menu_windows.c	warn int-to-pointer-cast	3
+x86_64	src/sub_main/menu_windows.c	warn pointer-to-int-cast	3
+x86_64	src/sub_main/model_draw.c	error struct size check	7
+x86_64	src/sub_main/model_draw.c	warn implicit-int-float-conversion	3
+x86_64	src/sub_main/model_draw.c	warn int-to-pointer-cast	95
+x86_64	src/sub_main/model_draw.c	warn pointer-to-int-cast	21
+x86_64	src/sub_main/model_draw.c	warn void-pointer-to-int-cast	2
+x86_64	src/sub_main/model_file.c	error struct size check	5
+x86_64	src/sub_main/model_file.c	warn float-conversion	1
+x86_64	src/sub_main/model_file.c	warn int-to-pointer-cast	2
+x86_64	src/sub_main/model_pool.c	error struct size check	5
+x86_64	src/sub_main/model_pool.c	warn int-to-pointer-cast	7
+x86_64	src/sub_main/model_pool.c	warn int-to-void-pointer-cast	1
+x86_64	src/sub_main/model_pool.c	warn pointer-to-int-cast	4
+x86_64	src/sub_main/model_setup.c	error struct size check	5
+x86_64	src/sub_main/model_setup.c	warn int-to-pointer-cast	6
+x86_64	src/sub_main/model_setup.c	warn int-to-void-pointer-cast	1
+x86_64	src/sub_main/model_setup.c	warn pointer-to-int-cast	2
+x86_64	src/sub_main/model_setup.c	warn void-pointer-to-int-cast	1
+x86_64	src/sub_main/motion.c	error struct size check	22
+x86_64	src/sub_main/motion.c	warn implicit-int-float-conversion	4
+x86_64	src/sub_main/movie.c	error struct size check	3
+x86_64	src/sub_main/movie.c	warn float-conversion	1
+x86_64	src/sub_main/movie.c	warn implicit-int-float-conversion	1
+x86_64	src/sub_main/movie.c	warn int-to-pointer-cast	5
+x86_64	src/sub_main/movie.c	warn pointer-to-int-cast	6
+x86_64	src/sub_main/movie.c	warn void-pointer-to-int-cast	1
+x86_64	src/sub_main/net_arena.c	error struct size check	2
+x86_64	src/sub_main/net_arena.c	warn int-to-void-pointer-cast	3
+x86_64	src/sub_main/net_arena.c	warn void-pointer-to-int-cast	3
+x86_64	src/sub_main/net_connection.c	error struct size check	26
+x86_64	src/sub_main/net_connection.c	warn cast-function-type-strict	3
+x86_64	src/sub_main/net_devices.c	error struct size check	24
+x86_64	src/sub_main/net_devices.c	warn int-to-void-pointer-cast	2
+x86_64	src/sub_main/net_if.c	warn conditional-uninitialized	1
+x86_64	src/sub_main/net_settings.c	error struct size check	24
+x86_64	src/sub_main/net_sockets.c	warn conditional-uninitialized	1
+x86_64	src/sub_main/obj_pools.c	error struct size check	39
+x86_64	src/sub_main/obj_pools.c	warn int-to-pointer-cast	1
+x86_64	src/sub_main/obj_pools.c	warn pointer-to-int-cast	1
+x86_64	src/sub_main/packs.c	error struct size check	24
+x86_64	src/sub_main/packs.c	warn shorten-64-to-32	1
+x86_64	src/sub_main/part_effects.c	error struct size check	28
+x86_64	src/sub_main/part_effects.c	warn implicit-int-float-conversion	11
+x86_64	src/sub_main/place_rules.c	error struct size check	39
+x86_64	src/sub_main/player_condition.c	error struct size check	32
+x86_64	src/sub_main/player_condition.c	warn int-to-pointer-cast	1
+x86_64	src/sub_main/player_control.c	error struct size check	27
+x86_64	src/sub_main/player_draw.c	error struct size check	35
+x86_64	src/sub_main/player_draw.c	warn float-conversion	6
+x86_64	src/sub_main/player_draw.c	warn implicit-int-float-conversion	3
+x86_64	src/sub_main/player_draw.c	warn int-to-pointer-cast	1
+x86_64	src/sub_main/player_draw.c	warn pointer-to-int-cast	18
+x86_64	src/sub_main/player_looks.c	error struct size check	30
+x86_64	src/sub_main/player_looks.c	warn cast-function-type-strict	1
+x86_64	src/sub_main/player_looks.c	warn int-to-void-pointer-cast	2
+x86_64	src/sub_main/player_looks.c	warn pointer-to-int-cast	29
+x86_64	src/sub_main/player_models.c	error struct size check	24
+x86_64	src/sub_main/player_models.c	warn pointer-to-int-cast	2
+x86_64	src/sub_main/player_motion_fx.c	error struct size check	40
+x86_64	src/sub_main/player_motion_fx.c	warn implicit-int-float-conversion	6
+x86_64	src/sub_main/player_move.c	error struct size check	24
+x86_64	src/sub_main/player_parts.c	error struct size check	22
+x86_64	src/sub_main/player_parts.c	warn deprecated-non-prototype	1
+x86_64	src/sub_main/player_stats.c	error struct size check	25
+x86_64	src/sub_main/player_stats.c	warn float-conversion	8
+x86_64	src/sub_main/player_stats.c	warn implicit-int-float-conversion	8
+x86_64	src/sub_main/player_sys.c	error struct size check	30
+x86_64	src/sub_main/pouch.c	error struct size check	32
+x86_64	src/sub_main/push_apart.c	error struct size check	24
+x86_64	src/sub_main/quest.c	error struct size check	40
+x86_64	src/sub_main/quest.c	warn int-to-pointer-cast	12
+x86_64	src/sub_main/quest.c	warn int-to-void-pointer-cast	26
+x86_64	src/sub_main/quest.c	warn void-pointer-to-int-cast	6
+x86_64	src/sub_main/quest_rules.c	error struct size check	34
+x86_64	src/sub_main/quest_rules.c	warn float-conversion	3
+x86_64	src/sub_main/rand.c	error struct size check	21
+x86_64	src/sub_main/rand.c	warn implicit-int-float-conversion	1
+x86_64	src/sub_main/scene.c	error struct size check	45
+x86_64	src/sub_main/scene.c	warn array-bounds	1
+x86_64	src/sub_main/scene.c	warn pointer-to-int-cast	1
+x86_64	src/sub_main/scene_models.c	error struct size check	26
+x86_64	src/sub_main/scene_models.c	warn int-to-pointer-cast	1
+x86_64	src/sub_main/scene_models.c	warn pointer-to-int-cast	1
+x86_64	src/sub_main/screen_fade.c	error struct size check	20
+x86_64	src/sub_main/shadow.c	error struct size check	26
+x86_64	src/sub_main/shadow.c	warn implicit-int-float-conversion	1
+x86_64	src/sub_main/shadow.c	warn pointer-to-int-cast	5
+x86_64	src/sub_main/shake.c	error struct size check	22
+x86_64	src/sub_main/shake.c	warn float-conversion	4
+x86_64	src/sub_main/skel_file.c	error struct size check	5
+x86_64	src/sub_main/spark_fx.c	error struct size check	29
+x86_64	src/sub_main/spark_fx.c	warn pointer-to-int-cast	4
+x86_64	src/sub_main/sprite_queue.c	error struct size check	46
+x86_64	src/sub_main/sprite_queue.c	warn float-conversion	30
+x86_64	src/sub_main/sprite_queue.c	warn implicit-int-float-conversion	3
+x86_64	src/sub_main/sprite_queue.c	warn pointer-to-int-cast	1
+x86_64	src/sub_main/stage_data.c	error struct size check	30
+x86_64	src/sub_main/stage_data.c	warn int-to-pointer-cast	7
+x86_64	src/sub_main/stage_data.c	warn int-to-void-pointer-cast	16
+x86_64	src/sub_main/stageobj_helpers.c	error struct size check	20
+x86_64	src/sub_main/stageobj_helpers.c	warn pointer-to-int-cast	3
+x86_64	src/sub_main/stageobj_pool.c	error struct size check	22
+x86_64	src/sub_main/supply_box.c	error struct size check	31
+x86_64	src/sub_main/sys_main.c	error struct size check	32
+x86_64	src/sub_main/sys_main.c	warn constant-conversion	1
+x86_64	src/sub_main/sys_main.c	warn int-to-pointer-cast	10
+x86_64	src/sub_main/sys_main.c	warn int-to-void-pointer-cast	2
+x86_64	src/sub_main/sys_main.c	warn pointer-to-int-cast	18
+x86_64	src/sub_main/task.c	error struct size check	40
+x86_64	src/sub_main/tex_files.c	error struct size check	6
+x86_64	src/sub_main/tex_files.c	warn int-to-pointer-cast	2
+x86_64	src/sub_main/tex_pack.c	error struct size check	7
+x86_64	src/sub_main/tex_pack.c	warn int-to-pointer-cast	2
+x86_64	src/sub_main/tex_pack.c	warn pointer-to-int-cast	1
+x86_64	src/sub_main/text_layer.c	error struct size check	33
+x86_64	src/sub_main/text_layer.c	warn implicit-int-float-conversion	2
+x86_64	src/sub_main/unk_2F9D80.c	error initializer element is not a compile-time constant	1
+x86_64	src/sub_main/unk_2F9D80.c	error struct size check	23
+x86_64	src/sub_main/unk_2F9D80.c	warn int-to-pointer-cast	12
+x86_64	src/sub_main/unk_2F9D80.c	warn pointer-to-int-cast	63
+x86_64	src/sub_main/unk_2F9D80.c	warn shorten-64-to-32	1
+x86_64	src/sub_main/unk_2FAD90.c	warn int-to-pointer-cast	1
+x86_64	src/sub_main/unk_2FAD90.c	warn pointer-to-int-cast	32
+x86_64	src/sub_main/unk_2FB0C0.c	error initializer element is not a compile-time constant	1
+x86_64	src/sub_main/unk_2FB0C0.c	error struct size check	24
+x86_64	src/sub_main/unk_2FB0C0.c	warn int-to-pointer-cast	2
+x86_64	src/sub_main/unk_2FB0C0.c	warn logical-not-parentheses	1
+x86_64	src/sub_main/unk_2FB0C0.c	warn pointer-to-int-cast	3
+x86_64	src/sub_main/unk_2FB0C0.c	warn shorten-64-to-32	7
+x86_64	src/sub_main/unk_2FE1F0.c	warn logical-not-parentheses	1
+x86_64	src/sub_main/unk_2FF510.c	error struct size check	5
+x86_64	src/sub_main/unk_2FF510.c	warn pointer-to-int-cast	1
+x86_64	src/sub_main/unk_2FF510.c	warn shorten-64-to-32	1
+x86_64	src/sub_main/unk_303110.c	error struct size check	23
+x86_64	src/sub_main/unk_303110.c	warn shorten-64-to-32	2
+x86_64	src/sub_main/unk_303EF0.c	error struct size check	23
+x86_64	src/sub_main/unk_303EF0.c	warn shorten-64-to-32	5
+x86_64	src/sub_main/unk_303EF0.c	warn tautological-constant-out-of-range-compare	1
+x86_64	src/sub_main/usb_kbd.c	error struct size check	26
+x86_64	src/sub_main/vec_math.c	error struct size check	5
+x86_64	src/sub_main/vec_math.c	warn float-conversion	1
+x86_64	src/sub_main/vec_math.c	warn implicit-int-float-conversion	1
+x86_64	src/sub_main/vibration.c	error struct size check	22
+x86_64	src/sub_main/vu1_packets.c	error struct size check	21
+x86_64	src/sub_main/vu1_packets.c	warn pointer-to-int-cast	32
+x86_64	src/yn/yn_card.c	error struct size check	24
+x86_64	src/yn/yn_main.c	error struct size check	28
+x86_64	src/yn/yn_main.c	warn float-conversion	1
+x86_64	src/yn/yn_main.c	warn implicit-int-float-conversion	1
+x86_64	src/yn/yn_main.c	warn int-to-pointer-cast	3
+x86_64	src/yn/yn_main.c	warn logical-not-parentheses	2
+x86_64	src/yn/yn_main.c	warn pointer-to-int-cast	3
+x86_64	src/yn/yn_netcnf.c	error struct size check	24
+x86_64	src/yn/yn_netcnf.c	warn logical-not-parentheses	1
+x86_64	src/yn/yn_netcnf.c	warn unsequenced	1

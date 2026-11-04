@@ -1,0 +1,71 @@
+# Pinned tool versions and download checksums.
+# Single source of truth for tools/setup.sh and tools/setup.ps1.
+# Format: KEY=VALUE, no spaces or quotes. Lines starting with '#' are comments.
+# Python packages are pinned separately in pyproject.toml / uv.lock.
+#
+# Anything here that affects build output (binutils, LLVM) must not change
+# without a note in the commit message.
+
+# uv: installs the pinned CPython and the project virtualenv
+UV_VERSION=0.12.18
+UV_SHA256_WINDOWS=cae6a3bc25239f83dffb467a4b180508d9da23986c04639ebfa44e43e6a84bff
+UV_SHA256_LINUX=89eadd7c76fc063887959510d5ba0ab1264dfd5f1143b925ddb73021a40acf16
+
+# CPython (python-build-standalone, installed by uv into tools/deps/<platform>/python)
+PYTHON_VERSION=3.14.7
+
+# GNU binutils 2.40 + decomp patches, R5900 (EE) capable. AFFECTS BUILD OUTPUT.
+# https://github.com/decompals/binutils-mips-ps2-decompals
+BINUTILS_PS2_VERSION=v0.10
+BINUTILS_PS2_SHA256_WINDOWS=2bb5904ee174e04f1600cc70ffdb3dc36b0efa4d1892ea446be588ba8dc6198c
+BINUTILS_PS2_SHA256_LINUX=9fe31ea3ee1a37536f9f0e2e12c668e7c3cb99e59f5154bd2f1fc4762473094c
+
+
+
+# SDL3, built from source by the setup scripts
+SDL3_VERSION=3.4.16
+SDL3_SHA256=7322236cd12090c3eb40b9728be4d49c76f66ad17d04369584d4ecad5cf77c68
+
+# paraLLEl-GS, the PC port's GS renderer (Vulkan, LGPL-3.0-or-later), and
+# the submodules its standalone build needs. Checked out with git into
+# tools/deps/src/parallel-gs; the submodule commits are the ones this
+# paraLLEl-GS commit records, verified after checkout. AFFECTS THE PORT'S
+# RENDERING.
+PARALLEL_GS_REPO=https://github.com/Arntzen-Software/parallel-gs.git
+PARALLEL_GS_COMMIT=3a66c1976170cbc2cb53a3593fabbc7c4b2ccfbd
+GRANITE_COMMIT=16e7395f6a4858c1783dbf6f521f90b9d5f82ac5
+VOLK_COMMIT=47cddf7ed97b94118a08aacb548a411188e016cc
+VULKAN_HEADERS_COMMIT=11d6898377797e07dbd543aaaa367e4465074597
+
+# LLVM (Linux only): the official release for Linux x86-64, the port's clang on Linux
+# (mh2-core, the host, the census and the port's tools), the same version as
+# llvm-mingw's clang below  (one clang version on both
+# systems). setup.sh installs clang, lld and the LLVM tools the port uses into
+# tools/deps/linux-x64/llvm. AFFECTS THE PORT'S BUILD OUTPUT.
+# https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.1
+LLVM_VERSION=23.1.1
+LLVM_SHA256_LINUX=832aeb58d105de1cabc7b982dd2c65de0610f7377df48ae8fc2dd8e97420a15c
+
+# llvm-mingw (Windows only): clang + lld + mingw-w64, UCRT, x86_64. Its clang is
+# LLVM_VERSION (tools/pc/build.py checks both).
+LLVM_MINGW_VERSION=20260908
+LLVM_MINGW_SHA256=1bcf74d06b724aeecaa6412ca85f5b26fb1da770e7cdcefa9263c9c5c3ad34b6
+
+# FFmpeg (the port's movie playback: the game's Sofdec files), LGPL shared
+# builds from BtbN/FFmpeg-Builds.
+# Loaded at run time by the port's mh2movie library; without it movies are
+# skipped. BtbN removes old autobuild releases after about six weeks: when
+# the download disappears, pin the same series from a newer autobuild. Its
+# autobuilds carry the release branch's snapshots (n8.1.3-32-g760d10603e: the
+# n8.1.3 tag and 32 fixes of the 8.1 branch), with the same libraries and ABI.
+FFMPEG_VERSION=n8.1.3-32-g760d10603e
+FFMPEG_SERIES=8.1
+FFMPEG_BUILD_TAG=autobuild-2026-11-03-12-50
+FFMPEG_SHA256_WINDOWS=a8d0a12a76f5820456f5a60dbfe1bbf782cf4daa93a1e594a8da8172150992a9
+FFMPEG_SHA256_LINUX=887daa33c71f627cd63367bc8c7d9854878bccc055d41e569ed4a584e4c9a7d0
+# The second source: the same two files (same names) as release files of openmh2, beside FFmpeg's
+# LGPL source (the source offer). Tried when BtbN's download fails or does not match the SHA-256
+# above, with the same check. A placeholder (OPENMH2_MIRROR_URL_TODO) is skipped: it becomes the
+# release's download URL, without a trailing slash, when the repository's address is known.
+FFMPEG_MIRROR_URL=OPENMH2_MIRROR_URL_TODO
+

@@ -1,0 +1,3937 @@
+/*
+ * The Lao-Shan Lung family: Lao-Shan Lung and Ashen Lao-Shan Lung
+ * (EM_KIND_LAO_SHAN_LUNG and EM_KIND_ASHEN_LAO_SHAN_LUNG), the giant that
+ * walks through the fortress areas to the fort. The file holds its motion
+ * sounds and effects, its setup and Init (EmLaoshan_Setup, which the per-kind
+ * dispatch Em_TypeSetup calls), the mine points carved from the living
+ * monster and from its carcass, the state functions of each group with their
+ * dispatchers (EmLaoshan_Run*State), the per-frame update (EmLaoshan_Update)
+ * and the state changes (EmLaoshan_Set*State, EmLaoshan_ChangeState).
+ *
+ * The state functions take the monster; Em.step is the step within the
+ * current state, and the family keeps its own values in the monster's work
+ * area (EmLaoshanWork: the fight's stage, the hits on the fort, the mine
+ * points, the held turn). em_laoshan.h names the motions, the states, the
+ * bones and sounds the code explains, and the two stances (on all fours, or
+ * reared on the hind legs). On the host the update sends the monster's state
+ * to the other players every 150 frames.
+ */
+#include "common.h"
+#include "scene.h"
+#include "quest.h"
+#include "mine_point.h"
+#include "em.h"
+#include "shadow.h"
+#include "player.h"
+#include "objattach.h"
+#include "area.h"
+#include "qsync.h"
+#include "em_laoshan.h"
+#include "bgm.h"
+#include "place_rules.h"
+#include "camera.h"
+#include "capsule.h"
+#include "card.h"
+#include "sound.h"
+#include "attack_objects.h"
+#include "cam_shake.h"
+#include "engine_math.h"
+#include "gm_load.h"
+#include "hit_effects.h"
+#include "part_effects.h"
+#include "hit_spark.h"
+#include "save.h"
+#include "vec_math.h"
+#include "em_script.h"
+/* prototypes of callees */
+
+/* prototypes */
+void LaoshanDust_Create(Em *em, u8 k, u8 c, f32 f);
+/* unit's own declaration: declared here as the callers use it; with the definition's void (Em *em, s32 group, s32 state, u8 mode), the calls in EmLaoshan_ChangeState, EmLaoshan_SetIdleState and others compile differently */
+void Em_SetStateSync(Em *em, u16 group, u16 state, u8 mode);
+static s32 EmLaoshan_LayerMotionDone(Em *em, s32 layer);
+s32 EmMotion_PassedFrameScaled(void *p, f32 frame, s32 layer);
+EmBone *Em_Bone(void *obj, s16 bone);
+#if PLATFORM_PC
+void GmEm_ResetSize(Em *em);
+#else
+void GmEm_ResetSize(); /* unit's own declaration: GmEm_ResetSize reads a0 = em (the incoming argument, still in a0); the call passes no argument */
+#endif
+s32 Save_TestEventFlag(s32);
+extern s8 EmLaoshan_MinePtBones[][2];
+extern f32 EmLaoshan_MinePtRadius[];
+/* end of prototypes */
+
+/*
+ * Lao-Shan Lung's motion sounds: footsteps, roars and thuds at fixed
+ * frames of the layer-0 motion kept in EmLaoshanWork.fxMotion, some over a
+ * span of frames. Called every frame by the family's motion effects
+ * (EmLaoshan_MotionEffects).
+ */
+void EmLaoshan_MotionSounds(Em *em, EmWork *work)
+{
+    s16 motion;
+
+    motion = ((EmLaoshanWork *)work)->fxMotion;
+    switch (motion) {
+    case EM_MOTION_ID(0, LAOSHAN_MOT_IDLE):
+        Em_PlaySeTypeAtBoneInFrames(em, 460, 588, 70, LAOSHAN_BONE_ROAR, 6, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 160, 22, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 19, 33, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 290, 19, 33, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 13, LAOSHAN_BONE_MINE_POINT, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 190, 15, LAOSHAN_BONE_MINE_POINT, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 440, 17, LAOSHAN_BONE_MINE_POINT, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_WALK_BACK):
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 22, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 90, 11, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 76, 107, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 76, 3, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 50, 12, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 178, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 164, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 164, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 138, 14, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 278, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 264, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 264, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 238, 16, 5, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 378, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 364, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 364, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 338, 19, 25, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_WALK):
+        Em_PlaySeTypeAtBoneInFrames(em, 96, 450, 71, LAOSHAN_BONE_ROAR, 6, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 222, 22, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 376, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 42, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 28, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 28, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 14, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 154, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 140, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 140, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 114, 12, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 250, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 236, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 236, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 200, 19, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 362, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 348, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 348, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 310, 16, 5, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_WALK_TURN_RIGHT):
+        Em_PlaySeAtBoneVolOnFrame(em, 194, 21, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 394, 20, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 78, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 64, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 64, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 38, 19, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 194, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 180, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 180, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 154, 16, 5, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 312, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 298, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 298, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 272, 14, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 418, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 404, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 404, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 378, 12, 11, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_WALK_TURN_LEFT):
+        Em_PlaySeAtBoneVolOnFrame(em, 194, 21, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 394, 20, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 78, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 64, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 64, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 38, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 194, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 180, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 180, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 154, 16, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 312, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 298, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 298, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 272, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 418, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 404, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 404, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 378, 12, 5, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_ROAR_START):
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 23, LAOSHAN_BONE_EYE, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 19, 33, 8);
+        Em_PlaySeTypeAtBoneInFrames(em, 156, 198, 34, LAOSHAN_BONE_ROAR, 8, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 66, 11, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 52, 107, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 52, 3, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 10, 12, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 152, 107, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 152, 3, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 140, 12, 19, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_ROAR):
+        Em_PlaySeTypeAtBoneInFrames(em, 2, 480, LAOSHAN_SE_ROAR, LAOSHAN_BONE_ROAR, 9, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 60, 30, LAOSHAN_BONE_MINE_POINT, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 366, 11, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 352, 107, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 352, 3, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 312, 12, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 438, 107, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 438, 3, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 390, 12, 19, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REAR_UP):
+        Em_PlaySeTypeAtBoneInFrames(em, 264, 660, LAOSHAN_SE_ROAR, LAOSHAN_BONE_ROAR, 9, 0);
+        Em_PlaySeTypeAtBoneInFrames(em, 264, 560, 31, LAOSHAN_BONE_MINE_POINT, 8, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 280, 23, LAOSHAN_BONE_EYE, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 14, LAOSHAN_BONE_EYE, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 204, 12, LAOSHAN_BONE_EYE, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 390, 16, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 390, 18, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 90, 23, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 270, 22, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 252, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 252, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 252, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 256, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 256, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 256, 1, LAOSHAN_BONE_FOOT_C, 6);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_RAM):
+        Em_PlaySeAtBoneVolOnFrame(em, 316, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 200, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 196, 23, LAOSHAN_BONE_EYE, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 196, 0, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 210, 24, 11, 4);
+        Em_PlaySeAtBoneVolOnFrame(em, 214, 25, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 214, 27, 33, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 214, LAOSHAN_SE_IMPACT, 33, 4);
+        Em_PlaySeTypeAtBoneInFrames(em, 320, 480, 38, LAOSHAN_BONE_ROAR, 8, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 56, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 42, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 42, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 16, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 100, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 86, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 86, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 60, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 140, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 126, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 126, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 100, 12, 5, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 194, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 180, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 180, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 154, 16, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 408, 9, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 394, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 394, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 368, 16, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 426, 9, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 412, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 412, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 386, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 466, 9, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 452, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 452, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 426, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 506, 9, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 492, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 492, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 466, 12, 5, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 530, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 530, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 504, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 552, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 552, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 526, 16, 11, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REARED_IDLE):
+        Em_PlaySeTypeAtBoneInFrames(em, 6, 360, 71, LAOSHAN_BONE_ROAR, 6, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 24, 19, LAOSHAN_BONE_MINE_POINT, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 136, 20, 50, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REARED_STRIKE):
+        Em_PlaySeAtBoneVolOnFrame(em, 6, 34, LAOSHAN_BONE_ROAR, 8);
+        Em_PlaySeTypeAtBoneInFrames(em, 140, 300, 35, LAOSHAN_BONE_ROAR, 9, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 13, LAOSHAN_BONE_MINE_POINT, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 274, 13, LAOSHAN_BONE_MINE_POINT, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 21, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 23, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 160, 7, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 160, 2, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 74, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 60, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 60, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 18, 19, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 508, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 494, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 494, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 454, 19, 11, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REARED_SMASH):
+        Em_PlaySeAtBoneVolOnFrame(em, 142, 23, LAOSHAN_BONE_EYE, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 136, 0, LAOSHAN_BONE_EYE, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 138, 104, LAOSHAN_BONE_EYE, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 136, 24, LAOSHAN_BONE_EYE, 9);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 25, LAOSHAN_BONE_EYE, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_EYE, 9);
+        Em_PlaySeAtBoneVolOnFrame(em, 16, 18, 33, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 186, 13, LAOSHAN_BONE_MINE_POINT, 8);
+        Em_PlaySeTypeAtBoneInFrames(em, 246, 400, 78, LAOSHAN_BONE_ROAR, 8, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 84, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 70, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 70, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 30, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 250, 10, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 236, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 236, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 196, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 68, 22, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 88, 23, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 196, 20, 48, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REAR_DOWN):
+        Em_PlaySeAtBoneVolOnFrame(em, 58, 38, LAOSHAN_BONE_ROAR, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 320, 35, LAOSHAN_BONE_ROAR, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 15, LAOSHAN_BONE_MINE_POINT, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 290, 16, LAOSHAN_BONE_MINE_POINT, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 120, 10, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 106, 107, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 106, 3, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 60, 12, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 280, 10, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 266, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 266, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 246, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 410, 10, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 396, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 396, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 370, 19, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 476, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 476, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 476, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 480, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 480, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 480, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 510, 17, LAOSHAN_BONE_MINE_POINT, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 534, 24, 33, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 506, 23, 50, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REARED_WALK):
+        Em_PlaySeAtBoneVolOnFrame(em, 200, 30, LAOSHAN_BONE_ROAR, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 24, 10, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 10, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 10, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 14, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 164, 10, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 144, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 26, 20, 50, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_RIGHT_START):
+        Em_PlaySeAtBoneVolOnFrame(em, 78, 9, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 64, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 64, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 38, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 164, 9, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 124, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 94, 23, 50, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_RIGHT_HOLD):
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_LEFT_HOLD):
+        Em_PlaySeTypeAtBoneInFrames(em, 288, 398, 78, LAOSHAN_BONE_ROAR, 6, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 22, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 320, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 19, 33, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 290, 19, 33, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 13, LAOSHAN_BONE_MINE_POINT, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 190, 15, LAOSHAN_BONE_MINE_POINT, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_RIGHT_BACK):
+        Em_PlaySeAtBoneVolOnFrame(em, 78, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 64, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 64, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 38, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 138, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 124, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 124, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 98, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 48, 22, 48, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_RIGHT_END):
+        Em_PlaySeAtBoneVolOnFrame(em, 72, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 58, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 58, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 32, 16, 5, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 154, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 140, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 140, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 114, 12, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 22, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 42, 23, 50, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_QUARTER_TURN_RIGHT):
+        Em_PlaySeAtBoneVolOnFrame(em, 82, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 68, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 68, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 42, 16, 5, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 164, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 124, 12, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 248, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 234, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 234, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 208, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 334, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 320, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 320, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 298, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 56, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 286, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 144, 22, 48, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_HALF_TURN_RIGHT):
+        Em_PlaySeAtBoneVolOnFrame(em, 74, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 60, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 60, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 34, 12, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 156, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 142, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 142, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 116, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 204, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 190, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 190, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 164, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 278, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 264, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 264, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 238, 16, 5, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 358, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 344, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 344, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 318, 12, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 102, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 340, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 44, 22, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 244, 22, 48, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_LEFT_START):
+        Em_PlaySeAtBoneVolOnFrame(em, 78, 9, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 64, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 64, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 38, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 164, 9, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 124, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 94, 23, 50, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_LEFT_BACK):
+        Em_PlaySeAtBoneVolOnFrame(em, 78, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 64, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 64, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 38, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 138, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 124, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 124, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 98, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 48, 22, 48, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_LEFT_END):
+        Em_PlaySeAtBoneVolOnFrame(em, 72, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 58, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 58, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 32, 12, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 154, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 140, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 140, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 114, 16, 5, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 22, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 42, 23, 50, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_QUARTER_TURN_LEFT):
+        Em_PlaySeAtBoneVolOnFrame(em, 82, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 68, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 68, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 42, 12, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 164, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 124, 16, 5, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 248, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 234, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 234, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 208, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 334, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 320, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 320, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 298, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 56, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 286, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 144, 22, 48, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_HALF_TURN_LEFT):
+        Em_PlaySeAtBoneVolOnFrame(em, 74, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 60, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 60, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 34, 16, 5, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 156, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 142, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 142, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 116, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 204, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 190, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 190, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 164, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 278, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 264, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 264, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 238, 12, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 358, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 344, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 344, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 318, 16, 5, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 102, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 340, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 44, 22, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 244, 22, 48, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_FALL):
+        Em_PlaySeTypeAtBoneInFrames(em, 228, 410, 70, LAOSHAN_BONE_ROAR, 8, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 178, 24, LAOSHAN_BONE_EYE, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 172, 25, LAOSHAN_BONE_EYE, 9);
+        Em_PlaySeAtBoneVolOnFrame(em, 174, 107, LAOSHAN_BONE_EYE, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 172, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_EYE, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 86, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 72, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 72, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 46, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 164, 14, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 164, 16, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 340, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 44, 22, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 228, 13, 33, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 260, 19, LAOSHAN_BONE_MINE_POINT, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 72, 10, LAOSHAN_BONE_FOOT_D, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_GET_UP):
+        Em_PlaySeTypeAtBoneInFrames(em, 4, 210, 70, LAOSHAN_BONE_ROAR, 8, 0);
+        Em_PlaySeTypeAtBoneInFrames(em, 260, 410, 75, LAOSHAN_BONE_ROAR, 9, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 96, 9, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 82, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 82, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 56, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 164, 9, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 150, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 124, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 234, 9, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 220, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 220, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 194, 16, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 314, 9, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 300, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 300, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 274, 12, 5, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 56, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 56, 22, 48, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REARED_FLINCH):
+        Em_PlaySeTypeAtBoneInFrames(em, 4, 210, 76, LAOSHAN_BONE_ROAR, 9, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 172, 23, LAOSHAN_BONE_EYE, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 56, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 56, 22, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 14, LAOSHAN_BONE_MINE_POINT, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 19, LAOSHAN_BONE_MINE_POINT, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_PUSHED_BACK):
+        Em_PlaySeTypeAtBoneInFrames(em, 4, 284, 76, LAOSHAN_BONE_ROAR, 9, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 44, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 44, 22, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 22, 9, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 8, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 8, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 14, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 28, 9, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 14, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 14, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 16, 5, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 104, 9, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 90, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 90, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 64, 16, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 180, 9, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 166, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 166, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 140, 14, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 214, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 200, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 200, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 174, 16, 5, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_LEAVE_START):
+        Em_PlaySeTypeAtBoneInFrames(em, 138, 188, 76, LAOSHAN_BONE_ROAR, 9, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 52, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 52, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 252, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 56, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 56, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 56, 1, LAOSHAN_BONE_FOOT_C, 6);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_LEAVE_TURN):
+        Em_PlaySeTypeAtBoneInFrames(em, 4, 396, 73, LAOSHAN_BONE_ROAR, 9, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 38, 9, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 24, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 24, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 4, 16, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 168, 9, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 154, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 154, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 128, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 180, 9, LAOSHAN_BONE_FOOT_C, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 166, 105, LAOSHAN_BONE_FOOT_C, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 166, 1, LAOSHAN_BONE_FOOT_C, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 140, 14, 25, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 292, 9, LAOSHAN_BONE_FOOT_D, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 278, 104, LAOSHAN_BONE_FOOT_D, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 278, 0, LAOSHAN_BONE_FOOT_D, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 252, 12, 5, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_WALK_ATTACK):
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_DIE):
+        Em_PlaySeTypeAtBoneInFrames(em, 6, 628, 77, LAOSHAN_BONE_ROAR, 9, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 424, 25, LAOSHAN_BONE_EYE, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 340, 26, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 400, 25, 19, 9);
+        Em_PlaySeAtBoneVolOnFrame(em, 400, 24, 19, 9);
+        Em_PlaySeAtBoneVolOnFrame(em, 402, 107, 19, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 410, 24, 48, 9);
+        Em_PlaySeAtBoneVolOnFrame(em, 216, 9, LAOSHAN_BONE_FOOT_B, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 202, 104, LAOSHAN_BONE_FOOT_B, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 202, 0, LAOSHAN_BONE_FOOT_B, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 174, 16, 11, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 324, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 320, 22, 48, 8);
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_FLINCH):
+        Em_PlaySeTypeAtBoneInFrames(em, 4, 210, 76, LAOSHAN_BONE_ROAR, 9, 0);
+        Em_PlaySeAtBoneVolOnFrame(em, 172, 23, LAOSHAN_BONE_EYE, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 56, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 56, 22, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 88, LAOSHAN_SE_IMPACT, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 74, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 74, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 48, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 246, 9, LAOSHAN_BONE_FOOT_A, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 232, 105, LAOSHAN_BONE_FOOT_A, 22);
+        Em_PlaySeAtBoneVolOnFrame(em, 232, 1, LAOSHAN_BONE_FOOT_A, 6);
+        Em_PlaySeAtBoneVolOnFrame(em, 206, 19, 19, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 60, 23, 50, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 60, 22, 48, 8);
+        Em_PlaySeAtBoneVolOnFrame(em, 48, 25, LAOSHAN_BONE_FOOT_A, 8);
+
+        break;
+    }
+}
+
+/*
+ * Per-kind setup (Em_TypeSetup): clears EmLaoshanWork.stage and, when the
+ * living monster has its mine point (mineSlot), moves the point to the
+ * monster area and to EmLaoshan_GetMinePointPos.
+ */
+void EmLaoshan_Setup(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    f32 pos[4];
+    s8 slot;
+
+    w->stage = 0;
+    slot = w->mineSlot;
+    if (slot != -1) {
+        MinePoint_SetArea((s32) slot, em->area);
+        EmLaoshan_GetMinePointPos(em, pos);
+        MinePoint_SetPos(w->mineSlot, pos);
+    }
+}
+
+/* Callback table entry: spawns the monster's shadow (SHADOW_GROUND_BONES). */
+void EmLaoshan_SpawnShadow(u8 *em)
+{
+    Shadow_Spawn((Player *) em, SHADOW_GROUND_BONES);
+}
+
+/*
+ * Writes to out the position of the living monster's mine point:
+ * LAOSHAN_BONE_MINE_POINT's position plus a fixed offset (up 250, forward
+ * 120) rotated by that bone's matrix.
+ */
+void EmLaoshan_GetMinePointPos(Em *em, f32 *out)
+{
+    f32 ofs[3];
+    f32 rotOfs[3];
+    f32 bonePos[3];
+
+    ofs[1] = 250.0f;
+    ofs[2] = 120.0f;
+    ofs[0] = 0.0f;
+    Em_BonePos(em, LAOSHAN_BONE_MINE_POINT, bonePos);
+    Vec_Rotate((f32 *) rotOfs, (f32 *) ofs, (f32 *) (Em_Bone(em, LAOSHAN_BONE_MINE_POINT)));
+    out[0] = bonePos[0] + rotOfs[0];
+    out[1] = bonePos[1] + rotOfs[1];
+    out[2] = bonePos[2] + rotOfs[2];
+}
+
+/*
+ * Adds the carving mine point on the living monster (radius 340,
+ * MINE_ACTION_CARVE, count mineCount, mine table by kind and quest tier) at
+ * EmLaoshan_GetMinePointPos and keeps its slot in mineSlot (set to -1 first
+ * when mineCount is 0 or less). Called by Init.
+ */
+void EmLaoshan_AddMinePoint(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+    MinePoint point;
+    f32 pos[3];
+
+    if (w->mineCount <= 0) {
+        w->mineSlot = -1;
+    }
+    point.radius = 340.0f;
+    if (em->type == EM_KIND_LAO_SHAN_LUNG) {
+        switch (gQuest.header->tier) {
+        default:
+            point.table = 10;
+            break;
+        case 1:
+            point.table = 134;
+            break;
+        case 2:
+            point.table = 259;
+            break;
+        case 3:
+            point.table = 259;
+            break;
+        }
+    } else {
+        switch (gQuest.header->tier) {
+        default:
+            point.table = 84;
+            break;
+        case 1:
+            point.table = 208;
+            break;
+        case 2:
+            point.table = 333;
+            break;
+        case 3:
+            point.table = 333;
+            break;
+        }
+    }
+    point.action = MINE_ACTION_CARVE;
+    point.count = w->mineCount;
+    point.area = (u8) em->area;
+    point.flags = 1;
+    point.timer = 0;
+    EmLaoshan_GetMinePointPos(em, pos);
+    w->mineSlot = MinePoint_AddUntimed(&point, pos, 0);
+}
+
+/*
+ * Adds the three carving mine points of the defeated monster on the floor
+ * below the bones of EmLaoshan_MinePtBones (radius from
+ * EmLaoshan_MinePtRadius, count from the bones table, mine table by kind
+ * and tier) into minePts. Called by the defeat states after the collapse.
+ */
+void EmLaoshan_AddCarcassMinePoints(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+    s32 i;
+    MinePoint point;
+    f32 pos[3];
+
+    if (em->type == EM_KIND_LAO_SHAN_LUNG) {
+        switch (gQuest.header->tier) {
+        default:
+            point.table = 9;
+            break;
+        case 1:
+            point.table = 133;
+            break;
+        case 2:
+            point.table = 258;
+            break;
+        case 3:
+            point.table = 258;
+            break;
+        }
+    } else {
+        switch (gQuest.header->tier) {
+        default:
+            point.table = 83;
+            break;
+        case 1:
+            point.table = 207;
+            break;
+        case 2:
+            point.table = 332;
+            break;
+        case 3:
+            point.table = 332;
+            break;
+        }
+    }
+    for (i = 0; i < 3; i++) {
+        point.radius = EmLaoshan_MinePtRadius[i];
+        point.area = (u8) em->area;
+        point.timer = 0;
+        point.flags = 1;
+        Em_BonePos(em, EmLaoshan_MinePtBones[i][0], pos);
+        pos[1] = em->floorY;
+        point.action = MINE_ACTION_CARVE;
+        point.count = EmLaoshan_MinePtBones[i][1];
+        MinePoint_PrepareStub(&point);
+        w->minePts[i] = MinePoint_AddUntimed(&point, pos, 0);
+    }
+}
+
+/*
+ * Keeps each of the three minePts at its bone (y at floorY) and removes a
+ * point (slot -1) once its MinePoint_Count is 0 or less.
+ */
+void EmLaoshan_UpdateCarcassMinePoints(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+    s32 i;
+    s8 *bone;
+    f32 *posY;
+    s8 *slot;
+    f32 pos[3];
+
+    bone = EmLaoshan_MinePtBones[0];
+    posY = &pos[1];
+    for (i = 0; i < 3; i++) {
+        slot = &w->minePts[i];
+        if (*slot != -1) {
+            Em_BonePos(em, *bone, pos);
+            *posY = em->floorY;
+            MinePoint_SetPos(*slot, pos);
+            if (MinePoint_Count(*slot) <= 0) {
+                MinePoint_Remove(*slot);
+                *slot = -1;
+            }
+        }
+        bone += 2;
+    }
+}
+
+/* Removes the minePts that still exist and sets them to -1. */
+void EmLaoshan_RemoveCarcassMinePoints(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+    s32 i;
+    s8 *slot;
+
+    for (i = 0; i < 3; i++) {
+        slot = &w->minePts[i];
+        if (*slot != -1) {
+            MinePoint_Remove(*slot);
+            *slot = -1;
+        }
+    }
+}
+
+/*
+ * Starts the monster: on quest stage 0 it is placed by its area (the
+ * fortress areas and two others); sets hp and hpMax from Em_ComputeMaxHp,
+ * scriptPending, blind and combat with all four players, the motion
+ * LAOSHAN_MOT_IDLE and the state LAOSHAN_IDLE (Em_SetStateRand); resets the
+ * work area (syncTimer 150, mineCount 3) and adds the mine point carved from
+ * the living monster.
+ */
+void EmLaoshan_Init(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    s16 maxHp;
+    s32 dayId;
+
+    Em_SetPartScaled(em, 2);
+    Em_SetPartScaled(em, 3);
+    if (gQuest.stage == 0) {
+        dayId = Area_DayId(gScene.area) & 0xFFFF;
+        switch (dayId) {
+        case AREA_FORTRESS_4:
+            em->posX = 33000.0f;
+            em->posY = 0.0f;
+            em->posZ = 30200.0f;
+            em->rotY = ANGLE_TURN * 3 / 4;
+            break;
+        case AREA_FORTRESS_5:
+            em->posX = 7400.0f;
+            em->posY = 0.0f;
+            em->posZ = 26300.0f;
+            em->rotY = ANGLE_TURN / 4;
+            break;
+        case 13:
+            em->posX = 5000.0f;
+            em->posY = 0.0f;
+            em->posZ = 8000.0f;
+            em->rotY = ANGLE_TURN / 2;
+            break;
+        case AREA_FORTRESS_1:
+            em->posX = 2400.0f;
+            em->posY = 0.0f;
+            em->posZ = 11000.0f;
+            em->rotY = 0xE39;
+            break;
+        case AREA_SNOWY_MOUNTAINS_NIGHT_9:
+            em->posX = 7000.0f;
+            em->posY = 580.0f;
+            em->posZ = 7000.0f;
+            em->rotY = 0;
+            break;
+        case AREA_FORTRESS_3:
+            em->posX = 30800.0f;
+            em->posY = 0.0f;
+            em->posZ = 32600.0f;
+            em->rotY = 0x6C00;
+            break;
+        case AREA_FORTRESS_2:
+            em->posX = 23500.0f;
+            em->posY = 0.0f;
+            em->posZ = 3500.0f;
+            em->rotY = 0xBA06;
+            break;
+        default:
+            em->posX = 10000.0f;
+            em->posY = 0.0f;
+            em->posZ = 10000.0f;
+            em->rotY = ANGLE_TURN / 2;
+            break;
+        }
+    }
+    maxHp = Em_ComputeMaxHp(em, 0);
+    em->hp = maxHp;
+    em->hpMax = maxHp;
+    em->scriptPending = 1;
+    em->blind = 1;
+    em->unk_InitFlag = 1;
+    em->combat = 1;
+    em->combatPlayers = 15;
+    Em_SetMotionRow(em, LAOSHAN_MOT_IDLE, 0, 0);
+    Em_SetStateRand(em, 0, 1);
+    w->unk00C = 1500.0f;
+    w->turnHeld = 0;
+    w->turnHeldFrames = 0;
+    w->stage = 0;
+    w->syncTimer = 150;
+    w->unk014 = -1;
+    w->unk018 = -1;
+    w->mineCount = 3;
+    EmLaoshan_AddMinePoint(em);
+}
+
+/*
+ * Ends a state: motion speed 1, lookAtTarget off, scriptPending set; in
+ * LAOSHAN_STANCE_REARED goes to LAOSHAN_IDLE_REARED, else sets
+ * LAOSHAN_STANCE_ALL_FOURS and goes to LAOSHAN_IDLE.
+ */
+void EmLaoshan_EndState(Em *em)
+{
+    em->motionSpeed = 1.0f;
+    em->lookAtTarget = 0;
+    em->scriptPending = 1;
+    if (em->stance == LAOSHAN_STANCE_REARED) {
+        em->stance = LAOSHAN_STANCE_REARED;
+        EmLaoshan_ChangeState(em, EM_GROUP_IDLE, LAOSHAN_IDLE_REARED, EM_SYNC_LOCAL);
+        return;
+    }
+    em->stance = LAOSHAN_STANCE_ALL_FOURS;
+    EmLaoshan_ChangeState(em, EM_GROUP_IDLE, LAOSHAN_IDLE, EM_SYNC_LOCAL);
+}
+
+/*
+ * Returns 1 and sets scriptPending when the layer motion has stopped (or
+ * layer is 255), else 0; the turn states use it to let the script pick the
+ * next state while their pose holds.
+ */
+static s32 EmLaoshan_LayerMotionDone(Em *em, s32 layer)
+{
+    if (em->motion[layer].playing == 0 || layer == 255) {
+        em->scriptPending = 1;
+        return 1;
+    }
+    return 0;
+}
+
+/*
+ * LAOSHAN_IDLE_HOLD: unless debug switch 77 is on, replays
+ * LAOSHAN_MOT_IDLE whenever a layer's motion id differs from the idle's;
+ * never ends by itself. The ids it expects on layers 1 and 2 are 1101 and
+ * 1201, as if the layers' ids were 100 apart (EM_MOTION_ID puts them 200
+ * apart), so once LAOSHAN_IDLE has set the layers the tests fail and the
+ * idle restarts every frame.
+ */
+void EmLaoshan_IdleHold(Em *em)
+{
+    if (Debug_IsOn(77) == 0) {
+        if (em->motionId[0] != EM_MOTION_ID(0, LAOSHAN_MOT_IDLE)) {
+            Em_SetMotion(em, LAOSHAN_MOT_IDLE, 10, 0);
+        }
+        if (em->motionId[1] != 1101) {
+            Em_SetMotion(em, LAOSHAN_MOT_IDLE, 10, 0);
+        }
+        if (em->motionId[2] != 1201) {
+            Em_SetMotion(em, LAOSHAN_MOT_IDLE, 10, 0);
+        }
+    }
+}
+
+/*
+ * LAOSHAN_IDLE: on all fours (LAOSHAN_STANCE_ALL_FOURS), plays the idle motion on
+ * layers 0 to 2 (unless already playing) and ends with the layer-0 motion
+ * (EmLaoshan_EndState).
+ */
+void EmLaoshan_Idle(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        if (em->motionId[0] != EM_MOTION_ID(0, LAOSHAN_MOT_IDLE)) {
+            Em_SetLayerMotion(em, EM_MOTION_ID(0, LAOSHAN_MOT_IDLE), 10, 0, 0);
+        }
+        if (em->motionId[1] != EM_MOTION_ID(1, LAOSHAN_MOT_IDLE)) {
+            Em_SetLayerMotion(em, EM_MOTION_ID(1, LAOSHAN_MOT_IDLE), 10, 0, 1);
+        }
+        if (em->motionId[2] != EM_MOTION_ID(2, LAOSHAN_MOT_IDLE)) {
+            Em_SetLayerMotion(em, EM_MOTION_ID(2, LAOSHAN_MOT_IDLE), 10, 0, 2);
+        }
+        break;
+    case 1:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_IDLE_ROAR: plays LAOSHAN_MOT_ROAR_START then LAOSHAN_MOT_ROAR,
+ * keeping quakeTimer at 5 (players near it fall over) until the motion
+ * ends.
+ */
+void EmLaoshan_IdleRoar(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_ROAR_START, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            Em_SetMotion(em, LAOSHAN_MOT_ROAR, 0, 0);
+        }
+        break;
+    case 2:
+        em->quakeTimer = 5;
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            em->quakeTimer = 0;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_IDLE_REAR_UP: plays LAOSHAN_MOT_REAR_UP under guardTimer and
+ * noReact, then takes LAOSHAN_STANCE_REARED and ends.
+ */
+void EmLaoshan_IdleRearUp(Em *em)
+{
+    em->guardTimer = 5;
+    em->noReact = 5;
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_REAR_UP, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            em->stance = LAOSHAN_STANCE_REARED;
+            em->guardTimer = 0;
+            em->noReact = 0;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_IDLE_REARED: the reared idle (LAOSHAN_MOT_REARED_IDLE,
+ * LAOSHAN_STANCE_REARED) until the motion ends.
+ */
+void EmLaoshan_IdleReared(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_REARED;
+        Em_SetMotion(em, LAOSHAN_MOT_REARED_IDLE, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_IDLE_REAR_DOWN: plays LAOSHAN_MOT_REAR_DOWN under guardTimer and
+ * noReact, then returns to LAOSHAN_STANCE_ALL_FOURS and ends.
+ */
+void EmLaoshan_IdleRearDown(Em *em)
+{
+    em->guardTimer = 5;
+    em->noReact = 5;
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_REARED;
+        Em_SetMotion(em, LAOSHAN_MOT_REAR_DOWN, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            em->guardTimer = 0;
+            em->noReact = 0;
+            em->stance = LAOSHAN_STANCE_ALL_FOURS;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/* LAOSHAN_IDLE_SHORT: as LAOSHAN_IDLE but ends after at most 30 frames. */
+void EmLaoshan_IdleShort(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        if (em->motionId[0] != EM_MOTION_ID(0, LAOSHAN_MOT_IDLE)) {
+            Em_SetLayerMotion(em, EM_MOTION_ID(0, LAOSHAN_MOT_IDLE), 10, 0, 0);
+        }
+        if (em->motionId[1] != EM_MOTION_ID(1, LAOSHAN_MOT_IDLE)) {
+            Em_SetLayerMotion(em, EM_MOTION_ID(1, LAOSHAN_MOT_IDLE), 10, 0, 1);
+        }
+        if (em->motionId[2] != EM_MOTION_ID(2, LAOSHAN_MOT_IDLE)) {
+            Em_SetLayerMotion(em, EM_MOTION_ID(2, LAOSHAN_MOT_IDLE), 10, 0, 2);
+        }
+        em->timer = 30;
+        break;
+    case 1:
+        if (em->motion[0].playing == 0 || --em->timer <= 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_IDLE_REARED_SHORT: as LAOSHAN_IDLE_REARED but ends after at most
+ * 30 frames.
+ */
+void EmLaoshan_IdleRearedShort(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_REARED;
+        Em_SetMotion(em, LAOSHAN_MOT_REARED_IDLE, 0, 0);
+        em->timer = 30;
+        break;
+    case 1:
+        if (em->motion[0].playing == 0 || --em->timer <= 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/* Runs the idle state (EM_GROUP_IDLE) by em->state. */
+void EmLaoshan_RunIdleState(Em *em)
+{
+    switch (em->state) {
+    case LAOSHAN_IDLE_HOLD:
+        EmLaoshan_IdleHold(em);
+        break;
+    case LAOSHAN_IDLE:
+        EmLaoshan_Idle(em);
+        break;
+    case LAOSHAN_IDLE_ROAR:
+        EmLaoshan_IdleRoar(em);
+        break;
+    case LAOSHAN_IDLE_REAR_UP:
+        EmLaoshan_IdleRearUp(em);
+        break;
+    case LAOSHAN_IDLE_REARED:
+        EmLaoshan_IdleReared(em);
+        break;
+    case LAOSHAN_IDLE_REAR_DOWN:
+        EmLaoshan_IdleRearDown(em);
+        break;
+    case LAOSHAN_IDLE_SHORT:
+        EmLaoshan_IdleShort(em);
+        break;
+    case LAOSHAN_IDLE_REARED_SHORT:
+        EmLaoshan_IdleRearedShort(em);
+
+    default:
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_WALK: walks to the goal (LAOSHAN_MOT_WALK, Em_StepToGoal),
+ * then stops the root motion (EM_FLAG_NO_ROOT_MOTION) until the motion
+ * ends.
+ */
+void EmLaoshan_Walk(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_WALK, 0, 0);
+        break;
+    case 1:
+        if (Em_StepToGoal(em, 64, 0) == 1) {
+            em->step++;
+            Player_SetFlag(em, EM_FLAG_NO_ROOT_MOTION);
+        }
+        break;
+    case 2:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            Player_ClearFlag(em, EM_FLAG_NO_ROOT_MOTION);
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_WALK_BACK: walks to a goal behind (LAOSHAN_MOT_WALK_BACK,
+ * Em_StepToGoal flag 4 so backward movement counts too) and ends with the
+ * motion.
+ */
+void EmLaoshan_WalkBack(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_WALK_BACK, 0, 0);
+        break;
+    case 1:
+        if (Em_StepToGoal(em, 64, 4) == 1) {
+            em->step++;
+        }
+        break;
+    case 2:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_TURN_TO_GOAL: aims at the goal and repeats LAOSHAN_MOT_WALK
+ * in place (goal within about 25 degrees, no root motion) or a walking turn
+ * (LAOSHAN_MOT_WALK_TURN_RIGHT or _LEFT, rotY 34 a frame between frames
+ * 162 and 462) until facing the goal, then ends.
+ */
+void EmLaoshan_TurnToGoal(Em *em)
+{
+    u32 angleDiff;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        em->aimAngle = Math_AngleXZ(&em->posX, em->goal);
+        angleDiff = (em->aimAngle - em->rotY) & 0xFFFF;
+        if (angleDiff <= 0x11C7 || angleDiff >= 0xEE39) {
+            Player_SetFlag(em, EM_FLAG_NO_ROOT_MOTION);
+            Em_SetMotion(em, LAOSHAN_MOT_WALK, 0, 0);
+        } else if (angleDiff >= ANGLE_TURN / 2) {
+            Em_SetMotion(em, LAOSHAN_MOT_WALK_TURN_LEFT, 0, 0);
+        } else {
+            Em_SetMotion(em, LAOSHAN_MOT_WALK_TURN_RIGHT, 0, 0);
+        }
+        break;
+    case 1:
+        if (em->motion[0].blend == 0) {
+            angleDiff = (em->aimAngle - (u16) em->rotY) & 0xFFFF;
+            if (em->motion[0].playing == 0) {
+                if (((angleDiff + 34) & 0xFFFF) <= 67) {
+                    em->step++;
+                    Player_ClearFlag(em, EM_FLAG_NO_ROOT_MOTION);
+                    EmLaoshan_EndState(em);
+                } else if (angleDiff <= 0x11C7 || angleDiff >= 0xEE39) {
+                    Player_SetFlag(em, EM_FLAG_NO_ROOT_MOTION);
+                    Em_SetMotion(em, LAOSHAN_MOT_WALK, 0, 0);
+                } else {
+                    Player_ClearFlag(em, EM_FLAG_NO_ROOT_MOTION);
+                    if (angleDiff >= ANGLE_TURN / 2) {
+                        Em_SetMotion(em, LAOSHAN_MOT_WALK_TURN_LEFT, 0, 0);
+                    } else {
+                        Em_SetMotion(em, LAOSHAN_MOT_WALK_TURN_RIGHT, 0, 0);
+                    }
+                }
+            } else if (EmMotion_ReachedFrame(em, 0, 162.0f) != 0 && EmMotion_ReachedFrame(em, 0, 462.0f) == 0) {
+                if (((angleDiff + 34) & 0xFFFF) <= 67) {
+                    em->rotY = em->aimAngle;
+                } else if (angleDiff <= 0x7FFF) {
+                    em->rotY = (u16) (em->rotY + 34);
+                } else {
+                    em->rotY = (u16) (em->rotY - 34);
+                }
+            }
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_WALK_TURN_RIGHT: plays LAOSHAN_MOT_WALK_TURN_RIGHT, rotY
+ * rising 34 a frame between frames 162 and 462, and ends with the motion.
+ */
+void EmLaoshan_WalkTurnRight(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_WALK_TURN_RIGHT, 0, 0);
+        break;
+    case 1:
+        if ((EmMotion_ReachedFrame(em, 0, 162.0f) != 0) && (EmMotion_ReachedFrame(em, 0, 462.0f) == 0)) {
+            em->rotY += 34;
+        }
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_TURN_RIGHT_START: plays LAOSHAN_MOT_TURN_RIGHT_START (rotY
+ * rising 128 a frame over 128 frames, a quarter turn); when it ends sets
+ * turnHeld 1 and lets the script pick the next state.
+ */
+void EmLaoshan_TurnRightStart(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_TURN_RIGHT_START, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].blend == 0) {
+            if ((EmMotion_ReachedFrame(em, 0, 28.0f) != 0) && (EmMotion_ReachedFrame(em, 0, 156.0f) == 0)) {
+                em->rotY += 128;
+            }
+            if (EmLaoshan_LayerMotionDone(em, 0) != 0) {
+                w->turnHeld = 1;
+            }
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_TURN_RIGHT_HOLD: plays LAOSHAN_MOT_TURN_RIGHT_HOLD and lets
+ * the script pick the next state when it ends.
+ */
+void EmLaoshan_TurnRightHold(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_TURN_RIGHT_HOLD, 0, 0);
+        break;
+    case 1:
+        EmLaoshan_LayerMotionDone(em, 0);
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_TURN_RIGHT_END: plays LAOSHAN_MOT_TURN_RIGHT_END, keeping
+ * the new heading; clears turnHeld when it ends.
+ */
+void EmLaoshan_TurnRightEnd(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_TURN_RIGHT_END, 0, 0);
+        break;
+    case 1:
+        if (EmLaoshan_LayerMotionDone(em, 0) != 0) {
+            w->turnHeld = 0;
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_TURN_RIGHT_BACK: plays LAOSHAN_MOT_TURN_RIGHT_BACK, turning
+ * back (rotY falling 128 a frame, a quarter turn); clears turnHeld when it
+ * ends.
+ */
+void EmLaoshan_TurnRightBack(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_TURN_RIGHT_BACK, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].blend == 0) {
+            if ((EmMotion_ReachedFrame(em, 0, 30.0f) != 0) && (EmMotion_ReachedFrame(em, 0, 158.0f) == 0)) {
+                em->rotY -= 128;
+            }
+            if (EmLaoshan_LayerMotionDone(em, 0) != 0) {
+                w->turnHeld = 0;
+            }
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_TURN_LEFT_START: plays LAOSHAN_MOT_TURN_LEFT_START (rotY
+ * falling 128 a frame, a quarter turn); when it ends sets turnHeld 2 and
+ * lets the script pick the next state.
+ */
+void EmLaoshan_TurnLeftStart(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_TURN_LEFT_START, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].blend == 0) {
+            if ((EmMotion_ReachedFrame(em, 0, 28.0f) != 0) && (EmMotion_ReachedFrame(em, 0, 156.0f) == 0)) {
+                em->rotY -= 128;
+            }
+            if (EmLaoshan_LayerMotionDone(em, 0) != 0) {
+                w->turnHeld = 2;
+            }
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_TURN_LEFT_HOLD: plays LAOSHAN_MOT_TURN_LEFT_HOLD and lets
+ * the script pick the next state when it ends.
+ */
+void EmLaoshan_TurnLeftHold(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_TURN_LEFT_HOLD, 0, 0);
+        break;
+    case 1:
+        EmLaoshan_LayerMotionDone(em, 0);
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_TURN_LEFT_END: plays LAOSHAN_MOT_TURN_LEFT_END, keeping the
+ * new heading; clears turnHeld when it ends.
+ */
+void EmLaoshan_TurnLeftEnd(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_TURN_LEFT_END, 0, 0);
+        break;
+    case 1:
+        if (EmLaoshan_LayerMotionDone(em, 0) != 0) {
+            w->turnHeld = 0;
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_TURN_LEFT_BACK: plays LAOSHAN_MOT_TURN_LEFT_BACK, turning
+ * back (rotY rising 128 a frame); clears turnHeld when it ends.
+ */
+void EmLaoshan_TurnLeftBack(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_TURN_LEFT_BACK, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].blend == 0) {
+            if ((EmMotion_ReachedFrame(em, 0, 30.0f) != 0) && (EmMotion_ReachedFrame(em, 0, 158.0f) == 0)) {
+                em->rotY += 128;
+            }
+            if (EmLaoshan_LayerMotionDone(em, 0) != 0) {
+                w->turnHeld = 0;
+            }
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_HALF_TURN_RIGHT: plays LAOSHAN_MOT_HALF_TURN_RIGHT, rotY
+ * rising 256 a frame between frames 82 and 210 (a half turn); clears
+ * turnHeld when it ends.
+ */
+void EmLaoshan_HalfTurnRight(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_HALF_TURN_RIGHT, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].blend == 0) {
+            if ((EmMotion_ReachedFrame(em, 0, 82.0f) != 0) && (EmMotion_ReachedFrame(em, 0, 210.0f) == 0)) {
+                em->rotY += 0x100;
+            }
+            if (EmLaoshan_LayerMotionDone(em, 0) != 0) {
+                w->turnHeld = 0;
+            }
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_HALF_TURN_LEFT: plays LAOSHAN_MOT_HALF_TURN_LEFT, rotY
+ * falling 256 a frame (a half turn); clears turnHeld when it ends.
+ */
+void EmLaoshan_HalfTurnLeft(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_HALF_TURN_LEFT, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].blend == 0) {
+            if ((EmMotion_ReachedFrame(em, 0, 82.0f) != 0) && (EmMotion_ReachedFrame(em, 0, 210.0f) == 0)) {
+                em->rotY -= 0x100;
+            }
+            if (EmLaoshan_LayerMotionDone(em, 0) != 0) {
+                w->turnHeld = 0;
+            }
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_QUARTER_TURN_RIGHT: plays LAOSHAN_MOT_QUARTER_TURN_RIGHT,
+ * rotY rising 126 a frame between frames 204 and 334 plus 8 at the end (a
+ * quarter turn); clears turnHeld.
+ */
+void EmLaoshan_QuarterTurnRight(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_QUARTER_TURN_RIGHT, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].blend == 0) {
+            if ((EmMotion_ReachedFrame(em, 0, 204.0f) != 0) && (EmMotion_ReachedFrame(em, 0, 334.0f) == 0)) {
+                em->rotY += 126;
+            }
+            if (EmLaoshan_LayerMotionDone(em, 0) != 0) {
+                w->turnHeld = 0;
+                em->rotY += 8;
+            }
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_QUARTER_TURN_LEFT: the mirror of
+ * LAOSHAN_MOVE_QUARTER_TURN_RIGHT (rotY falling) with
+ * LAOSHAN_MOT_QUARTER_TURN_LEFT; clears turnHeld.
+ */
+void EmLaoshan_QuarterTurnLeft(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_QUARTER_TURN_LEFT, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].blend == 0) {
+            if ((EmMotion_ReachedFrame(em, 0, 204.0f) != 0) && (EmMotion_ReachedFrame(em, 0, 334.0f) == 0)) {
+                em->rotY -= 126;
+            }
+            if (EmLaoshan_LayerMotionDone(em, 0) != 0) {
+                w->turnHeld = 0;
+                em->rotY -= 8;
+            }
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_WALK_REARED: in LAOSHAN_STANCE_REARED walks to
+ * the goal with LAOSHAN_MOT_REARED_WALK (Em_StepToGoal) and ends with the
+ * motion.
+ */
+void EmLaoshan_WalkReared(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_REARED;
+        Em_SetMotion(em, LAOSHAN_MOT_REARED_WALK, 0, 0);
+        break;
+    case 1:
+        if (Em_StepToGoal(em, 64, 0) == 1) {
+            em->step++;
+        }
+        break;
+    case 2:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_WALK_ATTACK: walks to the goal with LAOSHAN_MOT_WALK_ATTACK,
+ * creating LaoShanAttack kinds 66 (frame 34) and 67 (frame 410) and a
+ * sound over frames 170 to 360, and ends with the motion.
+ */
+void EmLaoshan_WalkAttack(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_WALK, 0, 0);
+        Em_SetMotion(em, LAOSHAN_MOT_WALK_ATTACK, 0, 0);
+        break;
+    case 1:
+        if (EmMotion_PassedFrameScaled(em, 34.0f, 0U) != 0) {
+            LaoShanAttack_Create(em, 66);
+        }
+        if (EmMotion_PassedFrameScaled(em, 410.0f, 0U) != 0) {
+            LaoShanAttack_Create(em, 67);
+        }
+        if (Em_StepToGoal(em, 64, 0) == 1) {
+            em->step++;
+        }
+        break;
+    case 2:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+    Em_PlaySeTypeAtBoneInFrames(em, 170, 360, 79, LAOSHAN_BONE_ROAR, 9, 1);
+}
+
+/*
+ * LAOSHAN_MOVE_WALK_ON: walks to the goal (LAOSHAN_MOT_WALK), then keeps
+ * moving by the motion delta (Em_MotionDelta, Em_MoveRotated) until the
+ * motion ends.
+ */
+void EmLaoshan_WalkOn(Em *em)
+{
+    f32 delta[3];
+    s32 moveAng[3];
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_WALK, 0, 0);
+        break;
+    case 1:
+        if (Em_StepToGoal(em, 64, 0) == 1) {
+            em->step++;
+        }
+        break;
+    case 2:
+        Em_MotionDelta(em, delta);
+        Vec_Set(&em->velX, delta[0], delta[1], -delta[2]);
+        moveAng[0] = 0;
+        moveAng[1] = em->rotY;
+        moveAng[2] = 0;
+        Em_MoveRotated(em, moveAng);
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_MOVE_WALK_BACK_ON: as LAOSHAN_MOVE_WALK_ON with
+ * LAOSHAN_MOT_WALK_BACK and Em_StepToGoal flag 4.
+ */
+void EmLaoshan_WalkBackOn(Em *em)
+{
+    f32 delta[3];
+    s32 moveAng[3];
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_WALK_BACK, 0, 0);
+        break;
+    case 1:
+        if (Em_StepToGoal(em, 64, 4) == 1) {
+            em->step++;
+        }
+        break;
+    case 2:
+        Em_MotionDelta(em, delta);
+        Vec_Set(&em->velX, delta[0], delta[1], -delta[2]);
+        moveAng[0] = 0;
+        moveAng[1] = em->rotY;
+        moveAng[2] = 0;
+        Em_MoveRotated(em, moveAng);
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/* Runs the move state (EM_GROUP_MOVE) by em->state. */
+void EmLaoshan_RunMoveState(Em *em)
+{
+    switch (em->state) {
+    case LAOSHAN_MOVE_WALK:
+        EmLaoshan_Walk(em);
+        break;
+    case LAOSHAN_MOVE_WALK_BACK:
+        EmLaoshan_WalkBack(em);
+        break;
+    case LAOSHAN_MOVE_TURN_TO_GOAL:
+        EmLaoshan_TurnToGoal(em);
+        break;
+    case LAOSHAN_MOVE_WALK_TURN_RIGHT:
+        EmLaoshan_WalkTurnRight(em);
+        break;
+    case LAOSHAN_MOVE_TURN_RIGHT_START:
+        EmLaoshan_TurnRightStart(em);
+        break;
+    case LAOSHAN_MOVE_TURN_RIGHT_HOLD:
+        EmLaoshan_TurnRightHold(em);
+        break;
+    case LAOSHAN_MOVE_TURN_RIGHT_END:
+        EmLaoshan_TurnRightEnd(em);
+        break;
+    case LAOSHAN_MOVE_TURN_RIGHT_BACK:
+        EmLaoshan_TurnRightBack(em);
+        break;
+    case LAOSHAN_MOVE_TURN_LEFT_START:
+        EmLaoshan_TurnLeftStart(em);
+        break;
+    case LAOSHAN_MOVE_TURN_LEFT_HOLD:
+        EmLaoshan_TurnLeftHold(em);
+        break;
+    case LAOSHAN_MOVE_TURN_LEFT_END:
+        EmLaoshan_TurnLeftEnd(em);
+        break;
+    case LAOSHAN_MOVE_TURN_LEFT_BACK:
+        EmLaoshan_TurnLeftBack(em);
+        break;
+    case LAOSHAN_MOVE_HALF_TURN_RIGHT:
+        EmLaoshan_HalfTurnRight(em);
+        break;
+    case LAOSHAN_MOVE_HALF_TURN_LEFT:
+        EmLaoshan_HalfTurnLeft(em);
+        break;
+    case LAOSHAN_MOVE_QUARTER_TURN_RIGHT:
+        EmLaoshan_QuarterTurnRight(em);
+        break;
+    case LAOSHAN_MOVE_QUARTER_TURN_LEFT:
+        EmLaoshan_QuarterTurnLeft(em);
+        break;
+    case LAOSHAN_MOVE_WALK_REARED:
+        EmLaoshan_WalkReared(em);
+        break;
+    case LAOSHAN_MOVE_WALK_ATTACK:
+        EmLaoshan_WalkAttack(em);
+        break;
+    case LAOSHAN_MOVE_WALK_ON:
+        EmLaoshan_WalkOn(em);
+        break;
+    case LAOSHAN_MOVE_WALK_BACK_ON:
+        EmLaoshan_WalkBackOn(em);
+
+    default:
+        break;
+    }
+}
+
+/* The empty fly dispatcher (EM_GROUP_FLY): the family has no fly states. */
+void EmLaoshan_RunFlyState(void)
+{
+}
+
+/*
+ * LAOSHAN_ATK_REARED_STRIKE: the reared attack LAOSHAN_MOT_REARED_STRIKE
+ * (its hits come from EmLaoshan_MotionEffects), ending with the motion.
+ */
+void EmLaoshan_RearedStrike(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_REARED;
+        Em_SetMotion(em, LAOSHAN_MOT_REARED_STRIKE, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_ATK_REARED_SMASH_FORT: plays LAOSHAN_MOT_REARED_SMASH; at frame
+ * 160, in fortress areas 4, 5 and 2, creates a LaoShanAttack at the fixed
+ * high fort point of the area (kinds 68, 69, 70) with
+ * EmLaoshan_SpawnSmashImpactEffects.
+ */
+void EmLaoshan_RearedSmashFort(Em *em)
+{
+    f32 pos[3];
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_REARED;
+        Em_SetMotion(em, LAOSHAN_MOT_REARED_SMASH, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        if (EmMotion_PassedFrameScaled(em, 160.0f, 0U) != 0) {
+            if ((Area_DayId(em->area) & 0xFFFF) == AREA_FORTRESS_4) {
+                Vec_Set(pos, 13300.0f, 1700.0f, 20100.0f);
+                LaoShanAttack_CreateAt(em, (f32 *) pos, 68);
+                EmLaoshan_SpawnSmashImpactEffects(em);
+            }
+            if ((Area_DayId(em->area) & 0xFFFF) == AREA_FORTRESS_5) {
+                Vec_Set(pos, 7300.0f, 1700.0f, 11700.0f);
+                LaoShanAttack_CreateAt(em, (f32 *) pos, 69);
+                EmLaoshan_SpawnSmashImpactEffects(em);
+            }
+            if ((Area_DayId(em->area) & 0xFFFF) == AREA_FORTRESS_2) {
+                Vec_Set(pos, 14600.0f, 1700.0f, 23700.0f);
+                LaoShanAttack_CreateAt(em, (f32 *) pos, 70);
+                EmLaoshan_SpawnSmashImpactEffects(em);
+            }
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_ATK_RAM_FORT: plays LAOSHAN_MOT_RAM; at frame 210 spawns
+ * EmLaoshan_SpawnRamImpactEffects and, on the host, counts fortHits up to
+ * 10 (the tenth calls Quest_TriggerEvent) and copies it to
+ * gScene.fortStage.
+ */
+void EmLaoshan_RamFort(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_RAM, 0, 0);
+        break;
+    case 1:
+        if (EmMotion_PassedFrameScaled(em, 210.0f, 0U) != 0) {
+            EmLaoshan_SpawnRamImpactEffects(em);
+            if (em->remote == 0) {
+                if (w->fortHits < 10) {
+                    w->fortHits++;
+                    if (w->fortHits >= 10) {
+                        Quest_TriggerEvent(em);
+                    }
+                    gScene.fortStage = w->fortHits;
+                }
+            }
+        }
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_ATK_REARED_STRIKE_TURN: LAOSHAN_MOT_REARED_STRIKE with turns:
+ * rotY rising 0x13E9/21 a frame between frames 36 and 78, falling 0x13E9/38
+ * a frame between 434 and 510, then rising 10 a frame.
+ */
+void EmLaoshan_RearedStrikeTurn(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_REARED;
+        Em_SetMotion(em, LAOSHAN_MOT_REARED_STRIKE, 0, 0);
+        break;
+    case 1:
+        if ((EmMotion_ReachedFrame(em, 0, 36.0f) != 0) && (EmMotion_ReachedFrame(em, 0, 78.0f) == 0)) {
+            em->timer = 21;
+            em->rotY += (0x13E9 / (s32) em->timer) & 0xFFFF;
+        }
+        if ((EmMotion_ReachedFrame(em, 0, 434.0f) != 0) && (EmMotion_ReachedFrame(em, 0, 510.0f) == 0)) {
+            em->timer = 38;
+            em->rotY -= (0x13E9 / (s32) em->timer) & 0xFFFF;
+        }
+        if (EmMotion_PassedFrameScaled(em, 510.0f, 0U) != 0) {
+            em->rotY += 10;
+        }
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_ATK_RAM_FORT_STAGE2: LAOSHAN_MOT_RAM; at frame 210 sets stage 2
+ * (host) and spawns EmLaoshan_SpawnRamImpactEffects; no fortHits.
+ */
+void EmLaoshan_RamFortStage2(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_RAM, 0, 0);
+        break;
+    case 1:
+        if (EmMotion_PassedFrameScaled(em, 210.0f, 0U) != 0) {
+            if (em->remote == 0) {
+                w->stage = 2;
+            }
+            EmLaoshan_SpawnRamImpactEffects(em);
+        }
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_ATK_RAM_FORT_STAGE3: LAOSHAN_MOT_RAM; at frame 210 sets stage 3
+ * (host), sets gScene.emEventFlags bit 0 (tested by area objects) and
+ * spawns EmLaoshan_SpawnRamImpactEffects.
+ */
+void EmLaoshan_RamFortStage3(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_RAM, 0, 0);
+        break;
+    case 1:
+        if (EmMotion_PassedFrameScaled(em, 210.0f, 0U) != 0) {
+            if (em->remote == 0) {
+                w->stage = 3;
+            }
+            gScene.emEventFlags |= 1;
+            EmLaoshan_SpawnRamImpactEffects(em);
+        }
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/* Runs the attack state (EM_GROUP_ATTACK) by em->state. */
+void EmLaoshan_RunAttackState(Em *em)
+{
+    switch (em->state) {
+    case LAOSHAN_ATK_REARED_STRIKE:
+        EmLaoshan_RearedStrike(em);
+        break;
+    case LAOSHAN_ATK_REARED_SMASH_FORT:
+        EmLaoshan_RearedSmashFort(em);
+        break;
+    case LAOSHAN_ATK_RAM_FORT:
+        EmLaoshan_RamFort(em);
+        break;
+    case LAOSHAN_ATK_REARED_STRIKE_TURN:
+        EmLaoshan_RearedStrikeTurn(em);
+        break;
+    case LAOSHAN_ATK_RAM_FORT_STAGE2:
+        EmLaoshan_RamFortStage2(em);
+        break;
+    case LAOSHAN_ATK_RAM_FORT_STAGE3:
+        EmLaoshan_RamFortStage3(em);
+
+    default:
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_REACT_FALL: LAOSHAN_MOT_FLINCH to frame 28, then falls
+ * (LAOSHAN_MOT_FALL) and gets up (LAOSHAN_MOT_GET_UP); restarts the script.
+ * Update enters it when a flinch of part 2 finds the part at state 2 or
+ * more.
+ */
+void EmLaoshan_ReactFall(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_FLINCH, 0, 0);
+        Em_RestartScript(em);
+        break;
+    case 1:
+        if (EmMotion_PassedFrameScaled(em, 28.0f, 0U) != 0) {
+            em->step++;
+            Em_SetMotion(em, LAOSHAN_MOT_FALL, 0, 0);
+        }
+        break;
+    case 2:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            Em_SetMotion(em, LAOSHAN_MOT_GET_UP, 0, 0);
+        }
+        break;
+    case 3:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_REACT_REARED_FLINCH: the reared flinch LAOSHAN_MOT_REARED_FLINCH
+ * (EM_DMG_PART_FLINCH while reared); restarts the script.
+ */
+void EmLaoshan_ReactRearedFlinch(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_REARED;
+        Em_SetMotion(em, LAOSHAN_MOT_REARED_FLINCH, 0, 0);
+        Em_RestartScript(em);
+        break;
+    case 1:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_REACT_PUSHED_BACK: LAOSHAN_MOT_PUSHED_BACK moving backward (velZ
+ * about -26.9, Em_MoveRotated) until frame 46, then ends with the motion
+ * (EM_DMG_ATTACK9 on all fours); restarts the script.
+ */
+void EmLaoshan_ReactPushedBack(Em *em)
+{
+    s32 moveAng[3];
+
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_PUSHED_BACK, 0, 0);
+        Em_RestartScript(em);
+        Player_ClearVelocity(em);
+        em->velZ = -26.913044f;
+        break;
+    case 1:
+        if (em->motion[0].blend == 0) {
+            moveAng[0] = 0;
+            moveAng[1] = em->rotY;
+            moveAng[2] = 0;
+            Em_MoveRotated(em, moveAng);
+            if (EmMotion_ReachedFrame(em, 0, 46.0f) != 0) {
+                em->step++;
+            }
+        }
+        break;
+    case 2:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_REACT_FLINCH: LAOSHAN_MOT_FLINCH on all fours
+ * (EM_DMG_PART_FLINCH); restarts the script.
+ */
+void EmLaoshan_ReactFlinch(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_FLINCH, 0, 0);
+        Em_RestartScript(em);
+        break;
+    case 1:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_REACT_REAR_DOWN: drops from reared to all fours
+ * (LAOSHAN_MOT_REAR_DOWN, then LAOSHAN_STANCE_ALL_FOURS) as a reaction; Update does
+ * not enter it.
+ */
+void EmLaoshan_ReactRearDown(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_REARED;
+        Em_SetMotion(em, LAOSHAN_MOT_REAR_DOWN, 0, 0);
+        break;
+    case 1:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            em->stance = LAOSHAN_STANCE_ALL_FOURS;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_REACT_REARED_FLINCH_DOWN: LAOSHAN_MOT_REARED_FLINCH then
+ * LAOSHAN_MOT_REAR_DOWN back to all fours (EM_DMG_ATTACK9 while reared);
+ * restarts the script.
+ */
+void EmLaoshan_ReactRearedFlinchDown(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_REARED;
+        Em_SetMotion(em, LAOSHAN_MOT_REARED_FLINCH, 0, 0);
+        Em_RestartScript(em);
+        break;
+    case 1:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            Em_SetMotion(em, LAOSHAN_MOT_REAR_DOWN, 0, 0);
+        }
+        break;
+    case 2:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            em->stance = LAOSHAN_STANCE_ALL_FOURS;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_REACT_FALL_LONG: as LAOSHAN_REACT_FALL but stays down 300 frames
+ * before LAOSHAN_MOT_GET_UP. Update enters it when a flinch of part 3 finds
+ * the part at state 2 or more.
+ */
+void EmLaoshan_ReactFallLong(Em *em)
+{
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_FLINCH, 0, 0);
+        Em_RestartScript(em);
+        break;
+    case 1:
+        if (EmMotion_PassedFrameScaled(em, 28.0f, 0U) != 0) {
+            em->step++;
+            Em_SetMotion(em, LAOSHAN_MOT_FALL, 0, 0);
+        }
+        break;
+    case 2:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            em->timer = 300;
+        }
+        break;
+    case 3:
+        if (--em->timer <= 0) {
+            em->step++;
+            Em_SetMotion(em, LAOSHAN_MOT_GET_UP, 0, 0);
+        }
+        break;
+    case 4:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            EmLaoshan_EndState(em);
+        }
+        break;
+    }
+}
+
+/* Runs the reaction state (EM_GROUP_REACT) by em->state. */
+void EmLaoshan_RunReactState(Em *em)
+{
+    switch (em->state) {
+    case LAOSHAN_REACT_FALL:
+        EmLaoshan_ReactFall(em);
+        break;
+    case LAOSHAN_REACT_REARED_FLINCH:
+        EmLaoshan_ReactRearedFlinch(em);
+        break;
+    case LAOSHAN_REACT_PUSHED_BACK:
+        EmLaoshan_ReactPushedBack(em);
+        break;
+    case LAOSHAN_REACT_FLINCH:
+        EmLaoshan_ReactFlinch(em);
+        break;
+    case LAOSHAN_REACT_REAR_DOWN:
+        EmLaoshan_ReactRearDown(em);
+        break;
+    case LAOSHAN_REACT_REARED_FLINCH_DOWN:
+        EmLaoshan_ReactRearedFlinchDown(em);
+        break;
+    case LAOSHAN_REACT_FALL_LONG:
+        EmLaoshan_ReactFallLong(em);
+
+    default:
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_DEFEAT_DIE: QuestEm_Hunted and CamReq_BossHunted, rears up
+ * (LAOSHAN_MOT_REAR_UP to frame 450), collapses (LAOSHAN_MOT_DIE), becomes
+ * EM_STANCE_DEAD without field collision, adds the carcass mine points and
+ * keeps them updated. Debug switch 66 revives it (hp 13333, points
+ * removed, EmLaoshan_EndState).
+ */
+void EmLaoshan_Die(Em *em)
+{
+    em->noPushTimer = 5;
+    Em_SetCombat(em, 0, 0);
+    switch (em->step) {
+    case 0:
+        em->step++;
+        Em_SetMotion(em, LAOSHAN_MOT_REAR_UP, 0, 0);
+        em->timer = 0;
+        em->lookAtTarget = 0;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        QuestEm_Hunted(em);
+        CamReq_BossHunted();
+        break;
+    case 1:
+        if (EmMotion_PassedFrameScaled(em, 450.0f, 0) != 0) {
+            em->step++;
+            em->stance = LAOSHAN_STANCE_REARED;
+            Em_SetMotion(em, LAOSHAN_MOT_DIE, 0, 0);
+        }
+        break;
+    case 2:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            em->stance = EM_STANCE_DEAD;
+            EmLaoshan_AddCarcassMinePoints(em);
+            em->fieldCollide = 0;
+        }
+        break;
+    case 3:
+        if (Debug_IsOn(66) != 0) {
+            em->step = 99;
+        } else {
+            EmLaoshan_UpdateCarcassMinePoints(em);
+        }
+        break;
+    case 99:
+        em->step++;
+        EmLaoshan_RemoveCarcassMinePoints(em);
+        em->hp = 13333;
+        EmLaoshan_EndState(em);
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_DEFEAT_DIE_REARED: as LAOSHAN_DEFEAT_DIE but collapses at once
+ * (LAOSHAN_MOT_DIE) from the reared stance; Update does not enter it.
+ */
+void EmLaoshan_DieReared(Em *em)
+{
+    em->noPushTimer = 5;
+    Em_SetCombat(em, 0, 0);
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->stance = LAOSHAN_STANCE_REARED;
+        Em_SetMotion(em, LAOSHAN_MOT_DIE, 0, 0);
+        QuestEm_Hunted(em);
+        CamReq_BossHunted();
+        break;
+    case 1:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            em->stance = EM_STANCE_DEAD;
+            EmLaoshan_AddCarcassMinePoints(em);
+            em->fieldCollide = 0;
+        }
+        break;
+    case 2:
+        if (Debug_IsOn(66) != 0) {
+            em->step = 99;
+        } else {
+            EmLaoshan_UpdateCarcassMinePoints(em);
+        }
+        break;
+    case 99:
+        em->step++;
+        em->hp = 13333;
+        EmLaoshan_RemoveCarcassMinePoints(em);
+        EmLaoshan_EndState(em);
+        break;
+    }
+}
+
+/* Runs the defeat state (EM_GROUP_DEFEAT) by em->state. */
+void EmLaoshan_RunDefeatState(Em *em)
+{
+    switch (em->state) {
+    case LAOSHAN_DEFEAT_DIE:
+        EmLaoshan_Die(em);
+        break;
+    case LAOSHAN_DEFEAT_DIE_REARED:
+        EmLaoshan_DieReared(em);
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_EVENT_INTRO: the opening scene in fortress area 1 (no hits, no
+ * sensing): resets the size, idles 240 frames, walks a fixed path, moves to
+ * a fixed spot, rears up, strikes and drops (REAR_UP, REARED_IDLE,
+ * REARED_STRIKE, REAR_DOWN motions), sets stage 1, idles until the save
+ * event flag of the kind is set, then ends.
+ */
+void EmLaoshan_IntroScene(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+    f32 delta[3];
+
+    em->senseDelay = 5;
+    em->noHitTimer = 5;
+    switch (em->step) {
+    case 0:
+#if PLATFORM_PC
+        GmEm_ResetSize(em); /* the PS2 passes no argument: a0 is still em */
+#else
+        GmEm_ResetSize();
+#endif
+        em->step++;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_IDLE, 0, 0);
+        em->timer = 240;
+        em->posX = 8150.0f;
+        em->posY = 0.0f;
+        em->posZ = 9310.0f;
+        em->goal[0] = 10660.0f;
+        em->goal[1] = 0.0f;
+        em->goal[2] = 9250.0f;
+        em->rotY = Math_AngleXZ(&em->posX, em->goal);
+        em->goalDist = Vec_DistanceXZ(&em->posX, em->goal);
+        w->stage = 1;
+        em->scriptPending = 0;
+        break;
+    case 1:
+        if (--em->timer <= 0) {
+            em->step++;
+            Em_SetMotion(em, LAOSHAN_MOT_WALK, 0, 0);
+        }
+        break;
+    case 2:
+        Em_MotionDelta(em, delta);
+        em->goalDist -= delta[2];
+        if (em->goalDist <= 0.0f) {
+            em->step++;
+            em->posX = 13600.0f;
+            em->posY = 0.0f;
+            em->posZ = 10750.0f;
+            em->rotY = 0x25E0;
+            Em_SetMotion(em, LAOSHAN_MOT_REAR_UP, 0, 0);
+        }
+        break;
+    case 3:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            Em_SetMotion(em, LAOSHAN_MOT_REARED_IDLE, 0, 0);
+        }
+        break;
+    case 4:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            Em_SetMotion(em, LAOSHAN_MOT_REARED_STRIKE, 0, 0);
+        }
+        break;
+    case 5:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            Em_SetMotion(em, LAOSHAN_MOT_REAR_DOWN, 0, 0);
+        }
+        break;
+    case 6:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            Em_SetMotion(em, LAOSHAN_MOT_IDLE, 0, 0);
+        }
+        break;
+    case 7:
+        if (em->type == EM_KIND_LAO_SHAN_LUNG) {
+            if (Save_TestEventFlag(EVENT_FLAG_LAO_SHAN_SCENE) == 1) {
+                em->step++;
+                EmLaoshan_EndState(em);
+            }
+        } else {
+            if (Save_TestEventFlag(EVENT_FLAG_ASHEN_LAO_SHAN_SCENE) == 1) {
+                em->step++;
+                EmLaoshan_EndState(em);
+            }
+        }
+        break;
+    }
+}
+
+/*
+ * LAOSHAN_EVENT_REPELLED_LEAVE: in fortress area 5 once the quest goal is
+ * met: from a fixed spot plays LAOSHAN_MOT_LEAVE_START, turns
+ * (LAOSHAN_MOT_LEAVE_TURN, rotY rising 0x210 a frame to frame 64), walks
+ * with LAOSHAN_MOT_WALK_ATTACK to two fixed goals, then stays in step 5 for
+ * good.
+ */
+void EmLaoshan_RepelledLeave(Em *em)
+{
+    em->senseDelay = 5;
+    em->noHitTimer = 5;
+    switch (em->step) {
+    case 0:
+        em->step++;
+        em->stance = LAOSHAN_STANCE_ALL_FOURS;
+        Em_SetMotion(em, LAOSHAN_MOT_LEAVE_START, 0, 0);
+        em->posX = 6070.0f;
+        em->posY = 0.0f;
+        em->posZ = 17350.0f;
+        em->goal[0] = 3600.0f;
+        em->goal[1] = 0.0f;
+        em->goal[2] = 19500.0f;
+        em->rotY = (Math_AngleXZ(&em->posX, em->goal) & 0xFFFF) - ANGLE_TURN / 4;
+        em->hasGoal = 1;
+        em->goalDist = Vec_DistanceXZ(&em->posX, em->goal) - 500.0f;
+        break;
+    case 1:
+        if (em->motion[0].playing == 0) {
+            em->step++;
+            Em_SetMotion(em, LAOSHAN_MOT_LEAVE_TURN, 0, 0);
+            break;
+        }
+    case 5:
+    default:
+        break;
+    case 2:
+        if (em->motion[0].blend == 0) {
+            if (EmMotion_ReachedFrame(em, 0, 64.0f) == 0) {
+                em->rotY += 0x210;
+            }
+            if (em->motion[0].playing == 0) {
+                em->step++;
+                Em_SetMotion(em, LAOSHAN_MOT_WALK, 0, 0);
+                Em_SetMotion(em, LAOSHAN_MOT_WALK_ATTACK, 0, 0);
+                break;
+            }
+        }
+        break;
+    case 3:
+        if ((em->motion[1].playing == 0) && (em->motionId[1] == EM_MOTION_ID(1, LAOSHAN_MOT_WALK_ATTACK))) {
+            Em_SetLayerMotion(em, EM_MOTION_ID(1, LAOSHAN_MOT_WALK), 0, 0, 1);
+        }
+        if (Em_StepToGoal(em, 64, 0) == 1) {
+            em->goal[0] = 430.0f;
+            em->goal[1] = 0.0f;
+            em->goal[2] = 23930.0f;
+            em->step++;
+            em->goalDist = Vec_DistanceXZ(&em->posX, em->goal);
+        }
+        break;
+    case 4:
+        if (Em_StepToGoal(em, 64, 0) == 1) {
+            em->step++;
+            Em_SetMotion(em, LAOSHAN_MOT_WALK, 0, 0);
+        }
+        break;
+    }
+}
+
+/* Runs the event state (groups 6 and 7) by em->state. */
+void EmLaoshan_RunEventState(Em *em)
+{
+    switch (em->state) {
+    case LAOSHAN_EVENT_INTRO:
+        EmLaoshan_IntroScene(em);
+        break;
+    case LAOSHAN_EVENT_REPELLED_LEAVE:
+        EmLaoshan_RepelledLeave(em);
+        break;
+    }
+}
+
+/*
+ * Per-frame update: keeps the living mine point at its spot (removed when
+ * emptied), counts turnHeldFrames, counts quakeTimer down, sends the state
+ * every 150 frames on the host outside EM_GROUP_EVENT (QSync_SendEm), maps the
+ * Em_UpdateDamage result to states, starts the intro scene or the repelled
+ * exit by area, runs the pending script, then runs the state (twice on a
+ * stateRequest).
+ */
+void EmLaoshan_Update(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+    f32 pos[3];
+    u8 dmgInfo[4];
+    s8 count;
+
+    if (w->mineSlot != -1) {
+        EmLaoshan_GetMinePointPos(em, pos);
+        MinePoint_SetPos(w->mineSlot, pos);
+        count = MinePoint_Count(w->mineSlot);
+        w->mineCount = count;
+        if (count <= 0) {
+            MinePoint_Remove(w->mineSlot);
+            w->mineSlot = -1;
+        }
+    }
+    if (w->turnHeld != 0) {
+        (w->turnHeldFrames)++;
+    }
+    if (em->quakeTimer != 0) {
+        if (--em->quakeTimer <= 0) {
+            em->quakeTimer = 0;
+        }
+    }
+    if (w->syncTimer != 0 && em->stateGroup != EM_GROUP_EVENT && em->remote == 0) {
+        if (--w->syncTimer <= 0) {
+            w->syncTimer = 150;
+            QSync_SendEm(em, QSYNC_EMMSG_STATE_NO_PARTS, 0);
+        }
+    }
+    switch (Em_UpdateDamage(em, dmgInfo) & 0xFF) {
+    case EM_DMG_NONE:
+    case EM_DMG_ATTACK6:
+    case EM_DMG_STATUS_IN_AIR:
+    case EM_DMG_STATUS4:
+    case EM_DMG_CAPTURED:
+    case EM_DMG_STATUS2:
+    case EM_DMG_FLASH:
+    case EM_DMG_HIT_LYING:
+    case EM_DMG_PART8_DOWN:
+    case EM_DMG_HIT_MODE3:
+    case EM_DMG_HIT:
+    case EM_DMG_ATTACK5:
+    case EM_DMG_ATTACK5_FLINCH:
+    case EM_DMG_ATTACK13:
+        break;
+    case EM_DMG_KILLED:
+    case EM_DMG_DEAD:
+        EmLaoshan_ChangeState(em, EM_GROUP_DEFEAT, LAOSHAN_DEFEAT_DIE, EM_SYNC_SEND_AND_SET);
+        break;
+    case EM_DMG_ATTACK9:
+        if (em->stance == LAOSHAN_STANCE_REARED) {
+            EmLaoshan_ChangeState(em, EM_GROUP_REACT, LAOSHAN_REACT_REARED_FLINCH_DOWN, EM_SYNC_SEND_AND_SET);
+        } else {
+            EmLaoshan_ChangeState(em, EM_GROUP_REACT, LAOSHAN_REACT_PUSHED_BACK, EM_SYNC_SEND_AND_SET);
+        }
+        break;
+    case EM_DMG_STATUS5:
+        Em_EndStatus5(em);
+        break;
+    case EM_DMG_PART_FLINCH:
+        if (em->stance == LAOSHAN_STANCE_REARED) {
+            EmLaoshan_ChangeState(em, EM_GROUP_REACT, LAOSHAN_REACT_REARED_FLINCH, EM_SYNC_SEND_AND_SET);
+        } else {
+            switch (em->flinchPart) {
+            case 0:
+            case 1:
+            case 4:
+            case 5:
+            case 6:
+            case 7:
+                EmLaoshan_ChangeState(em, EM_GROUP_REACT, LAOSHAN_REACT_FLINCH, EM_SYNC_SEND_AND_SET);
+                break;
+            case 2:
+                if (em->parts[em->flinchPart].state >= 2) {
+                    EmLaoshan_ChangeState(em, EM_GROUP_REACT, LAOSHAN_REACT_FALL, EM_SYNC_SEND_AND_SET);
+                } else {
+                    EmLaoshan_ChangeState(em, EM_GROUP_REACT, LAOSHAN_REACT_FLINCH, EM_SYNC_SEND_AND_SET);
+                }
+                break;
+            case 3:
+                if (em->parts[em->flinchPart].state >= 2) {
+                    EmLaoshan_ChangeState(em, EM_GROUP_REACT, LAOSHAN_REACT_FALL_LONG, EM_SYNC_SEND_AND_SET);
+                } else {
+                    EmLaoshan_ChangeState(em, EM_GROUP_REACT, LAOSHAN_REACT_FLINCH, EM_SYNC_SEND_AND_SET);
+                }
+                break;
+            }
+        }
+        break;
+    }
+    switch (Area_DayId(em->area)) {
+    case AREA_FORTRESS_1:
+        if (em->type == EM_KIND_LAO_SHAN_LUNG) {
+            if (Save_TestEventFlag(EVENT_FLAG_LAO_SHAN_SCENE) != 0) {
+                /* the scene was seen: the script runs as in any area */
+                goto normal;
+            }
+            if (gScene.eventRunning == 1 && em->stateGroup != EM_GROUP_EVENT) {
+                EmLaoshan_ChangeState(em, EM_GROUP_EVENT, LAOSHAN_EVENT_INTRO, EM_SYNC_LOCAL);
+            }
+        } else {
+            if (Save_TestEventFlag(EVENT_FLAG_ASHEN_LAO_SHAN_SCENE) != 0) {
+                /* the scene was seen: the script runs as in any area */
+                goto normal;
+            }
+            if (gScene.eventRunning == 1 && em->stateGroup != EM_GROUP_EVENT) {
+                EmLaoshan_ChangeState(em, EM_GROUP_EVENT, LAOSHAN_EVENT_INTRO, EM_SYNC_LOCAL);
+            }
+        }
+        break;
+    case AREA_FORTRESS_5:
+        if (Quest_GetOutcome(0) == 1 && em->stateGroup != EM_GROUP_EVENT && em->stateGroup != EM_GROUP_DEFEAT) {
+            em->scriptPending = 0;
+            if (gScene.area == em->area) {
+                CamReq_ForMonster(em);
+            }
+            EmLaoshan_ChangeState(em, EM_GROUP_EVENT, LAOSHAN_EVENT_REPELLED_LEAVE, EM_SYNC_LOCAL);
+        }
+    default:
+    normal:
+        Em_UpdatePendingScript(em);
+        break;
+    }
+    Em_ClearHitReactMode(em);
+    EmLaoshan_RunState(em);
+    if (em->stateRequest != 0) {
+        EmLaoshan_RunState(em);
+        em->stateRequest = 0;
+    }
+}
+
+/*
+ * Runs the state dispatcher of em->stateGroup (group 7 also runs the event
+ * dispatcher; ChangeState has no case for group 7).
+ */
+void EmLaoshan_RunState(Em *em)
+{
+    switch (em->stateGroup) {
+    case EM_GROUP_IDLE:
+        EmLaoshan_RunIdleState(em);
+        break;
+    case EM_GROUP_MOVE:
+        EmLaoshan_RunMoveState(em);
+        break;
+    case EM_GROUP_FLY:
+        EmLaoshan_RunFlyState();
+        break;
+    case EM_GROUP_ATTACK:
+        EmLaoshan_RunAttackState(em);
+        break;
+    case EM_GROUP_REACT:
+        EmLaoshan_RunReactState(em);
+        break;
+    case EM_GROUP_DEFEAT:
+        EmLaoshan_RunDefeatState(em);
+        break;
+    case EM_GROUP_EVENT:
+        EmLaoshan_RunEventState(em);
+        break;
+    case EM_GROUP_EVENT2:
+        EmLaoshan_RunEventState(em);
+
+    default:
+        break;
+    }
+}
+
+/*
+ * Requests camera shake kind i (CamShake_ReqAIf) when the layer-0 motion
+ * passes the frame.
+ */
+void EmLaoshan_CamShakeOnFrame(s32 *em, s32 frame, s32 shakeKind)
+{
+    if (EmMotion_PassedFrameScaled((Em *) em, (f32) frame, 0U) != 0) {
+        CamShake_ReqAIf((Em *) em, shakeKind);
+    }
+}
+
+/* The default case of the motion effects: does nothing. */
+static void EmLaoshan_MotionEffectsDefault(Em *em)
+{
+}
+
+/*
+ * Per frame: tracks the layer-0 motion (fxMotion, clearing unk00A on a
+ * change), plays EmLaoshan_MotionSounds, and by motion creates the step and
+ * body hits (LaoShanAttack_Create, LaoShanAttack_CreateSpan), falling rocks
+ * at the spots in turn (StageShot_CreateAtSpot, fxSpot), dust effects,
+ * camera shakes and stage objects at fixed frames.
+ */
+void EmLaoshan_MotionEffects(Em *em, EmLaoshanWork *work)
+{
+    if (em->motionId[0] != work->fxMotion) {
+        work->unk00A = 0;
+        work->fxMotion = em->motionId[0];
+    }
+    EmLaoshan_MotionSounds(em, (struct EmWork *)work);
+    switch (work->fxMotion) {
+    case EM_MOTION_ID(0, LAOSHAN_MOT_IDLE):
+        if (EmMotion_PassedFrameScaled(em, 4.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 38);
+        }
+        if (EmMotion_PassedFrameScaled(em, 74.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 56);
+        }
+        if (EmMotion_PassedFrameScaled(em, 172.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 148);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_WALK_BACK):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 146, 2);
+        if (EmMotion_PassedFrameScaled(em, 146.0f, 0) != 0) {
+            StageShot_CreateAtSpot(em, STAGESHOT_LAOSHAN_ROCK, work->fxSpot);
+            work->fxSpot += 1;
+            work->fxSpot &= 3;
+        }
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 178, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 290, 2);
+        if (EmMotion_PassedFrameScaled(em, 290.0f, 0) != 0) {
+            StageShot_CreateAtSpot(em, STAGESHOT_LAOSHAN_ROCK, work->fxSpot);
+            work->fxSpot += 1;
+            work->fxSpot &= 3;
+        }
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 382, 2);
+        if (EmMotion_PassedFrameScaled(em, 68.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 5);
+        }
+        if (EmMotion_PassedFrameScaled(em, 246.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 6);
+        }
+        if (EmMotion_PassedFrameScaled(em, 350.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 7);
+        }
+        if (EmMotion_PassedFrameScaled(em, 144.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 8);
+        }
+        if (EmMotion_PassedFrameScaled(em, 176.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 380.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 284.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 136.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_WALK):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 44, 2);
+        if (EmMotion_PassedFrameScaled(em, 44.0f, 0) != 0) {
+            StageShot_CreateAtSpot(em, STAGESHOT_LAOSHAN_ROCK, work->fxSpot);
+            work->fxSpot += 1;
+            work->fxSpot &= 3;
+        }
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 154, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 248, 2);
+        if (EmMotion_PassedFrameScaled(em, 248.0f, 0) != 0) {
+            StageShot_CreateAtSpot(em, STAGESHOT_LAOSHAN_ROCK, work->fxSpot);
+            work->fxSpot += 1;
+            work->fxSpot &= 3;
+        }
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 366, 2);
+        if (EmMotion_PassedFrameScaled(em, 130.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 1);
+        }
+        if (EmMotion_PassedFrameScaled(em, 314.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 2);
+        }
+        if (EmMotion_PassedFrameScaled(em, 222.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 3);
+        }
+        if (EmMotion_PassedFrameScaled(em, 18.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 4);
+        }
+        if (EmMotion_PassedFrameScaled(em, 108.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 66);
+        }
+        if (EmMotion_PassedFrameScaled(em, 250.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 34);
+        }
+        if (EmMotion_PassedFrameScaled(em, 346.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 62);
+        }
+        if (EmMotion_PassedFrameScaled(em, 442.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 20);
+        }
+        if (EmMotion_PassedFrameScaled(em, 44.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 254.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 360.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 152.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_WALK_TURN_RIGHT):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 82, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 196, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 314, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 426, 2);
+        if (EmMotion_PassedFrameScaled(em, 380.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 9);
+        }
+        if (EmMotion_PassedFrameScaled(em, 170.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 10);
+        }
+        if (EmMotion_PassedFrameScaled(em, 50.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 11);
+        }
+        if (EmMotion_PassedFrameScaled(em, 276.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 12);
+        }
+        if (EmMotion_PassedFrameScaled(em, 96.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 26);
+        }
+        if (EmMotion_PassedFrameScaled(em, 158.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 60);
+        }
+        if (EmMotion_PassedFrameScaled(em, 352.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 26);
+        }
+        if (EmMotion_PassedFrameScaled(em, 394.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 56);
+        }
+        if (EmMotion_PassedFrameScaled(em, 310.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 80.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 192.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 424.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_WALK_TURN_LEFT):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 82, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 196, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 314, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 426, 2);
+        if (EmMotion_PassedFrameScaled(em, 170.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 13);
+        }
+        if (EmMotion_PassedFrameScaled(em, 380.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 14);
+        }
+        if (EmMotion_PassedFrameScaled(em, 276.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 15);
+        }
+        if (EmMotion_PassedFrameScaled(em, 50.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 16);
+        }
+        if (EmMotion_PassedFrameScaled(em, 96.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 26);
+        }
+        if (EmMotion_PassedFrameScaled(em, 158.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 60);
+        }
+        if (EmMotion_PassedFrameScaled(em, 352.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 26);
+        }
+        if (EmMotion_PassedFrameScaled(em, 394.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 56);
+        }
+        if (EmMotion_PassedFrameScaled(em, 80.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 310.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 424.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 192.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_ROAR_START):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 82, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 170, 2);
+        if (EmMotion_PassedFrameScaled(em, 40.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 17);
+        }
+        if (EmMotion_PassedFrameScaled(em, 80.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 100);
+        }
+        if (EmMotion_PassedFrameScaled(em, 158.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 70.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_ROAR):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 380, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 460, 2);
+        if (EmMotion_PassedFrameScaled(em, 326.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 18);
+        }
+        if (EmMotion_PassedFrameScaled(em, 80.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 200);
+        }
+        if (EmMotion_PassedFrameScaled(em, 450.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 368.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 2.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 81);
+            ElementBurst_CreateOnEm(em, 5, 20, 1.5f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REAR_UP):
+        if (EmMotion_PassedFrameScaled(em, 326.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 19);
+        }
+        if (EmMotion_PassedFrameScaled(em, 326.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 20);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_RAM):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 62, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 106, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 150, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 210, 5);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 420, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 476, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 510, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 546, 2);
+        if (EmMotion_PassedFrameScaled(em, 150.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 21);
+        }
+        if (EmMotion_PassedFrameScaled(em, 102.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 22);
+        }
+        if (EmMotion_PassedFrameScaled(em, 24.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 23);
+        }
+        if (EmMotion_PassedFrameScaled(em, 64.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 24);
+        }
+        if (EmMotion_PassedFrameScaled(em, 184.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 25);
+        }
+        if (EmMotion_PassedFrameScaled(em, 322.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 26);
+        }
+        if (EmMotion_PassedFrameScaled(em, 434.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 26);
+        }
+        if (EmMotion_PassedFrameScaled(em, 210.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 85);
+        }
+        if (EmMotion_PassedFrameScaled(em, 98.0f, 0) || EmMotion_PassedFrameScaled(em, 424.0f, 0) || EmMotion_PassedFrameScaled(em, 540.0f, 0)) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if ((EmMotion_PassedFrameScaled(em, 58.0f, 0) != 0) || (EmMotion_PassedFrameScaled(em, 468.0f, 0) != 0)) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+        }
+        if ((EmMotion_PassedFrameScaled(em, 136.0f, 0) != 0) || (EmMotion_PassedFrameScaled(em, 504.0f, 0) != 0)) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if ((EmMotion_PassedFrameScaled(em, 192.0f, 0) != 0) || (EmMotion_PassedFrameScaled(em, 404.0f, 0) != 0)) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REARED_IDLE):
+        if (EmMotion_PassedFrameScaled(em, 130.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 76);
+        }
+        if (EmMotion_PassedFrameScaled(em, 320.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 66);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REARED_STRIKE):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 76, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 506, 2);
+        if (EmMotion_PassedFrameScaled(em, 162.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 27);
+        }
+        if (EmMotion_PassedFrameScaled(em, 48.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 28);
+        }
+        if (EmMotion_PassedFrameScaled(em, 442.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 29);
+        }
+        if (EmMotion_PassedFrameScaled(em, 152.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 10);
+        }
+        if (EmMotion_PassedFrameScaled(em, 364.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 76);
+        }
+        if (EmMotion_PassedFrameScaled(em, 500.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 58);
+        }
+        if (EmMotion_PassedFrameScaled(em, 74.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 494.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REARED_SMASH):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 86, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 154, 5);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 262, 2);
+        if (EmMotion_PassedFrameScaled(em, 134.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 30);
+        }
+        if (EmMotion_PassedFrameScaled(em, 60.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 31);
+        }
+        if (EmMotion_PassedFrameScaled(em, 216.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 32);
+        }
+        if (EmMotion_PassedFrameScaled(em, 156.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 44);
+        }
+        if (EmMotion_PassedFrameScaled(em, 252.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 28);
+        }
+        if (EmMotion_PassedFrameScaled(em, 82.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 258.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.5f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REAR_DOWN):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 132, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 284, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 474, 5);
+        if (EmMotion_PassedFrameScaled(em, 70.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 33);
+        }
+        if (EmMotion_PassedFrameScaled(em, 348.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 34);
+        }
+        if (EmMotion_PassedFrameScaled(em, 204.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 35);
+        }
+        if (EmMotion_PassedFrameScaled(em, 458.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 36);
+        }
+        if (EmMotion_PassedFrameScaled(em, 458.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 37);
+        }
+        if (EmMotion_PassedFrameScaled(em, 64.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 42);
+        }
+        if (EmMotion_PassedFrameScaled(em, 250.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 50);
+        }
+        if (EmMotion_PassedFrameScaled(em, 370.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 50);
+        }
+        if (EmMotion_PassedFrameScaled(em, 464.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 18);
+        }
+        if (EmMotion_PassedFrameScaled(em, 472.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.8f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 470.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.8f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 274.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if ((EmMotion_PassedFrameScaled(em, 114.0f, 0) != 0) || (EmMotion_PassedFrameScaled(em, 394.0f, 0) != 0)) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REARED_WALK):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 30, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 168, 2);
+        if (EmMotion_PassedFrameScaled(em, 26.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 164.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 148.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 72);
+        }
+        if (EmMotion_PassedFrameScaled(em, 12.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 73);
+        }
+        if (EmMotion_PassedFrameScaled(em, 182.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 74);
+        }
+        if (EmMotion_PassedFrameScaled(em, 24.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 75);
+        }
+        if (EmMotion_PassedFrameScaled(em, 24.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 36);
+        }
+        if (EmMotion_PassedFrameScaled(em, 170.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 40);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_RIGHT_START):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 82, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 166, 2);
+        if (EmMotion_PassedFrameScaled(em, 60.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 38);
+        }
+        if (EmMotion_PassedFrameScaled(em, 156.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 39);
+        }
+        if (EmMotion_PassedFrameScaled(em, 100.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 36);
+        }
+        if (EmMotion_PassedFrameScaled(em, 154.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 46);
+        }
+        if (EmMotion_PassedFrameScaled(em, 162.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 76.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_RIGHT_HOLD):
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_LEFT_HOLD):
+        if (EmMotion_PassedFrameScaled(em, 28.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 52);
+        }
+        if (EmMotion_PassedFrameScaled(em, 154.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 50);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_RIGHT_BACK):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 80, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 140, 2);
+        if (EmMotion_PassedFrameScaled(em, 104.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 40);
+        }
+        if (EmMotion_PassedFrameScaled(em, 50.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 41);
+        }
+        if (EmMotion_PassedFrameScaled(em, 10.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 44);
+        }
+        if (EmMotion_PassedFrameScaled(em, 74.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 72);
+        }
+        if (EmMotion_PassedFrameScaled(em, 78.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 138.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_RIGHT_END):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 74, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 158, 2);
+        if (EmMotion_PassedFrameScaled(em, 132.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 42);
+        }
+        if (EmMotion_PassedFrameScaled(em, 46.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 43);
+        }
+        if (EmMotion_PassedFrameScaled(em, 30.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 30);
+        }
+        if (EmMotion_PassedFrameScaled(em, 82.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 78);
+        }
+        if (EmMotion_PassedFrameScaled(em, 70.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 154.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_QUARTER_TURN_RIGHT):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 82, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 166, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 252, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 336, 2);
+        if (EmMotion_PassedFrameScaled(em, 120.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 44);
+        }
+        if (EmMotion_PassedFrameScaled(em, 48.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 45);
+        }
+        if (EmMotion_PassedFrameScaled(em, 216.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 46);
+        }
+        if (EmMotion_PassedFrameScaled(em, 306.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 47);
+        }
+        if (EmMotion_PassedFrameScaled(em, 50.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 38);
+        }
+        if (EmMotion_PassedFrameScaled(em, 120.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 122);
+        }
+        if (EmMotion_PassedFrameScaled(em, 266.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 64);
+        }
+        if (EmMotion_PassedFrameScaled(em, 334.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 248.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 78.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 162.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_HALF_TURN_RIGHT):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 80, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 162, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 206, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 284, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 362, 2);
+        if (EmMotion_PassedFrameScaled(em, 34.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 48);
+        }
+        if (EmMotion_PassedFrameScaled(em, 208.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 49);
+        }
+        if (EmMotion_PassedFrameScaled(em, 96.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 50);
+        }
+        if (EmMotion_PassedFrameScaled(em, 162.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 51);
+        }
+        if (EmMotion_PassedFrameScaled(em, 300.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 76);
+        }
+        if (EmMotion_PassedFrameScaled(em, 368.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 77);
+        }
+        if (EmMotion_PassedFrameScaled(em, 18.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 86);
+        }
+        if (EmMotion_PassedFrameScaled(em, 280.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 140);
+        }
+        if (EmMotion_PassedFrameScaled(em, 204.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 158.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 280.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if ((EmMotion_PassedFrameScaled(em, 76.0f, 0) != 0) || (EmMotion_PassedFrameScaled(em, 358.0f, 0) != 0)) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_LEFT_START):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 82, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 166, 2);
+        if (EmMotion_PassedFrameScaled(em, 156.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 52);
+        }
+        if (EmMotion_PassedFrameScaled(em, 60.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 53);
+        }
+        if (EmMotion_PassedFrameScaled(em, 100.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 36);
+        }
+        if (EmMotion_PassedFrameScaled(em, 154.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 46);
+        }
+        if (EmMotion_PassedFrameScaled(em, 76.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 162.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_LEFT_BACK):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 80, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 140, 2);
+        if (EmMotion_PassedFrameScaled(em, 50.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 54);
+        }
+        if (EmMotion_PassedFrameScaled(em, 104.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 55);
+        }
+        if (EmMotion_PassedFrameScaled(em, 10.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 44);
+        }
+        if (EmMotion_PassedFrameScaled(em, 74.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 72);
+        }
+        if (EmMotion_PassedFrameScaled(em, 138.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 78.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_TURN_LEFT_END):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 74, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 158, 2);
+        if (EmMotion_PassedFrameScaled(em, 46.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 56);
+        }
+        if (EmMotion_PassedFrameScaled(em, 132.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 57);
+        }
+        if (EmMotion_PassedFrameScaled(em, 30.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 30);
+        }
+        if (EmMotion_PassedFrameScaled(em, 82.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 78);
+        }
+        if (EmMotion_PassedFrameScaled(em, 154.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 70.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_QUARTER_TURN_LEFT):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 82, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 166, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 252, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 336, 2);
+        if (EmMotion_PassedFrameScaled(em, 48.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 58);
+        }
+        if (EmMotion_PassedFrameScaled(em, 120.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 59);
+        }
+        if (EmMotion_PassedFrameScaled(em, 306.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 60);
+        }
+        if (EmMotion_PassedFrameScaled(em, 216.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 61);
+        }
+        if (EmMotion_PassedFrameScaled(em, 50.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 38);
+        }
+        if (EmMotion_PassedFrameScaled(em, 120.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 122);
+        }
+        if (EmMotion_PassedFrameScaled(em, 286.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 64);
+        }
+        if (EmMotion_PassedFrameScaled(em, 248.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 334.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 162.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 78.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_HALF_TURN_LEFT):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 80, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 162, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 206, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 284, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 362, 2);
+        if (EmMotion_PassedFrameScaled(em, 208.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 62);
+        }
+        if (EmMotion_PassedFrameScaled(em, 34.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 63);
+        }
+        if (EmMotion_PassedFrameScaled(em, 162.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 64);
+        }
+        if (EmMotion_PassedFrameScaled(em, 96.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 65);
+        }
+        if (EmMotion_PassedFrameScaled(em, 368.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 78);
+        }
+        if (EmMotion_PassedFrameScaled(em, 300.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 79);
+        }
+        if (EmMotion_PassedFrameScaled(em, 18.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 86);
+        }
+        if (EmMotion_PassedFrameScaled(em, 280.0f, 0) != 0) {
+            LaoShanAttack_CreateSpan(em, 71, 140);
+        }
+        if (EmMotion_PassedFrameScaled(em, 158.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 204.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+        }
+        if ((EmMotion_PassedFrameScaled(em, 76.0f, 0) != 0) || (EmMotion_PassedFrameScaled(em, 358.0f, 0) != 0)) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 280.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_FALL):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 86, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 90, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 144, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 170, 5);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 218, 2);
+        if (EmMotion_PassedFrameScaled(em, 2.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 82);
+        }
+        if (EmMotion_PassedFrameScaled(em, 58.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 83);
+        }
+        if (EmMotion_PassedFrameScaled(em, 110.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 84);
+        }
+        if (EmMotion_PassedFrameScaled(em, 150.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 86);
+        }
+        if (EmMotion_PassedFrameScaled(em, 130.0f, 0) != 0) {
+            LaoshanDust_Create(em, 0, 3, 1.2f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 128.0f, 0) != 0) {
+            LaoshanDust_Create(em, 0, 1, 1.4f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 146.0f, 0) != 0) {
+            LaoshanDust_Create(em, 0, 4, 1.2f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_GET_UP):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 100, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 174, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 240, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 326, 2);
+        if (EmMotion_PassedFrameScaled(em, 94.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 156.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 310.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 230.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_REARED_FLINCH):
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_PUSHED_BACK):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 20, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 24, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 64, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 104, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 180, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 214, 2);
+        if (EmMotion_PassedFrameScaled(em, 186.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+        }
+        if ((EmMotion_PassedFrameScaled(em, 58.0f, 0) != 0) || (EmMotion_PassedFrameScaled(em, 158.0f, 0) != 0)) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.5f);
+        }
+        if ((EmMotion_PassedFrameScaled(em, 32.0f, 0) != 0) || (EmMotion_PassedFrameScaled(em, 210.0f, 0) != 0)) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 100.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_B, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_LEAVE_START):
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_LEAVE_TURN):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 38, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 164, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 188, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 292, 2);
+        if (EmMotion_PassedFrameScaled(em, 162.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.8f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 180.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_C, 19, 0.8f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 288.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_D, 19, 0.6f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_WALK_ATTACK):
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_DIE):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 212, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 340, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 384, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 422, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 472, 2);
+        if (EmMotion_PassedFrameScaled(em, 338.0f, 0) != 0) {
+            LaoshanDust_Create(em, 0, 0, 1.2f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 400.0f, 0) != 0) {
+            LaoshanDust_Create(em, 0, 1, 1.4f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 406.0f, 0) != 0) {
+            LaoshanDust_Create(em, 0, 2, 1.2f);
+            break;
+        }
+        break;
+    case EM_MOTION_ID(0, LAOSHAN_MOT_FLINCH):
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 90, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 106, 2);
+        EmLaoshan_CamShakeOnFrame((s32 *) em, 180, 2);
+        if (EmMotion_PassedFrameScaled(em, 94.0f, 0) != 0) {
+            LaoShanAttack_Create(em, 87);
+        }
+        if (EmMotion_PassedFrameScaled(em, 82.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.8f);
+        }
+        if (EmMotion_PassedFrameScaled(em, 236.0f, 0) != 0) {
+            PartFx_SpawnForEmScaled(em, LAOSHAN_BONE_FOOT_A, 19, 0.5f);
+            break;
+        }
+        break;
+    default:
+        EmLaoshan_MotionEffectsDefault(em);
+        break;
+    }
+}
+
+/*
+ * Callback: skips the first frame (fxStep), then runs
+ * EmLaoshan_MotionEffects every frame.
+ */
+void EmLaoshan_UpdateMotionEffects(Em *em)
+{
+    EmLaoshanWork *w = (EmLaoshanWork *)&em->work;
+
+    switch (w->fxStep) {
+    case 0:
+        w->fxStep++;
+        break;
+    case 1:
+        EmLaoshan_MotionEffects(em, w);
+        break;
+    }
+}
+
+/*
+ * The impact effects of LAOSHAN_ATK_REARED_SMASH_FORT: two Effect02 and an
+ * Effect0D (scale 10) at the fixed high fort point of the area (fortress
+ * areas 4, 5, 2; else the area 5 point).
+ */
+void EmLaoshan_SpawnSmashImpactEffects(Em *em)
+{
+    f32 pos[3];
+
+    switch (Area_DayId(em->area) & 0xFFFF) {
+    case AREA_FORTRESS_4:
+        pos[0] = 14000.0f;
+        pos[1] = 1700.0f;
+        pos[2] = 20500.0f;
+        break;
+    case AREA_FORTRESS_5:
+        pos[0] = 7300.0f;
+        pos[1] = 1500.0f;
+        pos[2] = 12400.0f;
+        break;
+    case AREA_FORTRESS_2:
+        pos[0] = 15000.0f;
+        pos[1] = 1700.0f;
+        pos[2] = 23000.0f;
+        break;
+    default:
+        pos[0] = 7300.0f;
+        pos[1] = 1500.0f;
+        pos[2] = 12400.0f;
+        break;
+    }
+    HitSpark_SpawnForOwner(em, 0, 9, 0, pos, 1.0f);
+    HitSpark_SpawnForOwner(em, 0, 9, 1, pos, 1.0f);
+    PartFx_SpawnIfHere(em, pos, 34, 10.0f);
+}
+
+/*
+ * The impact of the fort rams (LAOSHAN_ATK_RAM_FORT and its stage
+ * variants): two sounds, two Effect02 (scale 2) and an Effect0D (scale 20)
+ * at the fixed low fort point of the area (fortress areas 5 and 3, else a
+ * default point).
+ */
+void EmLaoshan_SpawnRamImpactEffects(Em *em)
+{
+    f32 pos[3];
+
+    switch (Area_DayId(em->area) & 0xFFFF) {
+    case AREA_FORTRESS_5:
+        pos[0] = 7300.0f;
+        pos[1] = 500.0f;
+        pos[2] = 12400.0f;
+        break;
+    case AREA_FORTRESS_3:
+        pos[0] = 10900.0f;
+        pos[1] = 500.0f;
+        pos[2] = 20158.0f;
+        break;
+    default:
+        pos[0] = 7300.0f;
+        pos[1] = 1500.0f;
+        pos[2] = 12400.0f;
+        break;
+    }
+    Em_PlaySeChecked(em, 69, 0, pos, 9, 0);
+    Em_PlaySeChecked(em, 68, 0, pos, 9, 0);
+    HitSpark_SpawnForOwner(em, 0, 9, 0, pos, 2.0f);
+    HitSpark_SpawnForOwner(em, 0, 9, 1, pos, 2.0f);
+    PartFx_SpawnIfHere(em, pos, 34, 20.0f);
+}
+
+/* Callback table entry that does nothing. */
+void EmLaoshan_TableNop(void)
+{
+}
+
+/* Enters an idle state: motion speed 1, Em_SetStateSync. */
+void EmLaoshan_SetIdleState(Em *em, u16 state, u8 mode)
+{
+    em->motionSpeed = 1.0f;
+    Em_SetStateSync(em, EM_GROUP_IDLE, state, mode);
+}
+
+/*
+ * Enters a move state: motion speed 1; the walks get speed 500
+ * (Em_SetSpeedScaled); LAOSHAN_MOVE_WALK_BACK becomes LAOSHAN_MOVE_WALK and
+ * LAOSHAN_MOVE_WALK_BACK_ON becomes LAOSHAN_MOVE_WALK_ON when the goal is
+ * within a quarter turn ahead; then Em_SetStateSync.
+ */
+void EmLaoshan_SetMoveState(Em *em, u16 state, u8 mode)
+{
+    s32 goalAngle;
+
+    em->motionSpeed = 1.0f;
+    switch (state) {
+    case LAOSHAN_MOVE_WALK:
+    case LAOSHAN_MOVE_WALK_REARED:
+        Em_SetSpeedScaled(em, 6, 500.0f, 0.0f);
+        break;
+    case LAOSHAN_MOVE_WALK_BACK:
+        Em_SetSpeedScaled(em, 6, 500.0f, 0.0f);
+        goalAngle = (u16) (Math_AngleXZ(&em->posX, em->goal) - em->rotY);
+        if ((0 <= goalAngle && goalAngle <= ANGLE_TURN / 4) || (goalAngle >= (ANGLE_TURN * 3 / 4) && goalAngle <= 0xFFFF)) {
+            state = LAOSHAN_MOVE_WALK;
+        }
+        break;
+    case LAOSHAN_MOVE_TURN_TO_GOAL:
+        Math_AngleXZ(&em->posX, em->goal);
+        break;
+    case LAOSHAN_MOVE_WALK_ATTACK:
+        Em_SetSpeedScaled(em, 6, 500.0f, 0.0f);
+        break;
+    case LAOSHAN_MOVE_WALK_BACK_ON:
+        Em_SetSpeedScaled(em, 6, 500.0f, 0.0f);
+        goalAngle = (u16) (Math_AngleXZ(&em->posX, em->goal) - em->rotY);
+        if ((0 <= goalAngle && goalAngle <= ANGLE_TURN / 4) || (goalAngle >= (ANGLE_TURN * 3 / 4) && goalAngle <= 0xFFFF)) {
+            state = LAOSHAN_MOVE_WALK_ON;
+        }
+        break;
+    }
+    Em_SetStateSync(em, EM_GROUP_MOVE, state, mode);
+}
+
+/*
+ * Enters a fly state (the family has none): motion speed 1,
+ * Em_SetStateSync.
+ */
+void EmLaoshan_SetFlyState(Em *em, u16 state, u8 mode)
+{
+    em->motionSpeed = 1.0f;
+    Em_SetStateSync(em, EM_GROUP_FLY, state, mode);
+}
+
+/* Enters an attack state: motion speed 1, Em_SetStateSync. */
+void EmLaoshan_SetAttackState(Em *em, u16 state, u8 mode)
+{
+    em->motionSpeed = 1.0f;
+    Em_SetStateSync(em, EM_GROUP_ATTACK, state, mode);
+}
+
+/*
+ * Moves to (group, state): on the host first targets a player in range
+ * (Em_TargetPlayerInRange); a remote copy ignores EM_SYNC_OWNER and
+ * EM_SYNC_OWNER_FLAGGED; the idle, move, fly and attack groups go through
+ * their Set functions, the reaction, defeat and event groups straight to
+ * Em_SetStateSync with motion speed 1.
+ */
+void EmLaoshan_ChangeState(Em *em, u16 group, u16 state, u8 mode)
+{
+    if (em->remote == 0) {
+        Em_TargetPlayerInRange(em);
+    } else if (mode == EM_SYNC_OWNER || mode == EM_SYNC_OWNER_FLAGGED) {
+        return;
+    }
+    switch (group) {
+    case EM_GROUP_IDLE:
+        EmLaoshan_SetIdleState(em, state, mode);
+        return;
+    case EM_GROUP_MOVE:
+        EmLaoshan_SetMoveState(em, state, mode);
+        return;
+    case EM_GROUP_FLY:
+        EmLaoshan_SetFlyState(em, state, mode);
+        return;
+    case EM_GROUP_ATTACK:
+        EmLaoshan_SetAttackState(em, state, mode);
+        return;
+    case EM_GROUP_DEFEAT:
+    case EM_GROUP_EVENT:
+    case EM_GROUP_REACT:
+        em->motionSpeed = 1.0f;
+        Em_SetStateSync(em, group, state, mode);
+
+    default:
+        return;
+    }
+}
+
+
+/* The file's initialised data, in the game's order */
+s8 EmLaoshan_MinePtBones[4][2] = {
+#include "game/008C8BD0.inc"
+};
+f32 EmLaoshan_MinePtRadius[3] = {
+#include "game/008C8BD8.inc"
+};
+void *EmLaoshan_Callbacks[8] = {
+    EmLaoshan_SpawnShadow, EmLaoshan_SpawnShadow, EmLaoshan_TableNop, EmLaoshan_UpdateMotionEffects,
+    GmEm_ReturnZero, EmLaoshan_TableNop, NULL, NULL,
+};

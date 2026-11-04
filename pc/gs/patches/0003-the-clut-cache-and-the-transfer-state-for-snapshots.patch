@@ -1,0 +1,151 @@
+The CLUT cache and the transfer state, for snapshots of the GS
+
+A palette is copied from local memory when it is loaded (TEX0's CLD), and
+the copy lives in the renderer's CLUT cache on the GPU. A game may draw
+with a CLUT whose local memory has since been written, so a snapshot of
+local memory and the registers does not hold it.
+
+get_clut_snapshot reads the CLUT the shaders read now (1024 bytes: 512
+16-bit entries) after a flush that waits for the GPU. set_clut_snapshot
+writes one as a fresh instance of the cache and rewinds the cache to it,
+which also drops every cached texture made with another CLUT.
+transfer_idle says whether a HOST -> LOCAL transfer is half sent or a
+LOCAL -> HOST one has words left to read, which a snapshot cannot hold.
+Nothing else changes.
+
+The port's mh2gs_state_get and mh2gs_state_set use them
+(pc/gs/mh2gs.cpp). Applied by tools/setup.sh, tools/setup.ps1
+and tools/pc/pgs_patches.py to the pinned paraLLEl-GS commit
+(tools/versions.txt). paraLLEl-GS is LGPL-3.0-or-later; this patch is
+published with the port under the same license.
+
+--- a/gs/gs_interface.hpp
++++ b/gs/gs_interface.hpp
+@@ -322,6 +322,15 @@
+ 	ScanoutResult vsync(const VSyncInfo &info);
+ 	bool vsync_can_skip(const VSyncInfo &info) const;
+ 
++	// The port's save states. The CLUT cache is GPU-side state that VRAM does not hold (a CLUT is a copy made when
++	// it is loaded): get_clut_snapshot reads the CLUT the shaders read now (CLUT_SNAPSHOT_BYTES), after a flush
++	// that waits for the GPU; set_clut_snapshot makes the given one the current CLUT, as if just loaded.
++	// transfer_idle: no transfer to local memory is half sent, and every local to host word was read.
++	enum { CLUT_SNAPSHOT_BYTES = 1024 };
++	void get_clut_snapshot(void *dst);
++	void set_clut_snapshot(const void *src);
++	bool transfer_idle() const;
++
+ 	FlushStats consume_flush_stats();
+ 	double get_accumulated_timestamps(TimestampType type) const;
+ 
+--- a/gs/gs_interface.cpp
++++ b/gs/gs_interface.cpp
+@@ -4303,6 +4303,40 @@
+ 		renderer.wait_timeline(value);
+ }
+ 
++void GSInterface::get_clut_snapshot(void *dst)
++{
++	static_assert(CLUT_SNAPSHOT_BYTES == CLUTSize, "CLUT_SNAPSHOT_BYTES");
++	flush_pending_transfer(true);
++	uint64_t value = tracker.mark_submission_timeline(FlushReason::HostAccess);
++	renderer.flush_submit(value);
++	renderer.wait_timeline(value);
++	renderer.read_clut_instance(render_pass.clut_instance, dst);
++}
++
++void GSInterface::set_clut_snapshot(const void *src)
++{
++	flush_pending_transfer(true);
++	uint64_t value = tracker.mark_submission_timeline(FlushReason::HostAccess);
++	renderer.flush_submit(value);
++	renderer.wait_timeline(value);
++
++	// A fresh instance, as a full load would make; the cache is then rewound to it (which also forgets every
++	// cached texture that was made with another CLUT).
++	uint32_t instance = (render_pass.clut_instance + 1) % CLUTInstances;
++	renderer.write_clut_instance(instance, src);
++	renderer.rewind_clut_instance(instance);
++	render_pass.clut_instance = instance;
++	render_pass.latest_clut_instance = instance;
++	render_pass.num_memoized_palettes = 0;
++	mark_texture_state_dirty();
++}
++
++bool GSInterface::transfer_idle() const
++{
++	return !transfer_state.host_to_local_active &&
++	       transfer_state.fifo_readback_128b_offset >= transfer_state.fifo_readback_128b_size;
++}
++
+ void GSInterface::clobber_register_state()
+ {
+ 	state_tracker.dirty_flags = STATE_DIRTY_ALL_BITS;
+--- a/gs/gs_renderer.hpp
++++ b/gs/gs_renderer.hpp
+@@ -262,6 +262,11 @@
+ 	void mark_clut_read(uint32_t clut_instance);
+ 	void rewind_clut_instance(uint32_t index);
+ 
++	// The port's save states: one CLUT instance (CLUTSize bytes) read back from, or written to, the CLUT cache.
++	// Nothing may be pending (a flush and wait_timeline come first).
++	void read_clut_instance(uint32_t index, void *dst);
++	void write_clut_instance(uint32_t index, const void *src);
++
+ 	Vulkan::ImageHandle create_cached_texture(const TextureDescriptor &desc);
+ 	// Should always be called after create_cached_texture().
+ 	// We'll be able to do some last minute modifications to the upload descriptor
+--- a/gs/gs_renderer.cpp
++++ b/gs/gs_renderer.cpp
+@@ -3482,6 +3482,52 @@
+ 	next_clut_instance = index;
+ }
+ 
++void GSRenderer::read_clut_instance(uint32_t index, void *dst)
++{
++	if (!device)
++	{
++		memset(dst, 0, CLUTSize);
++		return;
++	}
++
++	Vulkan::BufferCreateInfo info = {};
++	info.size = CLUTSize;
++	info.domain = Vulkan::BufferDomain::CachedHost;
++	info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
++	auto buffer = device->create_buffer(info);
++
++	auto cmd = device->request_command_buffer();
++	cmd->barrier(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
++	             VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
++	cmd->copy_buffer(*buffer, 0, *buffers.clut, VkDeviceSize(index % CLUTInstances) * CLUTSize, CLUTSize);
++	cmd->barrier(VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
++	             VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
++	Vulkan::Fence fence;
++	device->submit(cmd, &fence);
++	fence->wait();
++	memcpy(dst, device->map_host_buffer(*buffer, Vulkan::MEMORY_ACCESS_READ_BIT), CLUTSize);
++}
++
++void GSRenderer::write_clut_instance(uint32_t index, const void *src)
++{
++	if (!device)
++		return;
++
++	Vulkan::BufferCreateInfo info = {};
++	info.size = CLUTSize;
++	info.domain = Vulkan::BufferDomain::Host;
++	info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
++	auto buffer = device->create_buffer(info, src);
++
++	auto cmd = device->request_command_buffer();
++	cmd->copy_buffer(*buffers.clut, VkDeviceSize(index % CLUTInstances) * CLUTSize, *buffer, 0, CLUTSize);
++	cmd->barrier(VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
++	             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_READ_BIT);
++	Vulkan::Fence fence;
++	device->submit(cmd, &fence);
++	fence->wait();
++}
++
+ uint32_t GSRenderer::update_palette_cache(const PaletteUploadDescriptor &desc)
+ {
+ 	if (!last_clut_update_is_read && !palette_uploads.empty() &&

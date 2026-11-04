@@ -1,0 +1,22 @@
+# Names that tools/pc/data_c.py cannot settle from the matching build's addresses.
+#   NAME ram [ADDR]          the RAM block's address of the PS2 address (the name is an address D_ADDR)
+#   NAME alias BASE [OFF]    BASE (a C object or function of the PC link) plus OFF
+#   NAME skip                leave it to the stubs
+#   NAME ram-words [OFF...]  a C object a block lays out at its PS2 offset whose nonzero words (or the words at
+#                            the offsets OFF) are RAM_AREA(addr) in the C (content_gen's .inc): Pal_EeRam + the
+#                            word. data_cases checks that the PC's C has them so, and that no other word does
+#   NAME ps2-words           a C object a block lays out whose nonzero words that fall in a resident block's
+#                            laid-out range are PS2 addresses written as plain numbers (content_gen's .inc,
+#                            in both builds): the block's address of the word. NAME may be a glob (fnmatch)
+# sub_main takes the entry points of select's tasks by address (task.c, sys_main.c). Select is the
+# overlay loaded at that moment (the boot and title screens); lobby has Records_CountHuntPages at the
+# same address 0x6B5230, which sub_main never means.
+D_6B5230 alias Boot_Task
+D_6B5CF0 alias Select_MainTask
+# main's overlay windows (afs_files.c, the .inc's RAM_AREA words)
+gOverlayWindowBase ram-words
+# pointers of sub_main's area tables into an overlay window (another module's objects, which the matching C
+# can't name: content_gen's .inc writes them RAM_AREA(addr)): six rows of the triangle kinds
+# (0x9393E0-0x939430) and area 43's prop animation (0x92A930)
+gAreaKindFlags ram-words
+gAreaPropData_43_0 ram-words 0x0

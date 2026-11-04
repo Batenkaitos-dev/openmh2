@@ -1,0 +1,1007 @@
+@ cdata yn.data
+C
+S AD11A0 50 src/yn/yn_main.c 3
+S AD11F0 3C src/yn/yn_main.c 4
+S AD1230 10 src/yn/yn_main.c 8
+S AD1240 30 src/yn/yn_main.c 19
+S AD1270 20 src/yn/yn_main.c 26
+S AD1290 18 src/yn/yn_main.c 31
+S AD12A8 8 src/yn/yn_main.c 35
+S AD12B0 8 src/yn/yn_main.c 39
+S AD12B8 8 src/yn/yn_main.c 43
+S AD12C0 8 src/yn/yn_main.c 47
+S AD12C8 8 src/yn/yn_main.c 51
+S AD12D0 8 src/yn/yn_main.c 55
+S AD12D8 8 src/yn/yn_main.c 59
+S AD12E0 10 src/yn/yn_main.c 63
+S AD12F0 18 src/yn/yn_main.c 69
+S AD1308 C src/yn/yn_main.c 73
+S AD1318 C src/yn/yn_main.c 77
+S AD1328 8 src/yn/yn_main.c 79
+S AD1330 20 src/yn/yn_main.c 84
+S AD1350 20 src/yn/yn_main.c 86
+S AD1370 10 src/yn/yn_main.c 88
+S AD1380 10 src/yn/yn_main.c 90
+S AD1390 10 src/yn/yn_main.c 92
+S AD13A0 10 src/yn/yn_main.c 94
+S AD13B0 10 src/yn/yn_main.c 96
+S AD13C0 30 src/yn/yn_main.c 98
+S AD13F0 20 src/yn/yn_main.c 100
+S AD1410 30 src/yn/yn_main.c 102
+S AD1440 20 src/yn/yn_main.c 104
+S AD1460 20 src/yn/yn_main.c 106
+S AD1480 20 src/yn/yn_main.c 108
+S AD14A0 10 src/yn/yn_main.c 110
+S AD14B0 20 src/yn/yn_main.c 112
+S AD14D0 10 src/yn/yn_main.c 114
+S AD14E0 10 src/yn/yn_main.c 116
+S AD14F0 10 src/yn/yn_main.c 118
+S AD1500 10 src/yn/yn_main.c 120
+S AD1510 20 src/yn/yn_main.c 126
+S AD1530 30 src/yn/yn_main.c 133
+S AD1560 10 src/yn/yn_main.c 135
+S AD1570 70 src/yn/yn_main.c 137
+S AD15E0 20 src/yn/yn_main.c 139
+S AD1600 10 src/yn/yn_main.c 140
+S AD1610 20 src/yn/yn_main.c 144
+S AD1630 30 src/yn/yn_main.c 146
+S AD1660 30 src/yn/yn_main.c 148
+S AD1690 20 src/yn/yn_main.c 153
+S AD16B0 20 src/yn/yn_main.c 159
+S AD16D0 10 src/yn/yn_main.c 163
+S AD16E0 10 src/yn/yn_main.c 166
+S AD16F0 30 src/yn/yn_main.c 168
+S AD1720 10 src/yn/yn_main.c 170
+S AD1730 30 src/yn/yn_main.c 172
+S AD1760 20 src/yn/yn_main.c 174
+S AD1780 10 src/yn/yn_main.c 176
+S AD1790 10 src/yn/yn_main.c 178
+S AD17A0 20 src/yn/yn_main.c 180
+S AD17C0 10 src/yn/yn_main.c 182
+S AD17D0 20 src/yn/yn_main.c 184
+S AD17F0 20 src/yn/yn_main.c 186
+S AD1810 20 src/yn/yn_main.c 188
+S AD1830 8 src/yn/yn_main.c 190
+S AD1838 8 src/yn/yn_main.c 192
+S AD1840 8 src/yn/yn_main.c 194
+S AD1848 8 src/yn/yn_main.c 196
+S AD1850 20 src/yn/yn_main.c 201
+S AD1870 18 src/yn/yn_main.c 206
+S AD1888 8 src/yn/yn_main.c 208
+S AD1890 20 src/yn/yn_main.c 213
+S AD18B0 10 src/yn/yn_main.c 217
+S AD18C0 20 src/yn/yn_main.c 219
+S AD18E0 20 src/yn/yn_main.c 225
+S AD1900 10 src/yn/yn_main.c 228
+S AD1910 30 src/yn/yn_main.c 230
+S AD1940 20 src/yn/yn_main.c 232
+S AD1960 20 src/yn/yn_main.c 234
+S AD1980 20 src/yn/yn_main.c 236
+S AD19A0 20 src/yn/yn_main.c 238
+S AD19C0 20 src/yn/yn_main.c 240
+S AD19E0 40 src/yn/yn_main.c 242
+S AD1A20 30 src/yn/yn_main.c 244
+S AD1A50 30 src/yn/yn_main.c 246
+S AD1A80 30 src/yn/yn_main.c 248
+S AD1AB0 30 src/yn/yn_main.c 250
+S AD1AE0 20 src/yn/yn_main.c 252
+S AD1B00 20 src/yn/yn_main.c 258
+S AD1B20 10 src/yn/yn_main.c 260
+S AD1B30 20 src/yn/yn_main.c 262
+S AD1B50 30 src/yn/yn_main.c 264
+S AD1B80 20 src/yn/yn_main.c 266
+S AD1BA0 30 src/yn/yn_main.c 268
+S AD1BD0 30 src/yn/yn_main.c 270
+S AD1C00 10 src/yn/yn_main.c 274
+S AD1C10 20 src/yn/yn_main.c 279
+S AD1C30 20 src/yn/yn_main.c 285
+S AD1C50 30 src/yn/yn_main.c 287
+S AD1C80 20 src/yn/yn_main.c 289
+S AD1CA0 30 src/yn/yn_main.c 294
+S AD1CD0 20 src/yn/yn_main.c 297
+S AD1CF0 10 src/yn/yn_main.c 300
+S AD1D00 F0 src/yn/yn_main.c 302
+S AD1DF0 40 src/yn/yn_main.c 304
+S AD1E30 10 src/yn/yn_main.c 305
+S AD1E40 10 src/yn/yn_main.c 309
+S AD1E50 20 src/yn/yn_main.c 314
+S AD1E70 10 src/yn/yn_main.c 318
+S AD1E80 20 src/yn/yn_main.c 320
+S AD1EA0 10 src/yn/yn_main.c 322
+S AD1EB0 10 src/yn/yn_main.c 324
+S AD1EC0 10 src/yn/yn_main.c 326
+S AD1ED0 10 src/yn/yn_main.c 330
+S AD1EE0 20 src/yn/yn_main.c 332
+S AD1F00 10 src/yn/yn_main.c 334
+S AD1F10 10 src/yn/yn_main.c 336
+S AD1F20 10 src/yn/yn_main.c 338
+S AD1F30 10 src/yn/yn_main.c 340
+S AD1F40 8 src/yn/yn_main.c 342
+S AD1F48 8 src/yn/yn_main.c 344
+S AD1F50 10 src/yn/yn_main.c 346
+S AD1F60 10 src/yn/yn_main.c 348
+S AD1F70 10 src/yn/yn_main.c 350
+S AD1F80 10 src/yn/yn_main.c 352
+S AD1F90 20 src/yn/yn_main.c 354
+S AD1FB0 20 src/yn/yn_main.c 356
+S AD1FD0 10 src/yn/yn_main.c 358
+S AD1FE0 10 src/yn/yn_main.c 360
+S AD1FF0 10 src/yn/yn_main.c 362
+S AD2000 10 src/yn/yn_main.c 366
+S AD2010 8 src/yn/yn_main.c 369
+S AD2018 8 src/yn/yn_main.c 372
+S AD2020 20 src/yn/yn_main.c 377
+S AD2040 20 src/yn/yn_main.c 379
+S AD2060 A0 src/yn/yn_main.c 381
+S AD2100 28 src/yn/yn_main.c 383
+S AD2128 8 src/yn/yn_main.c 412
+S AD2130 C src/yn/yn_main.c 413
+S AD2140 10 src/yn/yn_main.c 416
+S AD2150 8 src/yn/yn_main.c 420
+S AD2158 8 src/yn/yn_main.c 421
+S AD2160 E src/yn/yn_main.c 424
+S AD2170 70 src/yn/yn_main.c 425
+S AD21E0 80 src/yn/yn_netcnf.c 3
+S AD2260 20 src/yn/yn_netcnf.c 4
+S AD2770 9 src/yn/yn_card.c 3
+S AD2780 14 src/yn/yn_main.c 5
+S AD27A0 17 src/yn/yn_main.c 6
+S AD27C0 17 src/yn/yn_main.c 7
+S AD27D8 5 src/yn/yn_main.c 10
+S AD27E0 5 src/yn/yn_main.c 11
+S AD27E8 9 src/yn/yn_main.c 12
+S AD27F8 D src/yn/yn_main.c 13
+S AD2808 5 src/yn/yn_main.c 14
+S AD2810 5 src/yn/yn_main.c 15
+S AD2818 5 src/yn/yn_main.c 16
+S AD2820 5 src/yn/yn_main.c 17
+S AD2830 19 src/yn/yn_main.c 18
+S AD2850 9 src/yn/yn_main.c 21
+S AD2860 14 src/yn/yn_main.c 22
+S AD2880 14 src/yn/yn_main.c 23
+S AD28A0 16 src/yn/yn_main.c 24
+S AD28C0 16 src/yn/yn_main.c 25
+S AD28D8 2 src/yn/yn_main.c 28
+S AD28E0 1 src/yn/yn_main.c 29
+S AD28F0 13 src/yn/yn_main.c 30
+S AD2910 13 src/yn/yn_main.c 33
+S AD2928 F src/yn/yn_main.c 34
+S AD2938 9 src/yn/yn_main.c 37
+S AD2948 F src/yn/yn_main.c 38
+S AD2958 D src/yn/yn_main.c 41
+S AD2968 5 src/yn/yn_main.c 42
+S AD2970 13 src/yn/yn_main.c 45
+S AD2988 D src/yn/yn_main.c 46
+S AD2998 D src/yn/yn_main.c 49
+S AD29B0 11 src/yn/yn_main.c 50
+S AD29D0 11 src/yn/yn_main.c 53
+S AD29F0 11 src/yn/yn_main.c 54
+S AD2A10 11 src/yn/yn_main.c 57
+S AD2A28 5 src/yn/yn_main.c 58
+S AD2A30 7 src/yn/yn_main.c 61
+S AD2A40 21 src/yn/yn_main.c 62
+S AD2A70 1A src/yn/yn_main.c 65
+S AD2A90 33 src/yn/yn_main.c 66
+S AD2AD0 32 src/yn/yn_main.c 67
+S AD2B10 11 src/yn/yn_main.c 68
+S AD2B30 1A src/yn/yn_main.c 71
+S AD2B50 13 src/yn/yn_main.c 72
+S AD2B70 1C src/yn/yn_main.c 75
+S AD2B90 37 src/yn/yn_main.c 76
+S AD2BC8 F src/yn/yn_main.c 81
+S AD2BE0 19 src/yn/yn_main.c 82
+S AD2C00 11 src/yn/yn_main.c 83
+S AD2C18 5 src/yn/yn_main.c 122
+S AD2C20 D src/yn/yn_main.c 123
+S AD2C30 27 src/yn/yn_main.c 124
+S AD2C60 15 src/yn/yn_main.c 125
+S AD2C80 13 src/yn/yn_main.c 128
+S AD2C98 7 src/yn/yn_main.c 129
+S AD2CA0 17 src/yn/yn_main.c 130
+S AD2CC0 1F src/yn/yn_main.c 131
+S AD2CE0 39 src/yn/yn_main.c 132
+S AD2D20 2D src/yn/yn_main.c 142
+S AD2D50 11 src/yn/yn_main.c 143
+S AD2D70 23 src/yn/yn_main.c 150
+S AD2DA0 25 src/yn/yn_main.c 151
+S AD2DD0 13 src/yn/yn_main.c 152
+S AD2DF0 29 src/yn/yn_main.c 155
+S AD2E20 D src/yn/yn_main.c 156
+S AD2E30 26 src/yn/yn_main.c 157
+S AD2E60 23 src/yn/yn_main.c 158
+S AD2E90 28 src/yn/yn_main.c 161
+S AD2EC0 26 src/yn/yn_main.c 162
+S AD2EF0 2C src/yn/yn_main.c 165
+S AD2F20 1D src/yn/yn_main.c 198
+S AD2F40 2F src/yn/yn_main.c 199
+S AD2F70 17 src/yn/yn_main.c 200
+S AD2F90 1D src/yn/yn_main.c 203
+S AD2FB0 1F src/yn/yn_main.c 204
+S AD2FD0 3 src/yn/yn_main.c 205
+S AD2FE0 19 src/yn/yn_main.c 210
+S AD3000 28 src/yn/yn_main.c 211
+S AD3030 33 src/yn/yn_main.c 212
+S AD3070 29 src/yn/yn_main.c 215
+S AD30A0 1F src/yn/yn_main.c 216
+S AD30C0 30 src/yn/yn_main.c 221
+S AD30F0 31 src/yn/yn_main.c 222
+S AD3130 30 src/yn/yn_main.c 223
+S AD3160 15 src/yn/yn_main.c 224
+S AD3180 2C src/yn/yn_main.c 227
+S AD31B0 17 src/yn/yn_main.c 254
+S AD31D0 23 src/yn/yn_main.c 255
+S AD3200 13 src/yn/yn_main.c 256
+S AD3220 23 src/yn/yn_main.c 257
+S AD3250 15 src/yn/yn_main.c 272
+S AD3270 1C src/yn/yn_main.c 273
+S AD3290 1F src/yn/yn_main.c 276
+S AD32B0 25 src/yn/yn_main.c 277
+S AD32E0 17 src/yn/yn_main.c 278
+S AD3300 1D src/yn/yn_main.c 281
+S AD3320 25 src/yn/yn_main.c 282
+S AD3350 11 src/yn/yn_main.c 283
+S AD3370 1B src/yn/yn_main.c 284
+S AD3390 1F src/yn/yn_main.c 291
+S AD33B0 29 src/yn/yn_main.c 292
+S AD33E0 27 src/yn/yn_main.c 293
+S AD3410 2D src/yn/yn_main.c 296
+S AD3440 19 src/yn/yn_main.c 299
+S AD3460 19 src/yn/yn_main.c 307
+S AD3480 23 src/yn/yn_main.c 308
+S AD34B0 2B src/yn/yn_main.c 311
+S AD34E0 2D src/yn/yn_main.c 312
+S AD3510 15 src/yn/yn_main.c 313
+S AD3530 38 src/yn/yn_main.c 316
+S AD3570 11 src/yn/yn_main.c 317
+S AD3590 28 src/yn/yn_main.c 328
+S AD35C0 15 src/yn/yn_main.c 329
+S AD35E0 2F src/yn/yn_main.c 364
+S AD3610 25 src/yn/yn_main.c 365
+S AD3640 35 src/yn/yn_main.c 368
+S AD3680 1F src/yn/yn_main.c 371
+S AD36A0 33 src/yn/yn_main.c 374
+S AD36E0 2E src/yn/yn_main.c 375
+S AD3710 1D src/yn/yn_main.c 376
+S AD3730 28 src/yn/yn_main.c 384
+S AD3760 2C src/yn/yn_main.c 386
+S AD3790 5 src/yn/yn_main.c 388
+S AD37A0 18 src/yn/yn_main.c 389
+S AD37C0 18 src/yn/yn_main.c 391
+S AD37E0 18 src/yn/yn_main.c 393
+S AD3800 28 src/yn/yn_main.c 395
+S AD3828 3 src/yn/yn_main.c 397
+S AD3830 3 src/yn/yn_main.c 398
+S AD3838 5 src/yn/yn_main.c 399
+S AD3840 6 src/yn/yn_main.c 400
+S AD3848 9 src/yn/yn_main.c 401
+S AD3858 3 src/yn/yn_main.c 402
+S AD3860 12 src/yn/yn_main.c 403
+S AD3878 B src/yn/yn_main.c 404
+S AD3888 9 src/yn/yn_main.c 405
+S AD3898 B src/yn/yn_main.c 406
+S AD38A8 7 src/yn/yn_main.c 407
+S AD38B0 20 src/yn/yn_main.c 408
+S AD38D0 D src/yn/yn_main.c 410
+S AD38E0 E src/yn/yn_main.c 411
+S AD38F0 2 src/yn/yn_main.c 414
+S AD38F8 2 src/yn/yn_main.c 415
+S AD3900 16 src/yn/yn_main.c 418
+S AD3920 1F src/yn/yn_main.c 419
+S AD3940 1C src/yn/yn_main.c 422
+S AD3960 29 src/yn/yn_netcnf.c 5
+S AD3990 2B src/yn/yn_netcnf.c 6
+S AD39C0 11 src/yn/yn_netcnf.c 7
+S AD39E0 12 src/yn/yn_netcnf.c 8
+S AD39F8 2 src/yn/yn_netcnf.c 9
+S AD3A00 8 src/yn/yn_netcnf.c 10
+S AD3A10 14 src/yn/yn_netcnf.c 11
+S AD3A28 C src/yn/yn_netcnf.c 12
+N gYnMsgItems_02 AD1630 30 src/yn/yn_main.c
+N gYnHttpsTexts AD12A8 8 src/yn/yn_main.c
+N gYnHelpItemCounts AD2100 28 src/yn/yn_main.c
+N gYnMsgItems_25 AD19E0 40 src/yn/yn_main.c
+N gYnMsgItems_30 AD1BA0 30 src/yn/yn_main.c
+N gYnUserIdTexts AD12B8 8 src/yn/yn_main.c
+N gYnHelpItems_1C AD1FE0 10 src/yn/yn_main.c
+N gYnHelpItems_0F AD1F10 10 src/yn/yn_main.c
+N gYnHelpItems_24 AD2040 20 src/yn/yn_main.c
+N gYnNoCardLines AD1308 C src/yn/yn_main.c
+N gYnMsgItems_15 AD1840 8 src/yn/yn_main.c
+N gYnScreenItems_02 AD1350 20 src/yn/yn_main.c
+N gYnHelpItems_1D AD1FF0 10 src/yn/yn_main.c
+N gYnScreenItems_0E AD14A0 10 src/yn/yn_main.c
+N gYnHelpItems_04 AD1E80 20 src/yn/yn_main.c
+N gYnScreenProxyFieldsItems AD1530 30 src/yn/yn_main.c
+N gYnMsgDeviceAbsentItems AD16B0 20 src/yn/yn_main.c
+N gYnStorageNames AD1230 10 src/yn/yn_main.c
+N gYnScreenItems_06 AD13A0 10 src/yn/yn_main.c
+N gYnYesNoTexts AD12D8 8 src/yn/yn_main.c
+N gYnHelpListItems AD1E40 10 src/yn/yn_main.c
+N gYnMsgProxySavedItems AD1C00 10 src/yn/yn_main.c
+N gYnMsgFileErrorItems AD18E0 20 src/yn/yn_main.c
+N gYnMsgEntryDetailsItems AD1888 8 src/yn/yn_main.c
+N gYnMsgItems_17 AD1850 20 src/yn/yn_main.c
+N gYnMsgItems_11 AD17F0 20 src/yn/yn_main.c
+N gYnMsgItems_0A AD1730 30 src/yn/yn_main.c
+N gYnScreenItemCounts AD15E0 20 src/yn/yn_main.c
+N gYnScreenItems_07 AD13B0 10 src/yn/yn_main.c
+N gYnHelpProxyHostItems AD2010 8 src/yn/yn_main.c
+N gYnMsgItems_28 AD1A80 30 src/yn/yn_main.c
+N gYnEtherModeTexts AD1270 20 src/yn/yn_main.c
+N gYnHelpItems_11 AD1F30 10 src/yn/yn_main.c
+N gYnHelpItems_14 AD1F50 10 src/yn/yn_main.c
+N gYnScreenItems_03 AD1370 10 src/yn/yn_main.c
+N gYnMsgDeviceUnknownItems AD1690 20 src/yn/yn_main.c
+N gYnMsgItems_1F AD1910 30 src/yn/yn_main.c
+N gYnFmtString AD3828 3 src/yn/yn_main.c
+N gYnBackgroundRect AD2130 C src/yn/yn_main.c
+N gYnMsgItems_0D AD1790 10 src/yn/yn_main.c
+N gYnMsgItems_20 AD1940 20 src/yn/yn_main.c
+N gYnScreenItems_18 AD1560 10 src/yn/yn_main.c
+N gYnMsgItems_0F AD17C0 10 src/yn/yn_main.c
+N gYnScreenItems AD1570 70 src/yn/yn_main.c
+N gYnMsgItems_39 AD1CF0 10 src/yn/yn_main.c
+N gYnDeviceTexts AD12B0 8 src/yn/yn_main.c
+N gYnScreenItems_0A AD1410 30 src/yn/yn_main.c
+N gYnMsgItems_2C AD1B20 10 src/yn/yn_main.c
+N gYnHelpItems_10 AD1F20 10 src/yn/yn_main.c
+N gYnHelpItems_06 AD1EB0 10 src/yn/yn_main.c
+N gYnHelpItems_18 AD1F90 20 src/yn/yn_main.c
+N gYnMsgItems_07 AD16E0 10 src/yn/yn_main.c
+N gYnMsgItems_2D AD1B30 20 src/yn/yn_main.c
+N gYnMsgItems_26 AD1A20 30 src/yn/yn_main.c
+N gYnMsgItems_01 AD1610 20 src/yn/yn_main.c
+N gYnMsgItems_31 AD1BD0 30 src/yn/yn_main.c
+N gYnMsgItems_13 AD1830 8 src/yn/yn_main.c
+N gYnHelpItems_19 AD1FB0 20 src/yn/yn_main.c
+N gYnNoSettingsLines AD1318 C src/yn/yn_main.c
+N gYnMsgNoNameItems AD1C10 20 src/yn/yn_main.c
+N gYnGuideArgv AD2140 10 src/yn/yn_main.c
+N gYnMsgProxyConfirmItems AD1870 18 src/yn/yn_main.c
+N gYnScreenItems_0C AD1460 20 src/yn/yn_main.c
+N gYnMsgItems_14 AD1838 8 src/yn/yn_main.c
+N gYnMsgQuitAskItems AD1890 20 src/yn/yn_main.c
+N gYnHelpItems_1A AD1FD0 10 src/yn/yn_main.c
+N gYnScreenItems_04 AD1380 10 src/yn/yn_main.c
+N gYnMsgItems AD1D00 F0 src/yn/yn_main.c
+N gYnHelpProxyHttpsItems AD2020 20 src/yn/yn_main.c
+N gYnHelpItems AD2060 A0 src/yn/yn_main.c
+N gYnMsgItems_09 AD1720 10 src/yn/yn_main.c
+N gYnHelpItems_15 AD1F60 10 src/yn/yn_main.c
+N gYnOtherPs2Lines AD12F0 18 src/yn/yn_main.c
+N gYnHelpBars AD2170 70 src/yn/yn_main.c
+N gYnHostIpTexts AD12C0 8 src/yn/yn_main.c
+N gYnMsgItems_0B AD1760 20 src/yn/yn_main.c
+N gYnHelpBarLabels AD1240 30 src/yn/yn_main.c
+N gYnMsgConnectedItems AD1C30 20 src/yn/yn_main.c
+N gYnScreenItems_15 AD1500 10 src/yn/yn_main.c
+N gYnMsgItems_29 AD1AB0 30 src/yn/yn_main.c
+N gYnHelpItems_05 AD1EA0 10 src/yn/yn_main.c
+N gYnHelpProxyUseItems AD2000 10 src/yn/yn_main.c
+N gYnHelpItems_13 AD1F48 8 src/yn/yn_main.c
+N gYnHelpItems_0E AD1F00 10 src/yn/yn_main.c
+N gYnScreenItems_0B AD1440 20 src/yn/yn_main.c
+N gYnListBarYs AD2128 8 src/yn/yn_main.c
+N gYnMsgItems_06 AD16D0 10 src/yn/yn_main.c
+N gYnMsgDialUpItems AD18B0 10 src/yn/yn_main.c
+N gYnMsgItems_36 AD1C80 20 src/yn/yn_main.c
+N gYnMsgItems_23 AD19A0 20 src/yn/yn_main.c
+N gYnScreenNoneItems AD1328 8 src/yn/yn_main.c
+N gYnScreenItems_0F AD14B0 20 src/yn/yn_main.c
+N gYnMsgItems_21 AD1960 20 src/yn/yn_main.c
+N gYnProxyBarYs AD2150 8 src/yn/yn_main.c
+N gYnScreenProxyUseItems AD1510 20 src/yn/yn_main.c
+N gYnMsgItems_37 AD1CA0 30 src/yn/yn_main.c
+N gYnHelpItems_00 AD1E30 10 src/yn/yn_main.c
+N gYnNoTexts AD12E0 10 src/yn/yn_main.c
+N gYnProxyWindows AD11F0 3C src/yn/yn_main.c
+N gYnMsgItems_0E AD17A0 20 src/yn/yn_main.c
+N gYnScreenItems_11 AD14E0 10 src/yn/yn_main.c
+N gYnDnsTexts AD12D0 8 src/yn/yn_main.c
+N gYnMsgItems_24 AD19C0 20 src/yn/yn_main.c
+N gYnScreenItems_09 AD13F0 20 src/yn/yn_main.c
+N gYnHelpItems_17 AD1F80 10 src/yn/yn_main.c
+N gYnMsgItems_2A AD1AE0 20 src/yn/yn_main.c
+N gYnHelpItems_07 AD1EC0 10 src/yn/yn_main.c
+N gYnMsgItems_12 AD1810 20 src/yn/yn_main.c
+N gYnMsgItems_00 AD1600 10 src/yn/yn_main.c
+N gYnScreenItems_0D AD1480 20 src/yn/yn_main.c
+N gYnHelpItems_0D AD1EE0 20 src/yn/yn_main.c
+N gYnWindows AD11A0 50 src/yn/yn_main.c
+N gYnHelpHints AD2160 E src/yn/yn_main.c
+N gYnHelpItems_03 AD1E70 10 src/yn/yn_main.c
+N gYnHelpItems_08 AD1ED0 10 src/yn/yn_main.c
+N gYnScreenItems_12 AD14F0 10 src/yn/yn_main.c
+N gYnScreenListItems AD1330 20 src/yn/yn_main.c
+N gYnScreenItems_10 AD14D0 10 src/yn/yn_main.c
+N gYnMsgItems_16 AD1848 8 src/yn/yn_main.c
+N gYnMsgItems_10 AD17D0 20 src/yn/yn_main.c
+N gYnNetmaskTexts AD12C8 8 src/yn/yn_main.c
+N gYnHelpProxyPortItems AD2018 8 src/yn/yn_main.c
+N gYnProxyChoiceYs AD2158 8 src/yn/yn_main.c
+N gYnMsgItems_03 AD1660 30 src/yn/yn_main.c
+N gYnScreenItems_05 AD1390 10 src/yn/yn_main.c
+N gYnFieldHeaders AD1290 18 src/yn/yn_main.c
+N gYnMsgItems_1E AD1900 10 src/yn/yn_main.c
+N gYnScreenItems_08 AD13C0 30 src/yn/yn_main.c
+N gYnMsgItems_2F AD1B80 20 src/yn/yn_main.c
+N gYnMsgItemCounts AD1DF0 40 src/yn/yn_main.c
+N gYnMsgItems_0C AD1780 10 src/yn/yn_main.c
+N gYnSpaceText AD28D8 2 src/yn/yn_main.c
+N gYnMsgItems_1C AD18C0 20 src/yn/yn_main.c
+N gYnHelpItems_16 AD1F70 10 src/yn/yn_main.c
+N gYnEmptyText AD28E0 1 src/yn/yn_main.c
+N gYnMsgItems_38 AD1CD0 20 src/yn/yn_main.c
+N gYnMsgItems_35 AD1C50 30 src/yn/yn_main.c
+N gYnMsgItems_22 AD1980 20 src/yn/yn_main.c
+N gYnMsgItems_2B AD1B00 20 src/yn/yn_main.c
+N gYnHelpItems_02 AD1E50 20 src/yn/yn_main.c
+N gYnHelpItems_12 AD1F40 8 src/yn/yn_main.c
+N gYnMsgItems_2E AD1B50 30 src/yn/yn_main.c
+N gYnMsgItems_27 AD1A50 30 src/yn/yn_main.c
+N gYnMsgItems_08 AD16F0 30 src/yn/yn_main.c
+N gYnNetcnfifArgs AD2260 20 src/yn/yn_netcnf.c
+N gYnNetcnfArgs AD21E0 80 src/yn/yn_netcnf.c
+R AD1230 p AD2780
+R AD1234 p AD27A0
+R AD1238 p AD27C0
+R AD1240 p AD27D8
+R AD1244 p AD27E0
+R AD1248 p AD27E8
+R AD124C p AD27F8
+R AD1250 p AD2808
+R AD1254 p AD2810
+R AD1258 p AD2818
+R AD125C p AD2820
+R AD1260 p AD2830
+R AD1270 p AD2850
+R AD1274 p AD2860
+R AD1278 p AD2880
+R AD127C p AD28A0
+R AD1280 p AD28C0
+R AD1290 s gYnSpaceText 0
+R AD1294 s gYnSpaceText 0
+R AD1298 s gYnSpaceText 0
+R AD129C s gYnSpaceText 0
+R AD12A0 s gYnSpaceText 0
+R AD12A4 p AD28F0
+R AD12A8 p AD2910
+R AD12AC p AD2928
+R AD12B0 p AD2938
+R AD12B4 p AD2948
+R AD12B8 p AD2958
+R AD12BC p AD2968
+R AD12C0 p AD2970
+R AD12C4 p AD2988
+R AD12C8 p AD2998
+R AD12CC p AD29B0
+R AD12D0 p AD29D0
+R AD12D4 p AD29F0
+R AD12D8 p AD2A10
+R AD12DC p AD2A28
+R AD12E0 p AD2A30
+R AD12E4 p AD2A40
+R AD12F0 p AD2A70
+R AD12F4 p AD2A90
+R AD12F8 p AD2AD0
+R AD12FC p AD2B10
+R AD1308 p AD2B30
+R AD130C p AD2B50
+R AD1318 p AD2B70
+R AD131C p AD2B90
+R AD132C s gYnSpaceText 0
+R AD1334 p AD2BC8
+R AD133C p AD2BE0
+R AD1344 p AD2C00
+R AD1354 s gYnEmptyText 0
+R AD135C s gYnEmptyText 0
+R AD1364 s gYnEmptyText 0
+R AD136C s gYnEmptyText 0
+R AD1374 s gYnEmptyText 0
+R AD137C s gYnEmptyText 0
+R AD1384 s gYnEmptyText 0
+R AD138C s gYnEmptyText 0
+R AD1394 s gYnEmptyText 0
+R AD139C s gYnEmptyText 0
+R AD13A4 s gYnEmptyText 0
+R AD13AC s gYnEmptyText 0
+R AD13B4 s gYnEmptyText 0
+R AD13C4 s gYnEmptyText 0
+R AD13CC s gYnEmptyText 0
+R AD13D4 s gYnEmptyText 0
+R AD13DC s gYnEmptyText 0
+R AD13E4 s gYnEmptyText 0
+R AD13F4 s gYnEmptyText 0
+R AD13FC s gYnEmptyText 0
+R AD1404 s gYnEmptyText 0
+R AD140C s gYnEmptyText 0
+R AD1414 s gYnEmptyText 0
+R AD141C s gYnEmptyText 0
+R AD1424 s gYnEmptyText 0
+R AD142C s gYnEmptyText 0
+R AD1434 s gYnEmptyText 0
+R AD1444 s gYnEmptyText 0
+R AD144C s gYnEmptyText 0
+R AD1454 s gYnEmptyText 0
+R AD145C s gYnEmptyText 0
+R AD1464 s gYnEmptyText 0
+R AD146C s gYnEmptyText 0
+R AD1474 s gYnEmptyText 0
+R AD147C s gYnEmptyText 0
+R AD1484 s gYnEmptyText 0
+R AD148C s gYnEmptyText 0
+R AD1494 s gYnEmptyText 0
+R AD14A4 s gYnEmptyText 0
+R AD14AC s gYnEmptyText 0
+R AD14B4 s gYnEmptyText 0
+R AD14BC s gYnEmptyText 0
+R AD14C4 s gYnEmptyText 0
+R AD14D4 s gYnEmptyText 0
+R AD14DC s gYnEmptyText 0
+R AD14E4 s gYnEmptyText 0
+R AD14EC s gYnEmptyText 0
+R AD14F4 s gYnEmptyText 0
+R AD14FC s gYnEmptyText 0
+R AD1504 s gYnEmptyText 0
+R AD150C s gYnEmptyText 0
+R AD1514 p AD2C18
+R AD151C p AD2C20
+R AD1524 p AD2C30
+R AD152C p AD2C60
+R AD1534 p AD2C80
+R AD153C p AD2C98
+R AD1544 p AD2CA0
+R AD154C p AD2C98
+R AD1554 p AD2CC0
+R AD155C p AD2CE0
+R AD1564 s gYnEmptyText 0
+R AD156C s gYnEmptyText 0
+R AD1570 s gYnScreenNoneItems 0
+R AD1574 s gYnScreenListItems 0
+R AD1578 s gYnScreenItems_02 0
+R AD157C s gYnScreenItems_03 0
+R AD1580 s gYnScreenItems_04 0
+R AD1584 s gYnScreenItems_05 0
+R AD1588 s gYnScreenItems_06 0
+R AD158C s gYnScreenItems_07 0
+R AD1590 s gYnScreenItems_08 0
+R AD1594 s gYnScreenItems_09 0
+R AD1598 s gYnScreenItems_0A 0
+R AD159C s gYnScreenItems_0B 0
+R AD15A0 s gYnScreenItems_0C 0
+R AD15A4 s gYnScreenItems_0D 0
+R AD15A8 s gYnScreenItems_0E 0
+R AD15AC s gYnScreenItems_0F 0
+R AD15B0 s gYnScreenItems_10 0
+R AD15B4 s gYnScreenItems_11 0
+R AD15B8 s gYnScreenItems_12 0
+R AD15BC s gYnScreenNoneItems 0
+R AD15C0 s gYnScreenNoneItems 0
+R AD15C4 s gYnScreenItems_15 0
+R AD15C8 s gYnScreenProxyUseItems 0
+R AD15CC s gYnScreenProxyFieldsItems 0
+R AD15D0 s gYnScreenItems_18 0
+R AD1604 s gYnSpaceText 0
+R AD1614 p AD2D20
+R AD161C p AD2D50
+R AD1624 p AD2A28
+R AD162C p AD2A30
+R AD1634 s gYnEmptyText 0
+R AD163C s gYnEmptyText 0
+R AD1644 s gYnEmptyText 0
+R AD164C s gYnEmptyText 0
+R AD1654 s gYnEmptyText 0
+R AD165C s gYnEmptyText 0
+R AD1664 s gYnEmptyText 0
+R AD166C s gYnEmptyText 0
+R AD1674 s gYnEmptyText 0
+R AD167C s gYnEmptyText 0
+R AD1684 s gYnEmptyText 0
+R AD168C s gYnEmptyText 0
+R AD1694 p AD2D70
+R AD169C p AD2B10
+R AD16A4 p AD2DA0
+R AD16AC p AD2DD0
+R AD16B4 p AD2DF0
+R AD16BC p AD2E20
+R AD16C4 p AD2E30
+R AD16CC p AD2E60
+R AD16D4 p AD2E90
+R AD16DC p AD2EC0
+R AD16E4 p AD2EF0
+R AD16EC s gYnEmptyText 0
+R AD16F4 s gYnEmptyText 0
+R AD16FC s gYnEmptyText 0
+R AD1704 s gYnEmptyText 0
+R AD170C s gYnEmptyText 0
+R AD1714 s gYnEmptyText 0
+R AD1724 s gYnEmptyText 0
+R AD172C s gYnEmptyText 0
+R AD1734 s gYnEmptyText 0
+R AD173C s gYnEmptyText 0
+R AD1744 s gYnEmptyText 0
+R AD174C s gYnEmptyText 0
+R AD1754 s gYnEmptyText 0
+R AD1764 s gYnEmptyText 0
+R AD176C s gYnEmptyText 0
+R AD1774 s gYnEmptyText 0
+R AD1784 s gYnEmptyText 0
+R AD178C s gYnEmptyText 0
+R AD1794 s gYnEmptyText 0
+R AD179C s gYnEmptyText 0
+R AD17A4 s gYnEmptyText 0
+R AD17AC s gYnEmptyText 0
+R AD17B4 s gYnEmptyText 0
+R AD17C4 s gYnEmptyText 0
+R AD17CC s gYnEmptyText 0
+R AD17D4 s gYnEmptyText 0
+R AD17DC s gYnEmptyText 0
+R AD17E4 s gYnEmptyText 0
+R AD17EC s gYnEmptyText 0
+R AD17F4 s gYnEmptyText 0
+R AD17FC s gYnEmptyText 0
+R AD1804 s gYnEmptyText 0
+R AD180C s gYnEmptyText 0
+R AD1814 s gYnEmptyText 0
+R AD181C s gYnEmptyText 0
+R AD1824 s gYnEmptyText 0
+R AD182C s gYnEmptyText 0
+R AD1834 s gYnEmptyText 0
+R AD183C s gYnEmptyText 0
+R AD1844 s gYnEmptyText 0
+R AD184C s gYnEmptyText 0
+R AD1854 p AD2F20
+R AD185C p AD2F40
+R AD1864 p AD2F70
+R AD1874 p AD2F90
+R AD187C p AD2FB0
+R AD1884 p AD2FD0
+R AD188C p AD27F8
+R AD1894 p AD2FE0
+R AD189C p AD3000
+R AD18A4 p AD3030
+R AD18AC p AD2FD0
+R AD18B4 p AD3070
+R AD18BC p AD30A0
+R AD18C4 s gYnEmptyText 0
+R AD18CC s gYnEmptyText 0
+R AD18D4 s gYnEmptyText 0
+R AD18E4 p AD30C0
+R AD18EC p AD30F0
+R AD18F4 p AD3130
+R AD18FC p AD3160
+R AD1904 p AD3180
+R AD1914 s gYnEmptyText 0
+R AD191C s gYnEmptyText 0
+R AD1924 s gYnEmptyText 0
+R AD192C s gYnEmptyText 0
+R AD1934 s gYnEmptyText 0
+R AD1944 s gYnEmptyText 0
+R AD194C s gYnEmptyText 0
+R AD1954 s gYnEmptyText 0
+R AD195C s gYnEmptyText 0
+R AD1964 s gYnEmptyText 0
+R AD196C s gYnEmptyText 0
+R AD1974 s gYnEmptyText 0
+R AD197C s gYnEmptyText 0
+R AD1984 s gYnEmptyText 0
+R AD198C s gYnEmptyText 0
+R AD1994 s gYnEmptyText 0
+R AD19A4 s gYnEmptyText 0
+R AD19AC s gYnEmptyText 0
+R AD19B4 s gYnEmptyText 0
+R AD19C4 s gYnEmptyText 0
+R AD19CC s gYnEmptyText 0
+R AD19D4 s gYnEmptyText 0
+R AD19E4 s gYnEmptyText 0
+R AD19EC s gYnEmptyText 0
+R AD19F4 s gYnEmptyText 0
+R AD19FC s gYnEmptyText 0
+R AD1A04 s gYnEmptyText 0
+R AD1A0C s gYnEmptyText 0
+R AD1A14 s gYnEmptyText 0
+R AD1A1C s gYnEmptyText 0
+R AD1A24 s gYnEmptyText 0
+R AD1A2C s gYnEmptyText 0
+R AD1A34 s gYnEmptyText 0
+R AD1A3C s gYnEmptyText 0
+R AD1A44 s gYnEmptyText 0
+R AD1A4C s gYnEmptyText 0
+R AD1A54 s gYnEmptyText 0
+R AD1A5C s gYnEmptyText 0
+R AD1A64 s gYnEmptyText 0
+R AD1A6C s gYnEmptyText 0
+R AD1A74 s gYnEmptyText 0
+R AD1A7C s gYnEmptyText 0
+R AD1A84 s gYnEmptyText 0
+R AD1A8C s gYnEmptyText 0
+R AD1A94 s gYnEmptyText 0
+R AD1A9C s gYnEmptyText 0
+R AD1AA4 s gYnEmptyText 0
+R AD1AAC s gYnEmptyText 0
+R AD1AB4 s gYnEmptyText 0
+R AD1ABC s gYnEmptyText 0
+R AD1AC4 s gYnEmptyText 0
+R AD1ACC s gYnEmptyText 0
+R AD1AD4 s gYnEmptyText 0
+R AD1ADC s gYnEmptyText 0
+R AD1AE4 s gYnEmptyText 0
+R AD1AEC s gYnEmptyText 0
+R AD1AF4 s gYnEmptyText 0
+R AD1B04 p AD31B0
+R AD1B0C p AD31D0
+R AD1B14 p AD3200
+R AD1B1C p AD3220
+R AD1B24 s gYnEmptyText 0
+R AD1B2C s gYnEmptyText 0
+R AD1B34 s gYnEmptyText 0
+R AD1B3C s gYnEmptyText 0
+R AD1B44 s gYnEmptyText 0
+R AD1B4C s gYnEmptyText 0
+R AD1B54 s gYnEmptyText 0
+R AD1B5C s gYnEmptyText 0
+R AD1B64 s gYnEmptyText 0
+R AD1B6C s gYnEmptyText 0
+R AD1B74 s gYnEmptyText 0
+R AD1B84 s gYnEmptyText 0
+R AD1B8C s gYnEmptyText 0
+R AD1B94 s gYnEmptyText 0
+R AD1BA4 s gYnEmptyText 0
+R AD1BAC s gYnEmptyText 0
+R AD1BB4 s gYnEmptyText 0
+R AD1BBC s gYnEmptyText 0
+R AD1BC4 s gYnEmptyText 0
+R AD1BD4 s gYnEmptyText 0
+R AD1BDC s gYnEmptyText 0
+R AD1BE4 s gYnEmptyText 0
+R AD1BEC s gYnEmptyText 0
+R AD1BF4 s gYnEmptyText 0
+R AD1C04 p AD3250
+R AD1C0C p AD3270
+R AD1C14 p AD3290
+R AD1C1C p AD32B0
+R AD1C24 p AD32E0
+R AD1C34 p AD3300
+R AD1C3C p AD3320
+R AD1C44 p AD3350
+R AD1C4C p AD3370
+R AD1C54 s gYnEmptyText 0
+R AD1C5C s gYnEmptyText 0
+R AD1C64 s gYnEmptyText 0
+R AD1C6C s gYnEmptyText 0
+R AD1C74 s gYnEmptyText 0
+R AD1C84 s gYnEmptyText 0
+R AD1C8C s gYnEmptyText 0
+R AD1C94 s gYnEmptyText 0
+R AD1C9C s gYnEmptyText 0
+R AD1CA4 p AD3390
+R AD1CAC p AD33B0
+R AD1CB4 p AD33E0
+R AD1CBC p AD2A28
+R AD1CC4 p AD2A30
+R AD1CD4 p AD3410
+R AD1CDC p AD2D50
+R AD1CE4 p AD2A28
+R AD1CEC p AD2A30
+R AD1CF4 p AD2EF0
+R AD1CFC p AD3440
+R AD1D00 s gYnMsgItems_00 0
+R AD1D04 s gYnMsgItems_01 0
+R AD1D08 s gYnMsgItems_02 0
+R AD1D0C s gYnMsgItems_03 0
+R AD1D10 s gYnMsgDeviceUnknownItems 0
+R AD1D14 s gYnMsgDeviceAbsentItems 0
+R AD1D18 s gYnMsgItems_06 0
+R AD1D1C s gYnMsgItems_07 0
+R AD1D20 s gYnMsgItems_08 0
+R AD1D24 s gYnMsgItems_09 0
+R AD1D28 s gYnMsgItems_0A 0
+R AD1D2C s gYnMsgItems_0B 0
+R AD1D30 s gYnMsgItems_0C 0
+R AD1D34 s gYnMsgItems_0D 0
+R AD1D38 s gYnMsgItems_0E 0
+R AD1D3C s gYnMsgItems_0F 0
+R AD1D40 s gYnMsgItems_10 0
+R AD1D44 s gYnMsgItems_11 0
+R AD1D48 s gYnMsgItems_12 0
+R AD1D4C s gYnMsgItems_13 0
+R AD1D50 s gYnMsgItems_14 0
+R AD1D54 s gYnMsgItems_15 0
+R AD1D58 s gYnMsgItems_16 0
+R AD1D5C s gYnMsgItems_17 0
+R AD1D60 s gYnMsgProxyConfirmItems 0
+R AD1D64 s gYnMsgEntryDetailsItems 0
+R AD1D68 s gYnMsgQuitAskItems 0
+R AD1D6C s gYnMsgDialUpItems 0
+R AD1D70 s gYnMsgItems_1C 0
+R AD1D74 s gYnMsgFileErrorItems 0
+R AD1D78 s gYnMsgItems_1E 0
+R AD1D7C s gYnMsgItems_1F 0
+R AD1D80 s gYnMsgItems_20 0
+R AD1D84 s gYnMsgItems_21 0
+R AD1D88 s gYnMsgItems_22 0
+R AD1D8C s gYnMsgItems_23 0
+R AD1D90 s gYnMsgItems_24 0
+R AD1D94 s gYnMsgItems_25 0
+R AD1D98 s gYnMsgItems_26 0
+R AD1D9C s gYnMsgItems_27 0
+R AD1DA0 s gYnMsgItems_28 0
+R AD1DA4 s gYnMsgItems_29 0
+R AD1DA8 s gYnMsgItems_2A 0
+R AD1DAC s gYnMsgItems_2B 0
+R AD1DB0 s gYnMsgItems_2C 0
+R AD1DB4 s gYnMsgItems_2D 0
+R AD1DB8 s gYnMsgItems_2E 0
+R AD1DBC s gYnMsgItems_2F 0
+R AD1DC0 s gYnMsgItems_30 0
+R AD1DC4 s gYnMsgItems_31 0
+R AD1DC8 s gYnMsgProxySavedItems 0
+R AD1DCC s gYnMsgNoNameItems 0
+R AD1DD0 s gYnMsgConnectedItems 0
+R AD1DD4 s gYnMsgItems_35 0
+R AD1DD8 s gYnMsgItems_36 0
+R AD1DDC s gYnMsgItems_37 0
+R AD1DE0 s gYnMsgItems_38 0
+R AD1DE4 s gYnMsgItems_39 0
+R AD1E34 s gYnSpaceText 0
+R AD1E44 p AD3460
+R AD1E4C p AD3480
+R AD1E54 p AD34B0
+R AD1E5C p AD34E0
+R AD1E64 p AD3510
+R AD1E74 p AD3530
+R AD1E7C p AD3570
+R AD1E84 s gYnEmptyText 0
+R AD1E8C s gYnEmptyText 0
+R AD1E94 s gYnEmptyText 0
+R AD1EA4 s gYnEmptyText 0
+R AD1EAC s gYnEmptyText 0
+R AD1EB4 s gYnEmptyText 0
+R AD1EBC s gYnEmptyText 0
+R AD1EC4 s gYnEmptyText 0
+R AD1ECC s gYnEmptyText 0
+R AD1ED4 p AD3590
+R AD1EDC p AD35C0
+R AD1EE4 s gYnEmptyText 0
+R AD1EEC s gYnEmptyText 0
+R AD1EF4 s gYnEmptyText 0
+R AD1F04 s gYnEmptyText 0
+R AD1F0C s gYnEmptyText 0
+R AD1F14 s gYnEmptyText 0
+R AD1F24 s gYnEmptyText 0
+R AD1F2C s gYnEmptyText 0
+R AD1F34 s gYnEmptyText 0
+R AD1F3C s gYnEmptyText 0
+R AD1F44 s gYnEmptyText 0
+R AD1F4C s gYnEmptyText 0
+R AD1F54 s gYnEmptyText 0
+R AD1F64 s gYnEmptyText 0
+R AD1F6C s gYnEmptyText 0
+R AD1F74 s gYnEmptyText 0
+R AD1F7C s gYnEmptyText 0
+R AD1F84 s gYnEmptyText 0
+R AD1F94 s gYnEmptyText 0
+R AD1F9C s gYnEmptyText 0
+R AD1FA4 s gYnEmptyText 0
+R AD1FB4 s gYnEmptyText 0
+R AD1FBC s gYnEmptyText 0
+R AD1FC4 s gYnEmptyText 0
+R AD1FD4 s gYnEmptyText 0
+R AD1FDC s gYnEmptyText 0
+R AD1FE4 s gYnSpaceText 0
+R AD1FF4 s gYnEmptyText 0
+R AD1FFC s gYnEmptyText 0
+R AD2004 p AD35E0
+R AD200C p AD3610
+R AD2014 p AD3640
+R AD201C p AD3680
+R AD2024 p AD36A0
+R AD202C p AD36E0
+R AD2034 p AD3710
+R AD2044 s gYnEmptyText 0
+R AD204C s gYnEmptyText 0
+R AD2054 s gYnEmptyText 0
+R AD2060 s gYnHelpItems_00 0
+R AD2064 s gYnHelpListItems 0
+R AD2068 s gYnHelpItems_02 0
+R AD206C s gYnHelpItems_03 0
+R AD2070 s gYnHelpItems_04 0
+R AD2074 s gYnHelpItems_05 0
+R AD2078 s gYnHelpItems_06 0
+R AD207C s gYnHelpItems_07 0
+R AD2080 s gYnHelpItems_08 0
+R AD2084 s gYnHelpItems_08 0
+R AD2088 s gYnHelpItems_08 0
+R AD208C s gYnHelpItems_08 0
+R AD2090 s gYnHelpItems_08 0
+R AD2094 s gYnHelpItems_0D 0
+R AD2098 s gYnHelpItems_0E 0
+R AD209C s gYnHelpItems_0F 0
+R AD20A0 s gYnHelpItems_10 0
+R AD20A4 s gYnHelpItems_11 0
+R AD20A8 s gYnHelpItems_12 0
+R AD20AC s gYnHelpItems_13 0
+R AD20B0 s gYnHelpItems_14 0
+R AD20B4 s gYnHelpItems_15 0
+R AD20B8 s gYnHelpItems_16 0
+R AD20BC s gYnHelpItems_17 0
+R AD20C0 s gYnHelpItems_18 0
+R AD20C4 s gYnHelpItems_19 0
+R AD20C8 s gYnHelpItems_1A 0
+R AD20CC s gYnHelpItems_08 0
+R AD20D0 s gYnHelpItems_1C 0
+R AD20D4 s gYnHelpItems_1D 0
+R AD20D8 s gYnHelpItems_08 0
+R AD20DC s gYnHelpProxyUseItems 0
+R AD20E0 s gYnHelpProxyHostItems 0
+R AD20E4 s gYnHelpProxyPortItems 0
+R AD20E8 s gYnHelpProxyHttpsItems 0
+R AD20EC s gYnHelpProxyPortItems 0
+R AD20F0 s gYnHelpItems_24 0
+R AD2140 s gYnSetupGuideArg 0
+R AD2144 p AD38F0
+R AD2148 p AD38F8
+J AD3730 Yn_Update 3E8 src/yn/yn_main.c @250
+J AD3734 Yn_Update 3D0 src/yn/yn_main.c @250
+J AD3738 Yn_Update 3B8 src/yn/yn_main.c @250
+J AD373C Yn_Update 3A0 src/yn/yn_main.c @250
+J AD3740 Yn_Update 388 src/yn/yn_main.c @250
+J AD3744 Yn_Update 370 src/yn/yn_main.c @250
+J AD3748 Yn_Update 358 src/yn/yn_main.c @250
+J AD374C Yn_Update 340 src/yn/yn_main.c @250
+J AD3750 Yn_Update 770 src/yn/yn_main.c @250
+J AD3754 Yn_Update 300 src/yn/yn_main.c @250
+J AD3760 Yn_Update 78 src/yn/yn_main.c @249
+J AD3764 Yn_Update C8 src/yn/yn_main.c @249
+J AD3768 Yn_Update 190 src/yn/yn_main.c @249
+J AD376C Yn_Update 2C8 src/yn/yn_main.c @249
+J AD3770 Yn_Update 480 src/yn/yn_main.c @249
+J AD3774 Yn_Update 5A0 src/yn/yn_main.c @249
+J AD3778 Yn_Update 5C8 src/yn/yn_main.c @249
+J AD377C Yn_Update 6E8 src/yn/yn_main.c @249
+J AD3780 Yn_Update 738 src/yn/yn_main.c @249
+J AD3784 Yn_Update 770 src/yn/yn_main.c @249
+J AD3788 Yn_Update 288 src/yn/yn_main.c @249
+J AD37A0 Yn_ScanCards 40 src/yn/yn_main.c @380
+J AD37A4 Yn_ScanCards E8 src/yn/yn_main.c @380
+J AD37A8 Yn_ScanCards 190 src/yn/yn_main.c @380
+J AD37AC Yn_ScanCards 190 src/yn/yn_main.c @380
+J AD37B0 Yn_ScanCards 278 src/yn/yn_main.c @380
+J AD37B4 Yn_ScanCards 2C0 src/yn/yn_main.c @380
+J AD37C0 Yn_ScanCardsForConnect 40 src/yn/yn_main.c @497
+J AD37C4 Yn_ScanCardsForConnect E8 src/yn/yn_main.c @497
+J AD37C8 Yn_ScanCardsForConnect 190 src/yn/yn_main.c @497
+J AD37CC Yn_ScanCardsForConnect 190 src/yn/yn_main.c @497
+J AD37D0 Yn_ScanCardsForConnect 278 src/yn/yn_main.c @497
+J AD37D4 Yn_ScanCardsForConnect 2C0 src/yn/yn_main.c @497
+J AD37E0 Yn_Connect 40 src/yn/yn_main.c @584
+J AD37E4 Yn_Connect 88 src/yn/yn_main.c @584
+J AD37E8 Yn_Connect D8 src/yn/yn_main.c @584
+J AD37EC Yn_Connect 2B0 src/yn/yn_main.c @584
+J AD37F0 Yn_Connect 2F0 src/yn/yn_main.c @584
+J AD37F4 Yn_Connect 378 src/yn/yn_main.c @584
+J AD3800 Yn_UpdateEntryList 88 src/yn/yn_main.c @907
+J AD3804 Yn_UpdateEntryList 140 src/yn/yn_main.c @907
+J AD3808 Yn_UpdateEntryList 920 src/yn/yn_main.c @907
+J AD380C Yn_UpdateEntryList 920 src/yn/yn_main.c @907
+J AD3810 Yn_UpdateEntryList 920 src/yn/yn_main.c @907
+J AD3814 Yn_UpdateEntryList 498 src/yn/yn_main.c @907
+J AD3818 Yn_UpdateEntryList 558 src/yn/yn_main.c @907
+J AD381C Yn_UpdateEntryList 5C0 src/yn/yn_main.c @907
+J AD3820 Yn_UpdateEntryList 628 src/yn/yn_main.c @907
+J AD3824 Yn_UpdateEntryList 660 src/yn/yn_main.c @907
+J AD38B0 Yn_DrawEntryDetails 1F8 src/yn/yn_main.c @1633
+J AD38B4 Yn_DrawEntryDetails 1F8 src/yn/yn_main.c @1633
+J AD38B8 Yn_DrawEntryDetails 200 src/yn/yn_main.c @1633
+J AD38BC Yn_DrawEntryDetails 208 src/yn/yn_main.c @1633
+J AD38C0 Yn_DrawEntryDetails 210 src/yn/yn_main.c @1633
+J AD38C4 Yn_DrawEntryDetails 1F8 src/yn/yn_main.c @1633
+J AD38C8 Yn_DrawEntryDetails 218 src/yn/yn_main.c @1633
+J AD38CC Yn_DrawEntryDetails 220 src/yn/yn_main.c @1633
+J AD3940 Yn_UpdateProxy 60 src/yn/yn_main.c @2265
+J AD3944 Yn_UpdateProxy 100 src/yn/yn_main.c @2265
+J AD3948 Yn_UpdateProxy 240 src/yn/yn_main.c @2265
+J AD394C Yn_UpdateProxy 500 src/yn/yn_main.c @2265
+J AD3950 Yn_UpdateProxy 530 src/yn/yn_main.c @2265
+J AD3954 Yn_UpdateProxy 758 src/yn/yn_main.c @2265
+J AD3958 Yn_UpdateProxy 878 src/yn/yn_main.c @2265

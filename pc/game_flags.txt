@@ -1,0 +1,41 @@
+# The flags the game's C is compiled with for mh2-core.
+# One flag per line; '#' starts a comment. Read by pc/CMakeLists.txt and by
+# tools/pc/census.py, so the census compiles what the build compiles.
+#
+# [common]: every file of every build. [i686]: the 32-bit core (not the census's x86-64 run).
+# [mingw]: the Windows core (llvm-mingw's i686-w64-mingw32) only; the host-facing file
+# (pal_host, which includes the Windows SDK) leaves out these. [game]: the game's files only.
+[common]
+-fwrapv
+-fno-strict-aliasing
+-fno-delete-null-pointer-checks
+-ffp-contract=off
+-fno-builtin
+-fms-extensions
+-fno-common
+[i686]
+-msse2
+-mfpmath=sse
+# The game's calling convention: floats return in xmm0 (the i386 default
+# returns them through the x87 stack, which quiets a signalling NaN's bits).
+# regcall, not vectorcall: its C names are mangled "__regcall3__NAME" with no
+# argument sizes, so the game's functions can never bind to the host C
+# library's cdecl ones by accident. See pc/README.md, "Calling convention".
+-Xclang -fdefault-calling-conv=regcall
+# [mingw]: the Windows core only. The EE's compiler lays bit-fields out as GCC does: a field
+# goes into the storage unit that holds the previous one when it fits. mingw's clang defaults to
+# the Microsoft layout, where a new type size starts a new unit: a probe struct
+# { unsigned char a:4; unsigned short b:4; int c:8; } is 8 bytes there, and 4 with this flag, as
+# on Linux and on the EE (tools/pc/layout.py --arch mingw, pc/tests/layout_probe.h). The file that
+# includes the Windows SDK (pal_host) is left out: the SDK's structs are the Microsoft way.
+[mingw]
+-mno-ms-bitfields
+# [game]: the game's own files only (not the platform layer's, whose main and
+# printf are the host's).
+[game]
+# The game's main is not the program's: pc/core/main.c's is, and calls ps2_main
+# on the game's main thread. printf and sprintf are the PS2 libc's (ps2crt's),
+# variadic and so unmangled: they would take the host libc's names.
+-Dmain=ps2_main
+-Dprintf=ps2_printf
+-Dsprintf=ps2_sprintf

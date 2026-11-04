@@ -1,0 +1,3 @@
+# Files that don't compile yet for mh2-core (i686): a fix is pending.
+# tools/pc/census.py --list-failing prints the current list; tools/pc/sources.py
+# --verify-broken fails when a line is stale. Their functions get aborting stubs.

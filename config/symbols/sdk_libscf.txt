@@ -1,0 +1,8 @@
+// The boot ELF (SLPM_662.80): Sony's libscf (version 3000, by its id string
+// in .data at 0x199880), text 0x1270B0-0x1277A0; asm piece sdk/libscf.
+// Sony's library code, kept as assembly: public API names only, where the
+// binary shows them. Format: name = 0xADDRESS; // attributes
+
+// Functions the game's C calls, named from what each does (its line's
+// comment).
+sceScfGetLanguage = 0x00127160; // type:func OSD config - language field (bits 16-20) or the old japLanguage bit 4

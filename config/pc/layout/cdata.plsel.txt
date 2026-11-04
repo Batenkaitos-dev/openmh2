@@ -1,0 +1,10 @@
+@ cdata plsel
+C
+S D7BD80 4 src/plsel/player_menu.c 14
+S D7BD90 D0 src/plsel/quest_results.c 74
+S D7BE60 10 src/plsel/quest_results.c 75
+S D7BE70 10 src/plsel/quest_results.c 76
+N gPlselMenu D7BD80 4 src/plsel/player_menu.c
+N gPlselItemBoxSale D7BE70 10 src/plsel/quest_results.c
+N gPlselItemBox D7BE60 10 src/plsel/quest_results.c
+N gPlselBonus D7BD90 D0 src/plsel/quest_results.c
