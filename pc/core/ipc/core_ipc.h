@@ -117,6 +117,47 @@ IPC_CALL void Ipc_SetRumble(unsigned int port, unsigned int small, unsigned int 
  * waits: nothing the game can observe depends on it. */
 IPC_CALL void Ipc_Pace(unsigned long long vblank);
 
+/* ---- save states (the host's requests and the renderer's part; kernel/state.c, ipc_glue.c) ---- */
+
+/* The host's request, if it has made a new one since the last call: 1 a save, 2 a load, with the file's path in `path`
+ * (at most `cap` bytes, NUL-terminated); 0 none (headless: always). The kernel takes it at a VBlank's start. */
+IPC_CALL int Ipc_StateRequest(char *path, unsigned int cap);
+/* The answer to that request: `refused` is why not, or NULL when it went through; `vblank` is the state's (the VBlank that
+ * starts when it is loaded). Does nothing for a request already answered. */
+IPC_CALL void Ipc_StateAnswer(unsigned long long vblank, const char *refused);
+/* The renderer's part of a state. 1 when the host has a renderer whose block belongs in a state (else a state has none). */
+IPC_CALL int Ipc_StateHasGs(void);
+/* The renderer's identity (its build and the settings that change its state), at most 31 characters. */
+IPC_CALL const char *Ipc_StateIdentity(void);
+/* The block after everything sent so far (the host answers in the ring's order), valid until the next call; NULL with
+ * *why the reason when the renderer cannot give it now. */
+IPC_CALL const void *Ipc_StateGsGet(unsigned int *size, const char **why);
+/* Gives the block back to the renderer: 0 when it took it. */
+IPC_CALL int Ipc_StateGsSet(const void *data, unsigned int size);
+/* A state has been loaded and the game goes on from `vblank`, the one that starts next: the host's side is put in step
+ * (the pacer's clock, the key ring, the audio ring, the pad schedule: design 4.3). */
+IPC_CALL void Ipc_StateLoaded(unsigned long long vblank);
+
+/* ---- the freecam (pc/ipc/mh2ipc.h, Mh2IpcFreecam; ipc_glue.c hands the pose to Pal_FreecamSetPose at each VBlank) ---- */
+
+/* The host's pose as the mailbox holds it. `on` is 0 when the host has never written one. */
+typedef struct IpcFreecam {
+    int on, hold, frozen;
+    unsigned int seq;       /* the block's sequence this copy was read at (even, never 0) */
+    unsigned int grant;     /* the host's step count: it only grows */
+    unsigned int hide;      /* the hide mask: a bit for each PAL_STAGE_* (13 bits) */
+    float eye[3];
+    float yaw, pitch, roll, fov;
+} IpcFreecam;
+
+/* The pose now (a consistent copy: the block is read under its sequence lock). 1 when the host has written one; headless: 0. */
+IPC_CALL int Ipc_FreecamRead(IpcFreecam *out);
+/* The game's camera of the last field frame's draw, for the host's controller (it starts there). */
+IPC_CALL void Ipc_FreecamCamera(const float eye[3], const float at[3], float fov);
+/* What the last draw was, for the host (the block's st_* words): ACTIVE 1 when it was a field scene's draw made from the pose, ECHO the
+ * sequence of the pose in force for it, VBLANK the VBlank whose start this is; STATE, WHY and TAKEN the pause's (Pal_FreezeState). */
+IPC_CALL void Ipc_FreecamStatus(int active, unsigned int echo, unsigned long long vblank, int state, int why, unsigned int taken);
+
 /* ---- movies (the host's player, pc/core/ipc/ipc_movie.c) ---- */
 
 /* The movie in `size` bytes at `offset` of the host file `path` starts

@@ -25,7 +25,11 @@
 #include <string.h>
 
 #include "core_args.h"
+#include "launcher.h"
+#include "launcher_make.h"
+#include "launcher_text.h"
 #include "mh2host.h"
+#include "settings.h"
 
 HostConfig g_cfg;
 Mh2IpcMap g_map;
@@ -49,12 +53,51 @@ void host_log(const char *fmt, ...)
     fwrite(line, 1, (size_t)n + 6, stderr);
 }
 
+/* The options that are not settings (the settings' own are in settings.c's table), for the usage line and --help. */
+typedef struct Opt {
+    const char *opt, *arg;
+    int text;
+} Opt;
+
+static const Opt g_other[] = {
+    {"--config", "FILE.ini", T_O_CONFIG},
+    {"--set", "KEY=VALUE", T_O_SET},
+    {"--core", "PATH", T_O_CORE},
+    {"--no-window", NULL, T_O_NOWINDOW},
+    {"--gs-off", NULL, T_O_GSOFF},
+    {"--fast", NULL, T_O_FAST},
+    {"--no-card", NULL, T_O_NOCARD},
+    {"--quit-after", "N", T_O_QUITAFTER},
+    {"--import-card", "FILE", T_O_IMPORTCARD},
+    {"--log-file", "FILE", T_O_LOGFILE},
+    {"--launcher", NULL, T_O_LAUNCHER},
+    {"--no-launcher", NULL, T_O_NOLAUNCHER},
+    {"--help", NULL, T_O_HELP},
+};
+
 static void usage(void)
 {
-    fprintf(stderr, "usage: mh2 [--config FILE.ini] [--set KEY=VALUE] [--archive FILE] [--core PATH] [--no-window] [--gs-off] [--mute] [--fullscreen] [--fast] [--no-card] [--quit-after N]"
-                    " [--memcard1 FILE] [--memcard2 FILE] [--import-card FILE] [--vsync auto|on|off] [--log-file FILE]"
-                    " [--ssaa 1|2|4|8|16] [--hires] [--widescreen] [-- CORE ARGS...]\n");
+    fprintf(stderr, "usage: mh2");
+    for (size_t k = 0; k < sizeof(g_other) / sizeof(g_other[0]); k++)
+        fprintf(stderr, " [%s%s%s]", g_other[k].opt, g_other[k].arg ? " " : "", g_other[k].arg ? g_other[k].arg : "");
+    settings_usage_words(stderr);
+    fprintf(stderr, " [-- CORE ARGS...]\n(mh2 --help describes them)\n");
     exit(2);
+}
+
+/* --help: from the tables, so that it names what the build takes (the release names no development option). */
+static void help(void)
+{
+    printf("usage: mh2 [options] [-- CORE ARGS...]\n\nOptions that are not settings:\n");
+    for (size_t k = 0; k < sizeof(g_other) / sizeof(g_other[0]); k++) {
+        char left[80];
+        snprintf(left, sizeof(left), "%s%s%s", g_other[k].opt, g_other[k].arg ? " " : "", g_other[k].arg ? g_other[k].arg : "");
+        printf("  %-26s %s\n", left, TX(g_other[k].text));
+    }
+    printf("  %-26s %s\n", "-- CORE ARGS...", TX(T_O_REST));
+    printf("\nSettings (an option here, or a line key = value in mh2.ini; the option wins):\n");
+    settings_help(stdout);
+    exit(0);
 }
 
 /* The original's play options that mh2 takes but has no use for, said in the log. */
@@ -80,49 +123,37 @@ static void parse(int argc, char **argv)
             if (g_cfg.core_nargs && !g_cfg.automated)
                 g_cfg.automated = "the core's own arguments, after --";
             return;
+        } else if (!strcmp(a, "--help")) {
+            help();
+        } else if (!strcmp(a, "--launcher")) {
+            g_cfg.launcher = 1;
+        } else if (!strcmp(a, "--no-launcher")) {
+            g_cfg.launcher = -1;
         } else if (!strcmp(a, "--set") && i + 1 < argc) {
             settings_set(argv[++i]);
         } else if (!strcmp(a, "--config") && i + 1 < argc) {
             g_cfg.config_path = argv[++i];
-        } else if (!strcmp(a, "--archive") && i + 1 < argc) {
-            g_cfg.archive = argv[++i];
         } else if (!strcmp(a, "--core") && i + 1 < argc) {
             g_cfg.core_path = argv[++i];
         } else if (!strcmp(a, "--no-window")) {
             g_cfg.no_window = 1;
         } else if (!strcmp(a, "--gs-off")) {
             g_cfg.gs_off = 1;
-        } else if (!strcmp(a, "--mute")) {
-            g_cfg.mute = 1;
         } else if (!strcmp(a, "--no-card")) {
             g_cfg.no_card = 1;
         } else if (!strcmp(a, "--fast")) {
             g_cfg.fast = 1;
-        } else if (!strcmp(a, "--fullscreen")) {
-            g_cfg.fullscreen = 1;
         } else if (!strcmp(a, "--quit-after") && i + 1 < argc) {
             g_cfg.quit_after = strtoull(argv[++i], NULL, 10);
-        } else if ((!strcmp(a, "--memcard1") || !strcmp(a, "--memcard2")) && i + 1 < argc) {
-            g_cfg.memcard[a[9] - '1'] = argv[++i];
         } else if (!strcmp(a, "--import-card") && i + 1 < argc) {
             g_cfg.import_card = argv[++i];
-        } else if (!strcmp(a, "--vsync") && i + 1 < argc) {
-            const char *v = argv[++i];
-            if (strcmp(v, "on") && strcmp(v, "off") && strcmp(v, "auto"))
-                usage();
-            g_cfg.vsync = !strcmp(v, "on") ? 1 : !strcmp(v, "off") ? 0 : -1;
         } else if (!strcmp(a, "--log-file") && i + 1 < argc) {
             g_cfg.log_file = argv[++i];
-        } else if (!strcmp(a, "--hires")) {
-            g_cfg.hires = 1;
-        } else if (!strcmp(a, "--widescreen")) {
-            g_cfg.widescreen = 2;   /* the newest level */
-        } else if (!strcmp(a, "--ssaa") && i + 1 < argc) {
-            g_cfg.ssaa = atoi(argv[++i]);
-            if (g_cfg.ssaa != 1 && g_cfg.ssaa != 2 && g_cfg.ssaa != 4 && g_cfg.ssaa != 8 && g_cfg.ssaa != 16)
-                usage();
         } else {
-            usage();
+            /* the settings' own options: the table's (settings.c) */
+            int r = settings_cli(argc, argv, &i);
+            if (r <= 0)
+                usage();
         }
     }
 }
@@ -157,7 +188,7 @@ static void fatal_box(const char *msg)
     snprintf(text, sizeof(text), "%s\n\nThe details are at the end of the log%s%s. Please send it with the session's files.",
              msg, log ? ", " : "", log ? log : "");
     present_leave_fullscreen();
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Monster Hunter 2", text, NULL);
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "OpenMH2", text, NULL);
 }
 
 static void request_quit(void)
@@ -184,8 +215,10 @@ static int guard(void)
     return 2;
 }
 
+
 int main(int argc, char **argv)
 {
+    hfs_args(&argc, &argv);   /* Windows: the command line as UTF-8 (the C library's argv is in the ANSI code page) */
     g_cfg.vsync = -2;   /* not given (settings.c) */
     parse(argc, argv);
     /* the settings under the command line (settings.c), then the launcher: the disc, the cards */
@@ -197,6 +230,9 @@ int main(int argc, char **argv)
     }
     if (g_cfg.import_card)
         return cards_import(g_cfg.import_card, g_cfg.cards_dir);
+    /* the launcher (launcher.c): the player's settings, before anything else starts; never in an automated run */
+    if (launcher_wanted() && launcher_run() == LAUNCH_QUIT)
+        return 0;
     /* play: a window, not a scripted run (a test or a picture check) */
     int play = !g_cfg.no_window && !g_cfg.quit_after;
     if ((g_cfg.log_file || play) && play_log_open(g_cfg.log_file) == 0)
@@ -213,6 +249,13 @@ int main(int argc, char **argv)
     if (strcmp(settings_enhancements(), "off"))
         host_log("enhancements: %s%s (the picture only; the game is the same)", settings_enhancements(),
                  g_cfg.gs_off ? "; no graphics, so nothing to draw" : "");
+    if (g_cfg.texture_dump || g_cfg.texture_packs)
+        host_log("textures: dump %s, packs %s%s%s%s (the picture only; the game is the same)", g_cfg.texture_dump ? "on" : "off",
+                 g_cfg.texture_packs ? "on" : "off", g_cfg.textures ? ", folder " : "", g_cfg.textures ? g_cfg.textures : "",
+                 g_cfg.gs_off ? "; no graphics, so nothing to write or draw" : "");
+    if (g_cfg.usb_keyboard)
+        host_log("USB keyboard: connected (%s switches between typing and the pad's keyboard keys; it starts on the pad)",
+                 kbd_toggle_name());
     for (int i = 0; i < g_nignored; i++)
         host_log("%s: ignored", g_ignored[i]);
     for (int p = 1; p >= 0; p--)   /* mh2's --memcard1/2: before cards_choose, which leaves a named port alone */
@@ -260,6 +303,10 @@ int main(int argc, char **argv)
         hf |= MH2IPC_HOST_MOVIE;
     if (!g_cfg.no_window && !g_cfg.fast)
         hf |= MH2IPC_HOST_PACE;   /* real-time play (the original game: paced unless --fast or headless) */
+    if (g_cfg.usb_keyboard) {
+        hf |= MH2IPC_HOST_USB_KEYBOARD;   /* before the core starts, and unchanged for the session */
+        kbd_start(&g_ipc->keys);
+    }
     g_ipc->host_flags = hf;
     /* --quit-after N: the core ends after N VSyncs, at the same VBlank in every run (a request
      * from here would reach it a varying number of VBlanks later) */
@@ -285,18 +332,31 @@ int main(int argc, char **argv)
         SDL_Event e;
         if (SDL_WaitEventTimeout(&e, 4)) {
             do {
+                int taken = 1;   /* the window's own keys (below) never reach the game's keyboard */
                 if (e.type == SDL_EVENT_QUIT)
                     request_quit();
                 else if (e.type == g_present_event)
                     ;   /* drawn below */
+                else if (states_key(&e))
+                    ;   /* the save states' keys (states.c) */
+                else if (freecam_key(&e))
+                    ;   /* the freecam's keys (freecam.c) */
                 else if (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat &&
                          (e.key.scancode == SDL_SCANCODE_F11 ||
                           (e.key.scancode == SDL_SCANCODE_RETURN && (e.key.mod & SDL_KMOD_ALT))))
                     present_toggle_fullscreen();
+                else
+                    taken = 0;
+                freecam_event(&e);   /* the mouse, for the freecam */
+                if (!taken)
+                    kbd_event(&e);   /* the USB keyboard (a no-op unless connected) */
                 input_event(&e);
             } while (SDL_PollEvent(&e));
         }
+        kbd_update();
         input_update();
+        states_update();
+        freecam_update();
         if (!g_cfg.no_window)
             present_draw();
         /* a core that doesn't end within 5 s of the request is stopped */

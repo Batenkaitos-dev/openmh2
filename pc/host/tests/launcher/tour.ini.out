@@ -1,0 +1,9 @@
+[launcher]
+ssaa = 16
+hires = on
+vsync = on
+mute = on
+texture_dump = on
+texture_packs = on
+widescreen = on
+usb_keyboard = on

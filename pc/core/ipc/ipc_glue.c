@@ -38,6 +38,10 @@
 #include "io/io_pad.h"
 #include "ipc/core_ipc.h"
 #include "kernel/kern.h"
+#include "kernel/state.h"
+#include "pal.h"
+#include "pal_freecam.h"
+#include "ipc/mh2ipc.h"
 
 static void Rumble(int port, u8 small, u8 large)
 {
@@ -93,16 +97,106 @@ static void VblankPace(u64 n)
     Ipc_Pace(n);
 }
 
+/* The freecam's mailbox (Mh2IpcFreecam): the host's pose to the seam before this VBlank's frame draws, and the game's camera of the
+ * last draw back to the host. When the pose is refused is pal_freecam.c's rule. */
+/* The host's HUD mask (MH2IPC_FC_HUD) is every stage but the scene's own: the two fades and the loading letters. */
+_Static_assert(MH2IPC_FC_HUD == (((1u << PAL_STAGE_COUNT) - 1u) & ~((1u << PAL_STAGE_FADE_B) | (1u << PAL_STAGE_FADE_A) | (1u << PAL_STAGE_LOADING))),
+               "MH2IPC_FC_HUD names the stages of include/pal.h");
+_Static_assert(PAL_STAGE_COUNT <= MH2IPC_FC_HIDE_BITS, "the block's hide mask holds the stages");
+
+static unsigned int sInForce KERN_HOSTBSS;   /* the sequence of the host's pose that the draws since the last poll are made with */
+/* The pause's step count. The host counts the steps it grants from its own start; the core counts those it has taken in Pal_FreezeStep's
+ * statics, which a save state holds (they come back with a load). The core is handed the host's count plus sOff, so that the two
+ * stand apart by a fixed amount; a load puts the core's count back and the next poll finds the new sOff, so that no step the host
+ * granted before the load can run after it (no burst), and none is lost that was asked after it. The words are the host's, not the
+ * game's: a state does not hold them. */
+static unsigned int sOff KERN_HOSTBSS;
+static int sRebase KERN_HOSTBSS;
+
+static void FreecamPoll(void)
+{
+    IpcFreecam fc;
+    f32 eye[3], at[3], fov;
+    int have = Ipc_FreecamRead(&fc);
+    s32 why = 0;
+    u32 taken = 0;
+    s32 state = Pal_FreezeState(&why, &taken);
+    if (have && sRebase) {
+        sRebase = 0;
+        sOff = taken - fc.grant;
+    }
+    /* the draw since the last poll was made with the pose set then: tell the host what it was (a field scene's, with the pose) */
+    Ipc_FreecamStatus(Pal_FreecamActive(), sInForce, Kern_VblankCount(), state, why, taken - sOff);
+    if (have) {
+        PalFreecamPose pose;
+        pose.on = fc.on;
+        pose.eye[0] = fc.eye[0];
+        pose.eye[1] = fc.eye[1];
+        pose.eye[2] = fc.eye[2];
+        pose.yaw = fc.yaw;
+        pose.pitch = fc.pitch;
+        pose.roll = fc.roll;
+        pose.fov = fc.fov;
+        pose.hide = fc.hide;   /* the HUD's stages together, when the host asks (photo mode's H) */
+        Pal_FreecamSetPose(&pose);
+        sInForce = fc.seq;
+        Pal_FreezeSet(fc.frozen, fc.grant + sOff);
+    }
+    if (Pal_FreecamGameCamera(eye, at, &fov)) {
+        Ipc_FreecamCamera(eye, at, fov);
+    }
+}
+
 static void VblankInput(u64 n)
 {
     (void)n;
+    FreecamPoll();
     PadFromHost();
     Io_KbVBlank(KeyPeek, KeyTake);
 }
 
+/* Save states (kernel/state.c): the renderer's part of a state is in the host's process, so it crosses the IPC (the
+ * block's window: pc/ipc/mh2ipc.h, Mh2IpcState); the host side is put in step after a load. */
+static const char *sStateWhy KERN_HOSTBSS;
+
+static const void *StateGet(u32 *size)
+{
+    return Ipc_StateGsGet(size, &sStateWhy);
+}
+
+static int StateSet(const void *data, u32 size)
+{
+    return Ipc_StateGsSet(data, size);
+}
+
+static const char *StateIdentity(void)
+{
+    return Ipc_StateIdentity();
+}
+
+static const char *StateError(void)
+{
+    return sStateWhy;
+}
+
+static const KStateHost sStateHost = {StateGet, StateSet, StateIdentity, StateError};
+
+static void StateResume(void)
+{
+    sRebase = 1;
+    Ipc_StateLoaded(Kern_VblankCount() + 1);   /* the game goes on by starting this VBlank */
+}
+
+/* The section has no bytes: the owner is here for its resume. */
+static const KStateOwner sStateOwner = {"IPC", 0, 0, 0, StateResume, 0, 0, 0};
+
 void Kern_InitIpc(void)
 {
     Ipc_Init();
+    if (Ipc_StateHasGs()) {
+        Kern_StateSetHost(&sStateHost);
+    }
+    Kern_StateRegister(&sStateOwner);
     Io_PadRumble = Rumble;
     Io_KbHostWants = KeyboardWanted;
     Kern_SetVblankHook(KERN_VB_PACE, VblankPace);

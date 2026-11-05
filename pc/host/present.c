@@ -25,6 +25,14 @@ static struct {
     int fresh;
     int shown;
     int movie;   /* the latest picture is a movie one */
+    int typing;                     /* the USB keyboard types (keyboard.c) */
+    char freecam[160];              /* the freecam's line (freecam.c), empty: it is off */
+    char fctitle[100];              /* what the title says of it: FREECAM, FREECAM (PAUSED, 3 steps), PHOTO */
+    char typing_note[100];          /* its line over the picture */
+    char title_status[200];         /* the injections' state (inject.c), in the title */
+    char note[200];                 /* a note for a few seconds (the save states'), over the picture and in the title */
+    Uint64 note_until;
+    int note_in_title;
 } pr;
 
 static void apply_vsync(bool fullscreen)
@@ -54,11 +62,13 @@ void present_leave_fullscreen(void)
         set_fullscreen(false);
 }
 
+
 int present_init(void)
 {
     g_present_event = SDL_RegisterEvents(1);
     pr.mu = SDL_CreateMutex();
-    pr.window = SDL_CreateWindow("Monster Hunter 2 (mh2-decomp)", 960, 720, SDL_WINDOW_RESIZABLE);
+    SDL_WindowFlags wflags = SDL_WINDOW_RESIZABLE;
+    pr.window = SDL_CreateWindow(MH2_WINDOW_TITLE, 960, 720, wflags);
     if (!pr.window) {
         host_log("SDL_CreateWindow: %s", SDL_GetError());
         return -1;
@@ -78,7 +88,66 @@ int present_init(void)
     return 0;
 }
 
+/* The window's title: the injections' state (inject.c), and "typing" while the keyboard is the game's USB keyboard. */
+static void retitle(void)
+{
+    char t[400];
+    int n = snprintf(t, sizeof(t), "%s", MH2_WINDOW_TITLE);
+    if (pr.title_status[0])
+        n += snprintf(t + n, sizeof(t) - (size_t)n, " - %s", pr.title_status);
+    if (pr.typing)
+        n += snprintf(t + n, sizeof(t) - (size_t)n, " - %s", pr.typing_note);
+    if (pr.freecam[0])
+        n += snprintf(t + n, sizeof(t) - (size_t)n, " - %s", pr.fctitle[0] ? pr.fctitle : "FREECAM");
+    pr.note_in_title = pr.note[0] && SDL_GetTicks() < pr.note_until;
+    if (pr.note_in_title)
+        snprintf(t + n, sizeof(t) - (size_t)n, " - %s", pr.note);
+    if (pr.window)
+        SDL_SetWindowTitle(pr.window, t);
+}
 
+void present_set_typing(int on, const char *toggle_key)
+{
+    pr.typing = on;
+    snprintf(pr.typing_note, sizeof(pr.typing_note), "USB keyboard: typing (%s plays)", toggle_key);
+    retitle();
+}
+
+/* The freecam's line, over the picture's bottom right while it is on, and FREECAM in the title. */
+void present_set_freecam(const char *line, const char *title)
+{
+    snprintf(pr.freecam, sizeof(pr.freecam), "%s", line ? line : "");
+    snprintf(pr.fctitle, sizeof(pr.fctitle), "%s", title ? title : "");
+    retitle();
+}
+
+/* The freecam looks with the mouse: relative mode (the pointer hidden and held), or the pointer again. */
+void present_relative_mouse(int on)
+{
+    if (pr.window)
+        SDL_SetWindowRelativeMouseMode(pr.window, on != 0);
+}
+
+/* A note (a save state's result): over the picture and in the title for four seconds. */
+void present_note(const char *msg)
+{
+    snprintf(pr.note, sizeof(pr.note), "%s", msg);
+    pr.note_until = SDL_GetTicks() + 4000;
+    retitle();
+}
+
+
+static void draw_osd_line(float x, float y, float scale, const char *text)
+{
+    SDL_FRect bg = {x - 2 * scale, y - 2 * scale, (float)strlen(text) * 8.0f * scale + 4 * scale, 12.0f * scale};
+    SDL_SetRenderDrawBlendMode(pr.renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(pr.renderer, 0, 0, 0, 170);
+    SDL_RenderFillRect(pr.renderer, &bg);
+    SDL_SetRenderScale(pr.renderer, scale, scale);
+    SDL_SetRenderDrawColor(pr.renderer, 255, 255, 120, 255);
+    SDL_RenderDebugText(pr.renderer, x / scale, y / scale, text);
+    SDL_SetRenderScale(pr.renderer, 1.0f, 1.0f);
+}
 void present_toggle_fullscreen(void)
 {
     if (pr.window)
@@ -159,6 +228,20 @@ void present_draw(void)
         dst.y = ((float)oh - dst.h) / 2.0f;
     }
     SDL_RenderTexture(pr.renderer, pr.texture, NULL, &dst);
+    if (pr.note[0] && SDL_GetTicks() < pr.note_until) {   /* top centre */
+        float sc = dst.w >= 1200.0f ? 2.0f : 1.0f;
+        draw_osd_line(dst.x + (dst.w - (float)strlen(pr.note) * 8.0f * sc) / 2.0f, dst.y + 6 + 16 * sc, sc, pr.note);
+    } else if (pr.note_in_title) {
+        retitle();   /* the note has run out: the title loses it */
+    }
+    if (pr.freecam[0]) {   /* bottom right */
+        float sc = dst.w >= 1200.0f ? 2.0f : 1.0f;
+        draw_osd_line(dst.x + dst.w - 6 - (float)strlen(pr.freecam) * 8.0f * sc, dst.y + dst.h - 16 * sc, sc, pr.freecam);
+    }
+    if (pr.typing) {   /* top right: the other lines are at the left */
+        float sc = dst.w >= 1200.0f ? 2.0f : 1.0f;
+        draw_osd_line(dst.x + dst.w - 6 - (float)strlen(pr.typing_note) * 8.0f * sc, dst.y + 6, sc, pr.typing_note);
+    }
     SDL_RenderPresent(pr.renderer);
     if (!pr.shown++)
         host_log("first picture shown (%ux%u)", w, h);

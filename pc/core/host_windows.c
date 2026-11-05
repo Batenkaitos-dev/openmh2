@@ -1,9 +1,13 @@
 /* The host seam on Windows (llvm-mingw, i686): see host.h. */
+#include <io.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <wchar.h>
 #include <windows.h>
 
 #include "host.h"
+#include "host_file.h"
+#include "host_wide.h"
 
 extern IMAGE_DOS_HEADER __ImageBase;
 
@@ -80,7 +84,84 @@ HOST void Host_ImageRange(unsigned int *lo, unsigned int *hi)
 
 HOST const char *Host_Getenv(const char *name)
 {
-    return getenv(name);
+    wchar_t *wname = HostWide_Alloc(name), *wval;
+    DWORD n;
+    char *val = NULL;
+    if (!wname) {
+        return NULL;
+    }
+    n = GetEnvironmentVariableW(wname, NULL, 0);
+    wval = n ? (wchar_t *)malloc((size_t)n * sizeof(wchar_t)) : NULL;
+    if (wval && GetEnvironmentVariableW(wname, wval, n) == n - 1) {
+        val = HostWide_ToUtf8(wval);   /* kept: the callers hold the pointer and ask a few times at start-up */
+    }
+    free(wval);
+    free(wname);
+    return val;
+}
+
+HOST void Host_Args(int *argc, char ***argv)
+{
+    int n = 0, i;
+    wchar_t **w = CommandLineToArgvW(GetCommandLineW(), &n);
+    char **a;
+    if (!w || n < 1) {
+        return;
+    }
+    a = (char **)calloc((size_t)n + 1, sizeof(char *));
+    for (i = 0; a && i < n; i++) {
+        a[i] = HostWide_ToUtf8(w[i]);
+        if (!a[i]) {
+            return;   /* the C library's argv stays */
+        }
+    }
+    if (a) {
+        *argc = n;
+        *argv = a;
+    }
+}
+
+HOST FILE *HostFile_Open(const char *path, const char *mode)
+{
+    wchar_t *wp = HostWide_Alloc(path), wm[8];
+    FILE *f = NULL;
+    int i;
+    if (!wp) {
+        return NULL;
+    }
+    for (i = 0; mode[i] && i < 7; i++) {
+        wm[i] = (wchar_t)(unsigned char)mode[i];
+    }
+    wm[i] = 0;
+    f = _wfopen(wp, wm);
+    free(wp);
+    return f;
+}
+
+HOST int HostFile_Remove(const char *path)
+{
+    wchar_t *wp = HostWide_Alloc(path);
+    int r = wp ? _wremove(wp) : -1;
+    free(wp);
+    return r;
+}
+
+HOST int HostFile_Rename(const char *from, const char *to)
+{
+    wchar_t *wf = HostWide_Alloc(from), *wt = HostWide_Alloc(to);
+    int r = wf && wt ? _wrename(wf, wt) : -1;
+    free(wf);
+    free(wt);
+    return r;
+}
+
+HOST int HostFile_Replace(const char *from, const char *to)
+{
+    wchar_t *wf = HostWide_Alloc(from), *wt = HostWide_Alloc(to);
+    int r = wf && wt && MoveFileExW(wf, wt, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) ? 0 : -1;
+    free(wf);
+    free(wt);
+    return r;
 }
 
 HOST unsigned int Host_PageSize(void)

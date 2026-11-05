@@ -1,0 +1,7 @@
+key Return
+key Return
+pick @FIX@/arc/some_folder
+waitdone
+key Return
+shot disc_after
+end

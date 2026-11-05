@@ -45,11 +45,11 @@ const char *process_default_core(void)
     if (!base)
         base = "";
     snprintf(path, sizeof(path), "%smh2-core" EXE, base);
-    FILE *f = fopen(path, "rb");
+    FILE *f = hfs_fopen(path, "rb");
     if (!f) {
         /* the build tree: build/pc/<platform>-x86_64/ beside build/pc/<platform>-i686/core/ */
         snprintf(path, sizeof(path), "%s../" PLATFORM "-i686/core/mh2-core" EXE, base);
-        f = fopen(path, "rb");
+        f = hfs_fopen(path, "rb");
     }
     if (f)
         fclose(f);
@@ -57,6 +57,11 @@ const char *process_default_core(void)
 }
 
 #ifdef _WIN32
+/* The core takes its paths as UTF-8 (pc/core/host_file.h) and reads its command line and environment as UTF-16, so the
+ * command line is made in UTF-16 from the strings given here, which are UTF-8 (a string that is not valid UTF-8 is read in
+ * the ANSI code page, as the host's own ANSI sources give it: hostfs.h). */
+#define to_wide hfs_wide
+
 /* One argument on a command line, as the C runtime parses it back. */
 static void append_arg(char *cmd, size_t cap, const char *a)
 {
@@ -92,9 +97,14 @@ int process_start(const char *path, char **args, int nargs)
     for (int i = 0; i < nargs; i++)
         append_arg(cmd, sizeof(cmd), args[i]);
     SetEnvironmentVariableA(MH2IPC_ENV, g_map.name);
-    if (g_cfg.disc_path)
-        SetEnvironmentVariableA("MH2_DISC", g_cfg.disc_path);
-    STARTUPINFOEXA si;
+    if (g_cfg.disc_path) {
+        wchar_t *wd = to_wide(g_cfg.disc_path);
+        if (wd)
+            SetEnvironmentVariableW(L"MH2_DISC", wd);
+        free(wd);
+    }
+    wchar_t *wpath = to_wide(path), *wcmd = to_wide(cmd);
+    STARTUPINFOEXW si;
     PROCESS_INFORMATION pi;
     memset(&si, 0, sizeof(si));
     si.StartupInfo.cb = sizeof(si);
@@ -126,7 +136,11 @@ int process_start(const char *path, char **args, int nargs)
     }
     if (!GetConsoleWindow())   /* mh2 has no console (play.c, play_console_detach): nor does the core */
         flags |= CREATE_NO_WINDOW;
-    if (!CreateProcessA(path, cmd, NULL, NULL, inherit, flags, NULL, NULL, &si.StartupInfo, &pi)) {
+    BOOL created = wpath && wcmd &&
+                   CreateProcessW(wpath, wcmd, NULL, NULL, inherit, flags, NULL, NULL, &si.StartupInfo, &pi);
+    free(wpath);
+    free(wcmd);
+    if (!created) {
         host_log("CreateProcess %s: error %lu", path, (unsigned long)GetLastError());
         if (si.lpAttributeList)
             DeleteProcThreadAttributeList(si.lpAttributeList);

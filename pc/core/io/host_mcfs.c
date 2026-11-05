@@ -50,10 +50,12 @@
  * Two flushes of a commit's few pages cost far less than one of the whole
  * 8 MB image: the io tests print a commit's time. */
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "host_file.h"
 #include "io/io_mcfs.h"
 
 typedef unsigned char u8;
@@ -619,7 +621,7 @@ McFs *mcfs_load(const char *path, int create)
     snprintf(fs->path, sizeof(fs->path), "%s", path);
     snprintf(fs->cwd, sizeof(fs->cwd), "/");
     /* The file is read whole and closed: each commit replaces it (write_whole). */
-    FILE *f = fopen(path, "rb");
+    FILE *f = HostFile_Open(path, "rb");
     if (f) {
         fseek(f, 0, SEEK_END);
         long sz = ftell(f);
@@ -676,7 +678,7 @@ McFs *mcfs_load(const char *path, int create)
 
 int mcfs_save_copy(const McFs *fs, const char *path)
 {
-    FILE *f = fopen(path, "wb");
+    FILE *f = HostFile_Open(path, "wb");
     if (!f)
         return -1;
     int ok = fwrite(fs->img, 1, fs->size, f) == fs->size;
@@ -692,6 +694,57 @@ void mcfs_free(McFs *fs)
     free(fs->img);
     free(fs->dirty);
     free(fs);
+}
+
+/* ---- save states (io_mc.c's owner): the open files and the directory, and the image ---- */
+
+unsigned int mcfs_session_size(void)
+{
+    return (unsigned int)(sizeof(McFs) - offsetof(McFs, cwd));
+}
+
+void mcfs_session_get(const McFs *fs, void *out)
+{
+    memcpy(out, (const u8 *)fs + offsetof(McFs, cwd), mcfs_session_size());
+}
+
+int mcfs_session_set(McFs *fs, const void *in, unsigned int size)
+{
+    if (size != mcfs_session_size())
+        return -1;
+    memcpy((u8 *)fs + offsetof(McFs, cwd), in, size);
+    fs->cwd[sizeof(fs->cwd) - 1] = 0;
+    fs->gd_pattern[sizeof(fs->gd_pattern) - 1] = 0;
+    return 0;
+}
+
+int mcfs_open_files(const McFs *fs)
+{
+    int n = 0;
+    for (int i = 0; i < MAX_FD; i++)
+        n += fs->fh[i].used != 0;
+    return n;
+}
+
+const unsigned char *mcfs_image(const McFs *fs, unsigned int *size)
+{
+    *size = (unsigned int)fs->size;
+    return fs->img;
+}
+
+/* The image as the state had it: the pages that differ are marked and written to the card's file. */
+int mcfs_image_set(McFs *fs, const void *img, unsigned int size)
+{
+    if (size != fs->size)
+        return -1;
+    for (u32 p = 0; p < fs->npages; p++) {
+        if (memcmp(fs->img + (size_t)p * RAWPAGE, (const u8 *)img + (size_t)p * RAWPAGE, RAWPAGE) != 0) {
+            memcpy(fs->img + (size_t)p * RAWPAGE, (const u8 *)img + (size_t)p * RAWPAGE, RAWPAGE);
+            fs->dirty[p] = 1;
+        }
+    }
+    load_superblock(fs);
+    return mcfs_commit(fs);
 }
 
 const char *mcfs_path(const McFs *fs) { return fs->path; }
@@ -730,7 +783,7 @@ static int write_whole(const char *path, const u8 *data, size_t n)
 {
     char tmp[1100];
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
-    FILE *f = fopen(tmp, "wb");
+    FILE *f = HostFile_Open(tmp, "wb");
     if (!f)
         return -1;
     int r = put(f, data, n);
@@ -743,7 +796,7 @@ static int write_whole(const char *path, const u8 *data, size_t n)
     ok = HostMcfs_SyncFile(f) == 0 && ok;
     ok = fclose(f) == 0 && ok;
     if (!ok || HostMcfs_Replace(tmp, path) != 0) {
-        remove(tmp);
+        HostFile_Remove(tmp);
         return -1;
     }
     return 0;
@@ -774,7 +827,7 @@ static u32 fnv(u32 h, const void *data, size_t n)
 /* Writes the marked pages in place and flushes the card; 0, -1 or -2 (put). */
 static int write_pages(McFs *fs)
 {
-    FILE *f = fopen(fs->path, "r+b");
+    FILE *f = HostFile_Open(fs->path, "r+b");
     if (!f)
         return -1;
     int r = 0;
@@ -807,7 +860,7 @@ static int write_journal(McFs *fs, const char *jpath)
     u32 count = 0, h = 2166136261u;
     for (u32 p = 0; p < fs->npages; p++)
         count += fs->dirty[p] != 0;
-    FILE *f = fopen(jpath, "wb");
+    FILE *f = HostFile_Open(jpath, "wb");
     if (!f)
         return -1;
     u32 sizes[2] = { fs->npages, count };
@@ -843,7 +896,7 @@ static void journal_recover(McFs *fs)
 {
     char jpath[1100];
     journal_path(fs, jpath, sizeof(jpath));
-    FILE *f = fopen(jpath, "rb");
+    FILE *f = HostFile_Open(jpath, "rb");
     if (!f)
         return;
     fseek(f, 0, SEEK_END);
@@ -872,7 +925,7 @@ static void journal_recover(McFs *fs)
     if (ok) {
         if (write_pages(fs) == 0) {
             memset(fs->dirty, 0, fs->npages);
-            remove(jpath);
+            HostFile_Remove(jpath);
             LOGI("mc", "%s: completed the commit a stop interrupted (%u pages from %s)", fs->path, count, jpath);
         } else {
             LOGW("mc", "%s: cannot complete the interrupted commit; %s is kept", fs->path, jpath);
@@ -881,7 +934,7 @@ static void journal_recover(McFs *fs)
         return;
     }
     memset(fs->dirty, 0, fs->npages);
-    remove(jpath);
+    HostFile_Remove(jpath);
     LOGI("mc", "%s: dropped %s, a commit stopped before the card was written", fs->path, jpath);
 }
 
@@ -894,7 +947,7 @@ static void backup_once(McFs *fs)
     fs->backed_up = 1;   /* tried once, as the original game does */
     char bak[1100];
     snprintf(bak, sizeof(bak), "%s.bak", fs->path);
-    FILE *f = fopen(fs->path, "rb");
+    FILE *f = HostFile_Open(fs->path, "rb");
     u8 *old = f ? malloc(fs->size) : NULL;
     int ok = old && fread(old, 1, fs->size, f) == fs->size;
     if (f)
@@ -940,11 +993,11 @@ int mcfs_commit(McFs *fs)
         journal_path(fs, jpath, sizeof(jpath));
         r = write_journal(fs, jpath);
         if (r == -1)
-            remove(jpath);
+            HostFile_Remove(jpath);
         if (r == 0)
             r = write_pages(fs);
         if (r == 0)
-            remove(jpath);   /* its removal need not reach the disk: a whole journal's pages are the card's */
+            HostFile_Remove(jpath);   /* its removal need not reach the disk: a whole journal's pages are the card's */
     }
     g_stop_after = -1;   /* a test's stop is for one commit */
     if (r != 0) {

@@ -1,0 +1,15 @@
+# the window's close button asks the same question; Yes saves
+key Down
+key Down
+key Down
+key Return
+key Right
+key Escape
+close
+shot close_question
+key Right
+key Right
+key Return
+shot closed_back
+close
+key Return

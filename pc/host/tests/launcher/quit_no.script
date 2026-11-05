@@ -1,0 +1,14 @@
+# Quit with a change: the question, No
+key Down
+key Down
+key Down
+key Return
+key Right
+key Escape
+key Escape
+key Escape
+key Escape
+shot save_question
+key Right
+shot no_selected
+key Return

@@ -28,7 +28,7 @@ struct KFiber {
 };
 
 static KFiber sFibers[MAX_FIBERS];
-static KFiber sMainFiber;
+static KFiber sMainFiber KERN_HOSTBSS;   /* the OS stack's: the process's, not the state's */
 static KFiber *sCurrent = &sMainFiber;
 
 /*
@@ -137,12 +137,34 @@ KFiber *KFiber_Main(void)
     return &sMainFiber;
 }
 
-static KFiber *CreateSized(KFiberFn fn, void *arg, u32 size)
+/* The first frame of a fiber on its stack [lo, lo + size): what FiberSwap pops, then FiberStart. */
+static void InitFrame(KFiber *f)
 {
-    KFiber *f = 0;
     u32 *sp;
     u16 fpcw;
     u32 mxcsr;
+    __asm__ volatile("fnstcw %0" : "=m"(fpcw));
+    __asm__ volatile("stmxcsr %0" : "=m"(mxcsr));
+    sp = (u32 *)(f->lo + f->size);
+    *--sp = 0;                          /* above the return address: nothing */
+    *--sp = (u32)FiberStart;            /* ret */
+    *--sp = 0;                          /* ebp */
+    *--sp = (u32)f;                     /* ebx */
+    *--sp = (u32)FiberMain;             /* esi */
+    *--sp = 0;                          /* edi */
+    *--sp = mxcsr;
+    *--sp = fpcw;
+#ifdef _WIN32
+    *--sp = 0xFFFFFFFFu;                /* fs:0, the exception list: empty */
+    *--sp = (u32)(f->lo + f->size);   /* fs:4, the stack's base (its top) */
+    *--sp = (u32)f->lo;                 /* fs:8, its limit */
+#endif
+    f->sp = sp;
+}
+
+static KFiber *CreateSized(KFiberFn fn, void *arg, u32 size)
+{
+    KFiber *f = 0;
     int i;
 
     size = (size + 0xFFFFu) & ~0xFFFFu;
@@ -166,23 +188,7 @@ static KFiber *CreateSized(KFiberFn fn, void *arg, u32 size)
     f->used = 1;
     f->fn = fn;
     f->arg = arg;
-    __asm__ volatile("fnstcw %0" : "=m"(fpcw));
-    __asm__ volatile("stmxcsr %0" : "=m"(mxcsr));
-    sp = (u32 *)(f->lo + f->size);
-    *--sp = 0;                          /* above the return address: nothing */
-    *--sp = (u32)FiberStart;            /* ret */
-    *--sp = 0;                          /* ebp */
-    *--sp = (u32)f;                     /* ebx */
-    *--sp = (u32)FiberMain;             /* esi */
-    *--sp = 0;                          /* edi */
-    *--sp = mxcsr;
-    *--sp = fpcw;
-#ifdef _WIN32
-    *--sp = 0xFFFFFFFFu;                /* fs:0, the exception list: empty */
-    *--sp = (u32)(f->lo + f->size);   /* fs:4, the stack's base (its top) */
-    *--sp = (u32)f->lo;                 /* fs:8, its limit */
-#endif
-    f->sp = sp;
+    InitFrame(f);
     return f;
 }
 
@@ -242,4 +248,61 @@ KernFiber *Kern_FiberSelf(void)
 void Kern_FiberSwitch(KernFiber *to)
 {
     KFiber_Switch(sCurrent, to);
+}
+
+/*
+ * Outside the state (state.h, state.c). A save state is a copy of the memory that holds every fiber's stack, so
+ * the copying runs on a stack that is not in it: a static one in the host-owned data. RunOutside suspends the
+ * running context in FiberSwap's frame (on its own stack, so in the copy), runs fn there, and returns 0 when fn
+ * returns. A load ends in ResumeAt, with the sp that a save recorded: the context continues as if its
+ * RunOutside had returned, and it returns 1.
+ */
+#define OUT_STACK (256u * 1024u)
+static u8 sOutStack[OUT_STACK] KERN_HOSTBSS __attribute__((aligned(4096)));
+static KFiber sOutFiber KERN_HOSTBSS;
+static void (*sOutFn)(void *) KERN_HOSTBSS;
+static void *sOutArg KERN_HOSTBSS;
+static void *sOutBack KERN_HOSTBSS;
+static int sOutResumed KERN_HOSTBSS;
+
+static void OutMain(void *arg)
+{
+    (void)arg;
+    sOutFn(sOutArg);
+    FiberSwap(&sOutFiber.sp, sOutBack);
+    Pal_Fatal("kernel: a context left outside the state was resumed twice");
+}
+
+int KFiber_RunOutside(void (*fn)(void *), void *arg)
+{
+#if KFIBER_ASAN
+    (void)fn;
+    (void)arg;
+    Pal_Fatal("kernel: save states are not built in the asan variant");
+#endif
+    sOutFn = fn;
+    sOutArg = arg;
+    sOutResumed = 0;
+    sOutFiber.lo = sOutStack;
+    sOutFiber.size = OUT_STACK;
+    sOutFiber.fn = OutMain;
+    sOutFiber.arg = 0;
+    sOutFiber.used = 1;
+    InitFrame(&sOutFiber);
+    FiberSwap(&sOutBack, sOutFiber.sp);
+    return sOutResumed;
+}
+
+void *KFiber_OutsideSp(void)
+{
+    return sOutBack;
+}
+
+void KFiber_ResumeAt(void *sp)
+{
+    sOutResumed = 1;
+    FiberSwap(&sOutFiber.sp, sp);
+    Pal_Fatal("kernel: a resumed context returned to the loader");
+    for (;;) {
+    }
 }

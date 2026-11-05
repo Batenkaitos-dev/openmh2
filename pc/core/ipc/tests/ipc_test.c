@@ -38,6 +38,9 @@ static unsigned char *B;
 /* What the host saw. */
 static struct {
     unsigned int gif_words, gif_recs, priv, vsync, readbacks, movie_open, movie_close, pads;
+    unsigned int state_get, state_set, state_set_good;
+    int state_busy;          /* the next STATE_GET answers "busy" */
+    int state_set_result;    /* what the next STATE_SET answers */
     unsigned long long last_vblank, priv_sum;
     int last_movie;
     char error[200];
@@ -113,6 +116,36 @@ static void host_record(const Mh2IpcRec *rec)
             host_error("MOVIE_CLOSE");
         seen.movie_close++;
         break;
+    case MH2IPC_REC_STATE_GET:
+    case MH2IPC_REC_STATE_SET: {
+        /* the renderer's block through the state window: STATE_GET fills it, STATE_SET checks what the core put there */
+        unsigned char *win = B + H->state.window_offset;
+        const unsigned int len = 4210688u;
+        if (rec->type == MH2IPC_REC_STATE_GET) {
+            seen.state_get++;
+            if (seen.state_busy) {
+                H->state.gs_bytes = 0;
+                H->state.gs_result = (unsigned int)-2;
+            } else {
+                for (unsigned int i = 0; i < len; i++)
+                    win[i] = (unsigned char)(i * 7u + seen.state_get);
+                H->state.gs_bytes = len;
+                H->state.gs_result = 0;
+            }
+        } else {
+            unsigned int ok = rec->arg0 == len;
+            for (unsigned int i = 0; ok && i < len; i += 61)
+                ok = win[i] == (unsigned char)(i * 11u);
+            seen.state_set++;
+            seen.state_set_good += ok;
+            H->state.gs_result = (unsigned int)seen.state_set_result;
+        }
+        mh2ipc_store(&H->rb_done_seq, rec->arg1);
+        mh2ipc_fence();
+        if (__atomic_load_n(&H->rb_core_waiting, __ATOMIC_RELAXED))
+            mh2ipc_wake(&hm, MH2IPC_EV_RB_DONE, &H->rb_done_seq);
+        break;
+    }
     default:
         host_error("a record of an unknown type");
     }
@@ -400,6 +433,105 @@ int main(void)
         Ipc_MovieClose(5);
         if (H->movie_sound_end != begin + 8)
             FAIL("the movie's sound window at the close");
+    }
+    /* save states (Mh2IpcState): the host's requests and the core's answers, the renderer's block through the window, and
+     * the host's side put in step after a load */
+    {
+        Mh2IpcState *T = &H->state;
+        char path[200];
+        const unsigned int len = 4210688u;
+        const unsigned char *blk;
+        const char *why = 0;
+        unsigned int size = 0, ev = 0;
+        if (Ipc_StateHasGs())
+            FAIL("the state: a renderer's identity before the host gave one");
+        snprintf(T->identity, sizeof(T->identity), "gs5-test");
+        if (!Ipc_StateHasGs() || strcmp(Ipc_StateIdentity(), "gs5-test") != 0)
+            FAIL("the state: the renderer's identity");
+        if (Ipc_StateRequest(path, sizeof(path)) != 0)
+            FAIL("the state: a request that was never made");
+        snprintf(T->req_path, sizeof(T->req_path), "%s", "/tmp/slot01.mh2state.tmp");
+        T->req_kind = MH2IPC_ST_SAVE;
+        mh2ipc_store(&T->req_seq, 1);
+        if (Ipc_StateRequest(path, sizeof(path)) != 1 || strcmp(path, "/tmp/slot01.mh2state.tmp") != 0)
+            FAIL("the state: a save request");
+        if (Ipc_StateRequest(path, sizeof(path)) != 0)
+            FAIL("the state: a request is taken once");
+        Ipc_StateAnswer(0x100000007ull, 0);
+        if (T->ack_seq != 1 || T->ack_result != MH2IPC_ST_DONE || T->ack_vblank_lo != 7 || T->ack_vblank_hi != 1)
+            FAIL("the state: the answer to a save");
+        T->req_kind = MH2IPC_ST_LOAD;
+        mh2ipc_store(&T->req_seq, 2);
+        if (Ipc_StateRequest(path, 8) != 0)   /* the path does not fit: refused, not cut */
+            FAIL("the state: a path that does not fit");
+        if (T->ack_seq != 2 || T->ack_result != MH2IPC_ST_REFUSED)
+            FAIL("the state: the refusal of a path that does not fit");
+        T->req_kind = MH2IPC_ST_LOAD;
+        mh2ipc_store(&T->req_seq, 3);
+        if (Ipc_StateRequest(path, sizeof(path)) != 2)
+            FAIL("the state: a load request");
+        Ipc_StateAnswer(9, "made with another widescreen setting");
+        if (T->ack_seq != 3 || T->ack_result != MH2IPC_ST_REFUSED || strcmp(T->ack_message, "made with another widescreen setting") != 0)
+            FAIL("the state: the refusal of a load");
+        Ipc_StateAnswer(10, 0);
+        if (T->ack_seq != 3 || T->ack_result != MH2IPC_ST_REFUSED)
+            FAIL("the state: an answer for a request already answered");
+        T->req_kind = 9;
+        mh2ipc_store(&T->req_seq, 4);
+        if (Ipc_StateRequest(path, sizeof(path)) != 0 || T->ack_seq != 4 || T->ack_result != MH2IPC_ST_REFUSED)
+            FAIL("the state: a request of no kind");
+        /* the block */
+        blk = Ipc_StateGsGet(&size, &why);
+        if (!blk || size != len || why)
+            FAIL("the state: the renderer's block (%u bytes)", size);
+        for (unsigned int i = 0; i < len; i += 61)
+            if (blk[i] != (unsigned char)(i * 7u + 1))
+                FAIL("the state: the renderer's block, byte %u", i);
+        seen.state_busy = 1;
+        if (Ipc_StateGsGet(&size, &why) || size || !why || !strstr(why, "try again"))
+            FAIL("the state: a renderer that is busy");
+        seen.state_busy = 0;
+        {
+            static unsigned char block[4210688u];
+            for (unsigned int i = 0; i < len; i++)
+                block[i] = (unsigned char)(i * 11u);
+            seen.state_set_result = 0;
+            if (Ipc_StateGsSet(block, len) != 0)
+                FAIL("the state: the block back");
+            seen.state_set_result = -4;
+            if (Ipc_StateGsSet(block, len) != -4)
+                FAIL("the state: a block the renderer refuses");
+            if (Ipc_StateGsSet(block, MH2IPC_STATE_BYTES + 16) == 0)
+                FAIL("the state: a block larger than the window");
+        }
+        if (seen.state_get != 2 || seen.state_set != 2 || seen.state_set_good != 2)
+            FAIL("the state: the host saw %u gets, %u sets (%u good)", seen.state_get, seen.state_set, seen.state_set_good);
+        /* after a load: the key ring emptied and every key up, the audio ring's flush, the pad schedule starting again */
+        H->host_flags |= MH2IPC_HOST_USB_KEYBOARD;
+        if (!mh2ipc_keys_push(&H->keys, 0x04, 1) || !mh2ipc_keys_push(&H->keys, 0x05, 1))
+            FAIL("the state: key events");
+        {
+            short pcm2[4] = {1, 2, 3, 4};
+            unsigned int head = H->audio.head;
+            Ipc_AudioWrite(pcm2, 2);
+            H->sched.enabled = 1;
+            H->sched.epoch_ack = H->sched.epoch + 1;   /* the host's part, done in advance (input.c's, tried in the hosted runs) */
+            Ipc_StateLoaded(1234);
+            if (T->loads != 1 || T->audio_flush_seq != 1 || T->audio_flush_head != head + 8)
+                FAIL("the state: the audio flush (%u, %u, %u)", T->loads, T->audio_flush_seq, T->audio_flush_head);
+            if (H->sched.epoch != 1 || H->sched.rewind_vblank != 1234)
+                FAIL("the state: the schedule's new start");
+            H->sched.enabled = 0;
+        }
+        if (!Ipc_KeyPeek(&ev) || ev != 0)
+            FAIL("the state: every key up after a load");
+        Ipc_KeyTake();
+        if (Ipc_KeyPeek(&ev))
+            FAIL("the state: the key ring after a load");
+        if (!mh2ipc_keys_push(&H->keys, 0x06, 1) || !Ipc_KeyPeek(&ev) || ev != (0x06u | MH2IPC_KEY_DOWN))
+            FAIL("the state: a key after a load");
+        Ipc_KeyTake();
+        H->host_flags &= ~MH2IPC_HOST_USB_KEYBOARD;
     }
     Ipc_Exit(3);
 #ifdef _WIN32

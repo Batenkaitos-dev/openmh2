@@ -1,0 +1,4 @@
+--set
+archive=@WORKDIR@/huge/mh2-disc.arc
+--archive-free
+1000

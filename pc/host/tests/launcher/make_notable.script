@@ -1,0 +1,8 @@
+key Return
+key Return
+pick @FIX@/arc/movie_folder
+waitdone
+shot failure
+key Return
+shot disc_notable
+end

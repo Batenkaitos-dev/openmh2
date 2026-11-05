@@ -1,0 +1,19 @@
+# Quit with a change: Cancel and Back leave the question and the launcher open
+key Down
+key Down
+key Down
+key Return
+key Right
+key Escape
+key Escape
+key Escape
+key Escape
+shot save_question
+key Escape
+shot back_on_home
+key Escape
+key Right
+key Right
+shot back_selected
+key Return
+shot launcher_open

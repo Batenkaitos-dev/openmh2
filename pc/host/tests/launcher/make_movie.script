@@ -1,0 +1,10 @@
+# the banner leads to the disc page; "Make it from a folder" and the file dialog's answer; the progress; Continue
+key Return
+key Down
+key Return
+pick @FIX@/arc/movie_folder
+waitdone
+shot done
+key Return
+shot ready
+end

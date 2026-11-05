@@ -1,0 +1,9 @@
+key Return
+key Down
+key Return
+pick @FIX@/arc/slow_disc
+waitfile 3
+shot making
+key Return
+shot after_cancel
+end

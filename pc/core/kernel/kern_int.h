@@ -39,6 +39,11 @@ void KFiber_Switch(KFiber *from, KFiber *to);    /* saves the caller in `from`, 
 void KFiber_Free(KFiber *f);                      /* back to the pool (not the running one) */
 KFiber *KFiber_Current(void);
 int KFiber_Holds(const KFiber *f, const void *p); /* p lies in f's stack (never for the main fiber) */
+/* Save states (fiber.c, state.c): fn(arg) runs on a stack outside the state; RunOutside returns 0 when it returns,
+ * or 1 when a load resumed the context (KFiber_ResumeAt(sp), sp from OutsideSp while fn runs). */
+int KFiber_RunOutside(void (*fn)(void *), void *arg);
+void *KFiber_OutsideSp(void);
+void KFiber_ResumeAt(void *sp) __attribute__((noreturn));
 
 /* ---- sched.c: time, events and the delivery points ---- */
 void KSched_Reset(void);
@@ -119,6 +124,11 @@ s32 KAlarm_Set(u64 clocks, KAlarmFn fn, void *arg);   /* the record's id, or an 
 u64 KAlarm_SystemTime(void);                          /* GetTimerSystemTime: bus clocks */
 
 /* ---- vblank.c ---- */
+/* Save states (state.c; weak no-ops where it is not linked). */
+void KState_VBlankStart(u64 vblank);   /* first in a VBlank's start: a request taken, a save made or a load made */
+void KState_BootLoad(void);            /* before the game runs: a state named on the command line, development */
+s32 Kern_StateOption(s32 argc, char **argv, s32 i);
+
 void KVblank_Reset(void);           /* queues VBlank 1 */
 void KVblank_SetStop(u64 frames);   /* the run ends at VBlank `frames` (0: never) */
 #define KERN_EXIT_CRASH 70     /* the exit code after a crash (start.c) */

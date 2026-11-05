@@ -18,6 +18,7 @@ typedef BOOL(WINAPI *MiniDumpWriteDumpFn)(HANDLE, DWORD, HANDLE, MINIDUMP_TYPE, 
                                           PMINIDUMP_USER_STREAM_INFORMATION, PMINIDUMP_CALLBACK_INFORMATION);
 
 static char host_dump[1500], core_dump[1500];
+static wchar_t host_dump_w[1500];   /* made in crash_setup: the paths are UTF-8 (hostfs.h), the handler allocates nothing */
 
 static LONG WINAPI on_crash(EXCEPTION_POINTERS *ep)
 {
@@ -26,7 +27,7 @@ static LONG WINAPI on_crash(EXCEPTION_POINTERS *ep)
         return EXCEPTION_CONTINUE_SEARCH;
     HMODULE lib = LoadLibraryA("dbghelp.dll");
     MiniDumpWriteDumpFn write = lib ? (MiniDumpWriteDumpFn)(void *)GetProcAddress(lib, "MiniDumpWriteDump") : NULL;
-    HANDLE file = CreateFileA(host_dump, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE file = CreateFileW(host_dump_w, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (write && file != INVALID_HANDLE_VALUE) {
         MINIDUMP_EXCEPTION_INFORMATION mei;
         mei.ThreadId = GetCurrentThreadId();
@@ -45,7 +46,13 @@ void crash_setup(const char *dir, const char *session)
         return;
     snprintf(host_dump, sizeof(host_dump), "%s\\%s.mh2-crash.dmp", dir, session);
     snprintf(core_dump, sizeof(core_dump), "%s\\%s.core-crash.dmp", dir, session);
-    SetEnvironmentVariableA("MH2_CRASH_DUMP", core_dump);   /* the core inherits it */
+    wchar_t *wh = hfs_wide(host_dump), *wc = hfs_wide(core_dump);
+    if (wh && wc && wcslen(wh) < sizeof(host_dump_w) / sizeof(host_dump_w[0])) {
+        wcscpy(host_dump_w, wh);
+        SetEnvironmentVariableW(L"MH2_CRASH_DUMP", wc);   /* the core inherits it */
+    }
+    free(wh);
+    free(wc);
     SetUnhandledExceptionFilter(on_crash);
     host_log("crash dumps: %s and %s (written only on a crash)", host_dump, core_dump);
 }

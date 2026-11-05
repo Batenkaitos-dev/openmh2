@@ -7,6 +7,7 @@
 #include "pal_align.h"
 
 #include "host.h"
+#include "pal_arena.h"
 #include "kernel/kern.h"
 
 /* The EE's 32 MB and the scratchpad: objects of the image's .bss, 64 KiB aligned (pal_align.h: every host address of
@@ -23,9 +24,11 @@ PAL_PS2_DATA(Pal_Spr, 0x4000, ".ps2spr");
  * Mapped at the start-up check, before anything asks for it.
  */
 #define LOW_POOL_SIZE (48u * 1024 * 1024)
+#define ARENA_SIZE (8u * 1024 * 1024)       /* the pool's top: pal_arena.h */
 #define LOW_POOL_BASE 0x02000000u
 static unsigned char *sLowPool;
 static unsigned int sLowPoolUsed;
+static unsigned int sArenaTop;       /* bytes of the arena in use (blocks, free or not) */
 
 #define MAX_RANGES 64
 static struct {
@@ -82,13 +85,78 @@ void *Pal_LowAlloc(unsigned int size, const char *what)
         MapLowPool();
     }
 
-    if (n > LOW_POOL_SIZE - sLowPoolUsed) {
+    if (n > LOW_POOL_SIZE - ARENA_SIZE - sLowPoolUsed) {
         Pal_Fatal("Pal_LowAlloc: the low pool is out of memory");
     }
     p = sLowPool + sLowPoolUsed;
     sLowPoolUsed += n;
     (void)what;     /* covered by the pool's range */
     return p;
+}
+
+/* The arena (pal_arena.h): blocks of {size, used} headers from the pool's top region, walked from its start. */
+typedef struct ArenaBlk {
+    unsigned int size;     /* with the header, a multiple of 8 */
+    unsigned int used;
+} ArenaBlk;
+
+void *Pal_ArenaAlloc(unsigned int size)
+{
+    unsigned char *base;
+    unsigned int need, at = 0;
+    if (!sLowPool) {
+        MapLowPool();
+    }
+    base = sLowPool + (LOW_POOL_SIZE - ARENA_SIZE);
+    need = ((size ? size : 1) + 7u) / 8u * 8u + (unsigned int)sizeof(ArenaBlk);
+    while (at < sArenaTop) {
+        ArenaBlk *b = (ArenaBlk *)(base + at);
+        if (!b->used) {
+            while (at + b->size < sArenaTop && !((ArenaBlk *)(base + at + b->size))->used) {
+                b->size += ((ArenaBlk *)(base + at + b->size))->size;   /* the next one is free: join */
+            }
+            if (b->size >= need) {
+                if (b->size - need >= 16u) {
+                    ArenaBlk *rest = (ArenaBlk *)(base + at + need);
+                    rest->size = b->size - need;
+                    rest->used = 0;
+                    b->size = need;
+                }
+                b->used = 1;
+                return b + 1;
+            }
+        }
+        at += b->size;
+    }
+    if (need > ARENA_SIZE - sArenaTop) {
+        return 0;
+    }
+    {
+        ArenaBlk *b = (ArenaBlk *)(base + sArenaTop);
+        b->size = need;
+        b->used = 1;
+        sArenaTop += need;
+        return b + 1;
+    }
+}
+
+void Pal_ArenaFree(void *p)
+{
+    if (p) {
+        ((ArenaBlk *)p)[-1].used = 0;
+    }
+}
+
+int Pal_LowRegions(unsigned int lo[2], unsigned int hi[2])
+{
+    if (!sLowPool) {
+        return 0;
+    }
+    lo[0] = (unsigned int)(unsigned long)sLowPool;
+    hi[0] = lo[0] + sLowPoolUsed;
+    lo[1] = lo[0] + (LOW_POOL_SIZE - ARENA_SIZE);
+    hi[1] = lo[1] + sArenaTop;
+    return 2;
 }
 
 static void CheckRange(const char *what, unsigned int lo, unsigned int hi)

@@ -1,0 +1,17 @@
+# the player's own lines stay; Skip this screen next time is turned on
+key Down
+key Down
+key Down
+key Return
+key Right
+key Escape
+key Escape
+key Down
+key Down
+key Down
+key Right
+shot skip_on
+key Down
+key Return
+shot save_question
+key Return

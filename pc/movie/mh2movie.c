@@ -8,6 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -19,6 +23,33 @@
 #include "mh2movie.h"
 
 #define OUT_RATE 48000
+
+/* fopen of a UTF-8 path (the path is the host's, which is UTF-8 on every system): on Windows through the wide call, since
+ * the C library's own would read it in the ANSI code page and lose the letters outside it. A path that is not valid UTF-8
+ * is read in the ANSI code page. */
+static FILE *open_utf8(const char *path)
+{
+#ifdef _WIN32
+    UINT cp = CP_UTF8;
+    DWORD flags = MB_ERR_INVALID_CHARS;
+    int n = MultiByteToWideChar(cp, flags, path, -1, NULL, 0);
+    if (n <= 0) {
+        cp = CP_ACP;
+        flags = 0;
+        n = MultiByteToWideChar(cp, flags, path, -1, NULL, 0);
+    }
+    if (n <= 0)
+        return NULL;
+    wchar_t *w = malloc((size_t)n * sizeof(wchar_t));
+    FILE *f = NULL;
+    if (w && MultiByteToWideChar(cp, flags, path, -1, w, n) > 0)
+        f = _wfopen(w, L"rb");
+    free(w);
+    return f;
+#else
+    return fopen(path, "rb");
+#endif
+}
 
 struct mh2movie {
     FILE *f;
@@ -127,7 +158,7 @@ MH2MOVIE_API mh2movie *mh2movie_open(const char *path, uint64_t offset, uint64_t
     m->vstream = m->astream = -1;
     m->base = offset;
     m->size = size;
-    m->f = fopen(path, "rb");
+    m->f = open_utf8(path);
     if (!m->f) {
         snprintf(err, (size_t)errlen, "cannot open %s", path);
         goto fail;

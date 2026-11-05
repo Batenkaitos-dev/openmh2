@@ -1,0 +1,24 @@
+# a change and its Defaults is no change: nothing is written
+key Down
+key Down
+key Down
+key Return
+key Right
+key Down
+key Return
+key Down
+key Down
+key Right
+shot changed
+key Down
+key Down
+key Down
+key Down
+shot defaults_row
+key Return
+shot reset
+key Escape
+key Escape
+key Escape
+shot quit_row
+key Return

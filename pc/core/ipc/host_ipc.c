@@ -26,6 +26,10 @@ static struct {
     unsigned int rb_seq;
     int movie_clock;
     unsigned long long vblank;   /* the VBlank starting (Ipc_Pace, step 2), for --quit-after */
+    int pace_tied;               /* the pacer's clock is tied to a VBlank (a load unties it) */
+    int sched_have;              /* the pad schedule has held a state (a load forgets it) */
+    int keys_reset;              /* a load emptied the key ring: the next event is "every key up" */
+    unsigned int st_seen, st_inflight;   /* the host's last request seen, and the one being handled */
 } g = {.movie_clock = -1};
 
 static void host_gone(void)
@@ -104,20 +108,106 @@ int Ipc_QuitRequested(void)
     return mh2ipc_load(&g.h->quit_request) != 0 || (n && g.vblank > n);
 }
 
+/* ---- the freecam's mailbox ---- */
+
+static float bits_f(mh2ipc_u32 v)
+{
+    float f;
+    memcpy(&f, &v, sizeof f);
+    return f;
+}
+
+static mh2ipc_u32 f_bits(float f)
+{
+    mh2ipc_u32 v;
+    memcpy(&v, &f, sizeof v);
+    return v;
+}
+
+int Ipc_FreecamRead(IpcFreecam *out)
+{
+    memset(out, 0, sizeof(*out));
+    if (!g.on)
+        return 0;
+    const Mh2IpcFreecam *f = &g.h->freecam;
+    for (int tries = 0; tries < 8; tries++) {   /* the host's sequence lock: odd while it writes */
+        mh2ipc_u32 a = mh2ipc_load(&f->seq);
+        if (a == 0)
+            return 0;
+        if (a & 1)
+            continue;
+        mh2ipc_u32 flags = f->flags;
+        mh2ipc_u32 eye[3] = {f->eye[0], f->eye[1], f->eye[2]};
+        mh2ipc_u32 yaw = f->yaw, pitch = f->pitch, roll = f->roll, fov = f->fov;
+        mh2ipc_u32 grant = f->step_grant;
+        mh2ipc_fence();
+        if (mh2ipc_load(&f->seq) != a)
+            continue;
+        out->seq = a;
+        out->grant = grant;
+        out->on = (int)(flags & MH2IPC_FC_ON);
+        out->hold = (flags & MH2IPC_FC_HOLD) != 0;
+        out->frozen = (flags & MH2IPC_FC_FROZEN) != 0;
+        out->hide = (flags >> MH2IPC_FC_HIDE_SHIFT) & ((1u << MH2IPC_FC_HIDE_BITS) - 1u);
+        for (int i = 0; i < 3; i++)
+            out->eye[i] = bits_f(eye[i]);
+        out->yaw = bits_f(yaw);
+        out->pitch = bits_f(pitch);
+        out->roll = bits_f(roll);
+        out->fov = bits_f(fov);
+        return 1;
+    }
+    return 0;   /* the host was writing: the pose in force stays for this frame */
+}
+
+void Ipc_FreecamCamera(const float eye[3], const float at[3], float fov)
+{
+    if (!g.on)
+        return;
+    Mh2IpcFreecam *f = &g.h->freecam;
+    mh2ipc_u32 s = f->cam_seq;
+    mh2ipc_store(&f->cam_seq, s + 1);   /* odd: writing */
+    mh2ipc_fence();
+    for (int i = 0; i < 3; i++) {
+        f->cam_eye[i] = f_bits(eye[i]);
+        f->cam_at[i] = f_bits(at[i]);
+    }
+    f->cam_fov = f_bits(fov);
+    mh2ipc_store(&f->cam_seq, s + 2);
+}
+
+void Ipc_FreecamStatus(int active, unsigned int echo, unsigned long long vblank, int state, int why, unsigned int taken)
+{
+    if (!g.on)
+        return;
+    Mh2IpcFreecam *f = &g.h->freecam;
+    mh2ipc_u32 s = f->st_seq;
+    mh2ipc_store(&f->st_seq, s + 1);   /* odd: writing */
+    mh2ipc_fence();
+    f->st_active = active != 0;
+    f->st_echo = echo;
+    f->st_vblank = (mh2ipc_u32)vblank;
+    f->st_state = (mh2ipc_u32)state;
+    f->st_why = (mh2ipc_u32)why;
+    f->st_taken = taken;
+    mh2ipc_fence();
+    mh2ipc_store(&f->st_seq, s + 2);
+}
+
 /* ---- real-time pacing ---- */
 
 #define VBLANK_NS 16683350ull   /* the kernel's VBlank period (kern.h) */
 
+
 void Ipc_Pace(unsigned long long vblank)
 {
     static unsigned long long ref_host, ref_vblank;
-    static int tied;
     g.vblank = vblank;
     if (!g.on || !(mh2ipc_load(&g.h->host_flags) & MH2IPC_HOST_PACE))
         return;
     unsigned long long now = mh2ipc_time_ns();
-    if (!tied || vblank < ref_vblank) {
-        tied = 1;
+    if (!g.pace_tied || vblank < ref_vblank) {
+        g.pace_tied = 1;
         ref_host = now;
         ref_vblank = vblank;
         return;
@@ -190,6 +280,22 @@ void Ipc_GsVSync(unsigned int field, unsigned long long vblank)
         put(MH2IPC_REC_VSYNC, field, (unsigned int)(g.movie_clock + 1), &vblank, 8, NULL, 0);
 }
 
+/* Waits for the host to answer the record of sequence number `seq` (rb_done_seq). */
+static void wait_done(unsigned int seq)
+{
+    for (;;) {
+        unsigned int d = mh2ipc_load(&g.h->rb_done_seq);
+        if (d == seq)
+            break;
+        mh2ipc_store(&g.h->rb_core_waiting, 1);
+        mh2ipc_fence();
+        if (mh2ipc_load(&g.h->rb_done_seq) != seq)
+            mh2ipc_wait(&g.map, MH2IPC_EV_RB_DONE, &g.h->rb_done_seq, d, WAIT_MS);
+        mh2ipc_store(&g.h->rb_core_waiting, 0);
+        check_host();
+    }
+}
+
 int Ipc_GsReadback(void *dst, unsigned int qwords)
 {
     unsigned char *out = (unsigned char *)dst;
@@ -201,17 +307,7 @@ int Ipc_GsReadback(void *dst, unsigned int qwords)
         unsigned int n = qwords < g.h->rb_size / 16 ? qwords : g.h->rb_size / 16;
         unsigned int seq = ++g.rb_seq;
         put(MH2IPC_REC_READBACK, n, seq, NULL, 0, NULL, 0);
-        for (;;) {
-            unsigned int d = mh2ipc_load(&g.h->rb_done_seq);
-            if (d == seq)
-                break;
-            mh2ipc_store(&g.h->rb_core_waiting, 1);
-            mh2ipc_fence();
-            if (mh2ipc_load(&g.h->rb_done_seq) != seq)
-                mh2ipc_wait(&g.map, MH2IPC_EV_RB_DONE, &g.h->rb_done_seq, d, WAIT_MS);
-            mh2ipc_store(&g.h->rb_core_waiting, 0);
-            check_host();
-        }
+        wait_done(seq);
         memcpy(out, g.block + g.h->rb_offset, (size_t)n * 16);
         out += (size_t)n * 16;
         qwords -= n;
@@ -242,14 +338,13 @@ static void neutral_pad(IpcPad *out)
 static void SchedPad(Mh2IpcPad *out)
 {
     static Mh2IpcPad cur;
-    static int have;
     Mh2IpcSched *s = &g.h->sched;
     unsigned int v = (unsigned int)g.vblank;
-    if (!have) {
+    if (!g.sched_have) {
         memset(&cur, 0, sizeof(cur));
         cur.connected = 1;
         cur.rx = cur.ry = cur.lx = cur.ly = 0x80;
-        have = 1;
+        g.sched_have = 1;
     }
     for (;;) {
         unsigned int horizon = mh2ipc_load(&s->horizon);
@@ -307,12 +402,20 @@ int Ipc_KeyboardWanted(void)
 
 int Ipc_KeyPeek(unsigned int *event)
 {
+    if (g.on && g.keys_reset) {
+        *event = 0;   /* usage 0, up: every key up (a load emptied the ring; the keys held then are not held now) */
+        return 1;
+    }
     return g.on && mh2ipc_keys_peek(&g.h->keys, event);
 }
 
 void Ipc_KeyTake(void)
 {
-    if (g.on)
+    if (!g.on)
+        return;
+    if (g.keys_reset)
+        g.keys_reset = 0;
+    else
         mh2ipc_keys_take(&g.h->keys);
 }
 
@@ -321,6 +424,126 @@ void Ipc_SetRumble(unsigned int port, unsigned int small, unsigned int large)
 {
     if (g.on && port < IPC_PADS)
         mh2ipc_store(&g.h->rumble[port], (small ? 1u : 0u) | (large > 255 ? 255u : large) << 8);
+}
+
+/* ---- save states ---- */
+
+int Ipc_StateRequest(char *path, unsigned int cap)
+{
+    if (!g.on)
+        return 0;
+    Mh2IpcState *s = &g.h->state;
+    unsigned int seq = mh2ipc_load(&s->req_seq);
+    if (seq == g.st_seen)
+        return 0;
+    g.st_seen = seq;
+    g.st_inflight = seq;
+    unsigned int kind = s->req_kind;
+    size_t n = strnlen(s->req_path, sizeof(s->req_path));
+    if ((kind != MH2IPC_ST_SAVE && kind != MH2IPC_ST_LOAD) || n >= cap || n >= sizeof(s->req_path)) {
+        Ipc_StateAnswer(g.vblank, "no such request");
+        return 0;
+    }
+    memcpy(path, s->req_path, n);
+    path[n] = 0;
+    return (int)kind;
+}
+
+void Ipc_StateAnswer(unsigned long long vblank, const char *refused)
+{
+    if (!g.on || !g.st_inflight)
+        return;
+    Mh2IpcState *s = &g.h->state;
+    s->ack_result = refused ? MH2IPC_ST_REFUSED : MH2IPC_ST_DONE;
+    s->ack_vblank_lo = (unsigned int)vblank;
+    s->ack_vblank_hi = (unsigned int)(vblank >> 32);
+    size_t n = refused ? strlen(refused) : 0;
+    if (n >= sizeof(s->ack_message))
+        n = sizeof(s->ack_message) - 1;
+    if (n)
+        memcpy(s->ack_message, refused, n);
+    s->ack_message[n] = 0;
+    unsigned int seq = g.st_inflight;
+    g.st_inflight = 0;
+    mh2ipc_store(&s->ack_seq, seq);   /* last: the answer is complete when the ack shows */
+}
+
+int Ipc_StateHasGs(void)
+{
+    return g.on && (mh2ipc_load(&g.h->host_flags) & MH2IPC_HOST_GS) && g.h->state.identity[0];
+}
+
+const char *Ipc_StateIdentity(void)
+{
+    static char id[32];
+    if (!g.on)
+        return "";
+    memcpy(id, g.h->state.identity, 31);
+    id[31] = 0;
+    return id;
+}
+
+const void *Ipc_StateGsGet(unsigned int *size, const char **why)
+{
+    Mh2IpcState *s = &g.h->state;
+    *size = 0;
+    *why = 0;
+    if (!g.on)
+        return NULL;
+    unsigned int seq = ++g.rb_seq;
+    put(MH2IPC_REC_STATE_GET, 0, seq, NULL, 0, NULL, 0);
+    wait_done(seq);
+    int r = (int)mh2ipc_load(&s->gs_result);
+    if (r == 0 && s->gs_bytes > s->window_bytes)
+        r = -1;
+    if (r != 0) {
+        *why = r == -2 ? "the renderer is in the middle of a transfer: try again" : "the renderer could not give its state";
+        return NULL;
+    }
+    *size = s->gs_bytes;
+    return g.block + s->window_offset;
+}
+
+int Ipc_StateGsSet(const void *data, unsigned int size)
+{
+    Mh2IpcState *s = &g.h->state;
+    if (!g.on || size > s->window_bytes)
+        return -1;
+    memcpy(g.block + s->window_offset, data, size);
+    unsigned int seq = ++g.rb_seq;
+    put(MH2IPC_REC_STATE_SET, size, seq, NULL, 0, NULL, 0);
+    wait_done(seq);
+    return (int)mh2ipc_load(&s->gs_result);
+}
+
+void Ipc_StateLoaded(unsigned long long vblank)
+{
+    g.pace_tied = 0;
+    if (!g.on)
+        return;
+    Mh2IpcState *s = &g.h->state;
+    /* the key ring: what the host queued before is dropped, and the game is told every key is up */
+    if (Ipc_KeyboardWanted()) {
+        mh2ipc_store(&g.h->keys.tail, mh2ipc_load(&g.h->keys.head));
+        g.keys_reset = 1;
+    }
+    /* the audio ring: the host's sound thread drops what it holds up to here (the old timeline's sound) */
+    s->audio_flush_head = mh2ipc_load(&g.h->audio.head);
+    s->loads++;
+    mh2ipc_fence();
+    mh2ipc_store(&s->audio_flush_seq, s->audio_flush_seq + 1);
+    /* the pad schedule starts again at the loaded VBlank (Mh2IpcSched) */
+    Mh2IpcSched *sc = &g.h->sched;
+    if (mh2ipc_load(&sc->enabled)) {
+        unsigned int e = sc->epoch + 1;
+        sc->rewind_vblank = (unsigned int)vblank;
+        mh2ipc_store(&sc->epoch, e);
+        while (mh2ipc_load(&sc->epoch_ack) != e) {
+            mh2ipc_wait_until_ns(mh2ipc_time_ns() + 1000000ull);
+            check_host();
+        }
+        g.sched_have = 0;
+    }
 }
 
 /* ---- movies ---- */

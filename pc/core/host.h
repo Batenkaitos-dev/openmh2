@@ -26,8 +26,11 @@ HOST void Host_Free(void *p);
 HOST int Host_Protect(void *p, unsigned int size, int readWrite);
 /* The executable image: its first byte and one past the last (code, data and .bss). */
 HOST void Host_ImageRange(unsigned int *lo, unsigned int *hi);
-/* An environment variable, or NULL. */
+/* An environment variable, or NULL. A value is UTF-8 (on Windows it is read as UTF-16 and converted: the value stays valid). */
 HOST const char *Host_Getenv(const char *name);
+/* The command line as UTF-8 (main.c, first). On Windows the C library's argv is in the ANSI code page and has already
+ * lost every letter outside it, so the program's own UTF-16 command line is read and converted; on Linux nothing changes. */
+HOST void Host_Args(int *argc, char ***argv);
 /* The page size. */
 HOST unsigned int Host_PageSize(void);
 /* Zeroed read/write memory at exactly addr (size bytes, whole pages), or NULL

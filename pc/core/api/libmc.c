@@ -26,6 +26,7 @@ s32 sceMcSetFileInfo(s32 port, s32 slot, const char *name, const void *info, u32
 
 static struct {
     s32 cmd;               /* the request in progress (0: none) */
+    int ended;             /* its end function has run (Mc_RequestPending) */
     s32 lock, done;        /* the semaphores (made when the lock's word is negative) */
     s32 tid;
     int ready;
@@ -154,6 +155,7 @@ static s32 sceMcInitWork(void)
 static void EndSignal(void *arg)
 {
     (void)arg;
+    g_mc.ended = 1;
     iSignalSema(g_mc.done);
 }
 
@@ -162,6 +164,7 @@ static void EndCopy(void *arg)
     McBlock *b = arg;
     if (b->size1 > 0)
         __builtin_memcpy(b->dest1, (u8 *)b + 0x10, (u32)b->size1);   /* never: the core's IOP sends no ends */
+    g_mc.ended = 1;
     iSignalSema(g_mc.done);
 }
 
@@ -174,6 +177,7 @@ static void EndInfo(void *arg)
         *g_mc.free = b->free;
     if (g_mc.format)
         *g_mc.format = b->formatted;
+    g_mc.ended = 1;
     iSignalSema(g_mc.done);
 }
 
@@ -190,6 +194,7 @@ static s32 Lock(void)
 
 static s32 Send(u32 fno, void (*end)(void *), void *arg, s32 cmd)
 {
+    g_mc.ended = 0;
     if (sceSifCallRpc(&g_mc.client, (s32)fno, 1, &g_mc.req, sizeof(g_mc.req), &g_mc.recv, 4, end, arg)) {
         SignalSema(g_mc.lock);
         return MC_FAIL;
@@ -429,4 +434,11 @@ s32 sceMcDelete(s32 port, s32 slot, char *name)
 s32 sceMcSetFileInfo(s32 port, s32 slot, const char *name, const void *info, u32 flags)
 {
     return sceMcSetFileInfoWork(port, slot, name, info, flags);
+}
+
+/* Not a library function: the platform layer's question (pc/core/pal_freecam.c) whether a request is running (sent, its
+ * end not yet arrived). The freeze does not take hold while one is. */
+s32 Mc_RequestPending(void)
+{
+    return g_mc.cmd != 0 && !g_mc.ended;
 }

@@ -1,0 +1,8 @@
+# the cards page marks a card in use when its lock names another live process (a holder started by the test)
+key Down
+key Down
+key Return
+shot cards
+key Escape
+key Escape
+end

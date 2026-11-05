@@ -39,6 +39,7 @@
 #include "io/io.h"
 #include "ipc/core_ipc.h"
 #include "kernel/kern.h"
+#include "kernel/state.h"
 #include "snd/snd_kernel.h"
 #include "pal_movie.h"
 
@@ -163,12 +164,13 @@ static void LoadTable(void)
     if (sTable.loaded)
         return;
     if (Io_DiscSideFile(MOVIE_TABLE, &data, &size) != 0)
-        Host_Fatal("movie: no " MOVIE_TABLE " beside the disc archive: run python3 tools/pc/movie_table.py "
-                   "(after python tools/port/make_archive.py; the core's Linux build runs it), and keep it beside the archive");
+        Host_Fatal("movie: no " MOVIE_TABLE " beside the disc archive: make it in the launcher (Disc and archive, "
+                   "Make the movie table), and keep it beside the archive");
     bad = ParseTable((const char *)data) != 0;
     Host_Free(data);
     if (bad)
-        Host_Fatal("movie: " MOVIE_TABLE " is not a table of this version (python3 tools/pc/movie_table.py --force)");
+        Host_Fatal("movie: " MOVIE_TABLE " is not a table of this version: make it again in the launcher (Disc and "
+                   "archive, Make the movie table)");
     sTable.loaded = 1;
 }
 
@@ -247,6 +249,12 @@ int Pal_MovieStatus(void)
     if (!sMv.active)
         return ST_STOPPED;
     return sMv.status == ST_ERROR ? ST_FINISHED : sMv.status;
+}
+
+/* kernel/state.h: a save state is not made, or loaded, while a movie is open (the host's player is not in it). */
+int Kern_StateBlocked(void)
+{
+    return sMv.active;
 }
 
 /* ---- the clock and the VBlank end ---- */

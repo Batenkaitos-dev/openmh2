@@ -130,7 +130,7 @@ foreach(mod IN LISTS MH2_MODULES)
 endforeach()
 
 # ---- the platform layer ----
-set(MH2_PAL_SOURCES main.c pal_mem.c pal_overlay.c pal_camera.c pal_hud.c)
+set(MH2_PAL_SOURCES main.c pal_mem.c pal_overlay.c pal_camera.c pal_hud.c pal_freecam.c)
 # Each module owns a directory here, and the library
 # functions go in api/, one file per library (3.8). Every .c file in them is built, so none of them edits this
 # file: host_*.c files use the system headers and go into pal_host (host_*_linux.c and host_*_windows.c only
@@ -186,6 +186,8 @@ add_library(pal_host OBJECT host_${MH2_PLATFORM}.c ${MH2_LANE_HOST_SOURCES})
 target_include_directories(pal_host PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${MH2_ROOT}/pc")
 target_compile_options(pal_host PRIVATE ${MH2_HOST_FLAGS} -Wall -Wextra -Werror -Wno-unused-parameter)
 
+include("${CMAKE_CURRENT_LIST_DIR}/kernel/state.cmake")   # save states: zlib and the host-owned sections
+
 # ---- the aborting stubs for every library function not written yet ----
 file(GENERATE OUTPUT "${MH2_GEN}/objects.rsp" CONTENT "$<JOIN:${MH2_OBJECTS},
 >
@@ -210,7 +212,7 @@ add_library(stubs OBJECT "${_stubs}")
 target_include_directories(stubs PRIVATE "${CMAKE_CURRENT_LIST_DIR}")
 target_compile_options(stubs PRIVATE ${MH2_FLAGS} -w)
 
-add_executable(mh2-core ${MH2_OBJECTS} $<TARGET_OBJECTS:pal> $<TARGET_OBJECTS:pal_host> ${MH2_CRT_OBJECTS} $<TARGET_OBJECTS:stubs>)
+add_executable(mh2-core ${MH2_OBJECTS} $<TARGET_OBJECTS:pal> $<TARGET_OBJECTS:pal_host> ${MH2_CRT_OBJECTS} ${MH2_STATE_OBJECTS} $<TARGET_OBJECTS:stubs>)
 set_target_properties(mh2-core PROPERTIES LINKER_LANGUAGE C)
 if(MH2_PLATFORM STREQUAL "linux")
   target_link_libraries(mh2-core PRIVATE -Wl,-Map=${CMAKE_BINARY_DIR}/mh2-core.map)

@@ -2,6 +2,7 @@
 #include "io/io.h"
 #include "io/io_host.h"
 #include "io/io_pad.h"
+#include "kernel/kern.h"
 
 /* ------------------------------------------------------------ logs */
 
@@ -168,7 +169,8 @@ void Io_RegisterServices(void)
     IoKb_Register();
 }
 
-static const char *g_optDisc, *g_optCard[2];
+/* Pointers into the process's arguments: the process's, not a save state's (kernel/kern.h). */
+static const char *g_optDisc KERN_HOSTBSS, *g_optCard[2] KERN_HOSTBSS;
 
 s32 Io_Option(s32 argc, char **argv, s32 i)
 {

@@ -37,6 +37,12 @@
  *   is about to send with PC_HUD_2D(); Prim_SendPacket's PC_HUD_PACKET(p, frame width) rewrites the marked packet's
  *   x coordinates. An element placed from a 3D point (the target marker) names that point's x as the pivot, in the
  *   frame's pixels, around its drawing: PC_HUD_PIVOT(x) ... PC_HUD_PIVOT_END(). Nothing on the PS2.
+ * - PC_FREECAM_FIELD(on), PC_FREECAM_BEGIN(objs), PC_FREECAM_END(): the freecam's seam (pc/core/pal_freecam.c). The scenes
+ *   that draw the world (a quest in the field, the village) bracket their Frame_Draw with PC_FREECAM_FIELD(1) and (0): the
+ *   freecam is on only for their draw. Frame_Draw starts with PC_FREECAM_BEGIN(&objs), which hands over the camera's objects
+ *   (PalFreecamObjs below), and ends with PC_FREECAM_END(). Nothing on the PS2.
+ * - PC_FREECAM_HIDE(stage) in front of a draw statement: the draw is skipped while the freecam's pose hides that stage of
+ *   Frame_Draw (PAL_STAGE_* below), in a field scene's draw only. Nothing on the PS2.
  */
 #if PLATFORM_PS2
 #define PAL_POLL() ((void)0)
@@ -47,6 +53,10 @@
 #define PC_HUD_PACKET(p, frameWidth) ((void)0)
 #define PC_HUD_PIVOT(x) ((void)0)
 #define PC_HUD_PIVOT_END() ((void)0)
+#define PC_FREECAM_FIELD(on) ((void)0)
+#define PC_FREECAM_BEGIN(objs) ((void)0)
+#define PC_FREECAM_END() ((void)0)
+#define PC_FREECAM_HIDE(stage)
 #define PAL_SYNC_EI() __asm__ volatile ("sync.l\n\tei")
 #define PAL_NOPS_8() __asm__ volatile ("nop\n nop\n nop\n nop\n nop\n nop\n nop\n nop")
 #define PAL_NOPS_7() __asm__ volatile ("nop\n nop\n nop\n nop\n nop\n nop\n nop")
@@ -62,6 +72,10 @@
 #define PC_HUD_PACKET(p, frameWidth) Pal_HudPacket((p), (frameWidth))
 #define PC_HUD_PIVOT(x) Pal_HudPivot(x)
 #define PC_HUD_PIVOT_END() Pal_HudPivotEnd()
+#define PC_FREECAM_FIELD(on) Pal_FreecamField(on)
+#define PC_FREECAM_BEGIN(objs) Pal_FreecamBegin(objs)
+#define PC_FREECAM_END() Pal_FreecamEnd()
+#define PC_FREECAM_HIDE(stage) if (!Pal_FreecamHide(stage))
 #endif
 
 #if PLATFORM_PC
@@ -144,6 +158,71 @@ void Pal_HudMark(void);
 void Pal_HudPacket(u32 *packet, s32 frameWidth);
 void Pal_HudPivot(s32 x);
 void Pal_HudPivotEnd(void);
+
+/*
+ * The freecam's seam (pc/core/pal_freecam.c). The game hands over the objects the camera publishes and the draw reads:
+ * the layer takes no address of game memory from anywhere else. Pal_FreecamBegin, at the start of Frame_Draw, puts the
+ * freecam's view in them for the length of the draw when a pose is in force and Pal_FreecamField(1) says it is a field
+ * scene's draw; Pal_FreecamEnd puts back each one that still holds the value Pal_FreecamBegin put there (the draw
+ * writes the projection itself). With no pose, both do nothing.
+ * view: the view matrix the draw's geometry takes (gMtxView, slot 33); viewCopy: gViewMatrix; camMatrix: gCamMatrix, the
+ * view matrix's inverse (the billboards, the sky bands, the lights, the shadows); camYaw: gCamYawMtx. All 4 x 4 f32.
+ * eye, at, up, fov, fovPrev, roll: the camera struct's. proj: what applyProjection (Camera_ApplyProjection) writes from
+ * the camera's fov: the projection slot, the viewport matrix, the clip and screen projections, the frustum planes.
+ */
+typedef struct PalFreecamItem {
+    void *p;
+    u32 bytes;
+} PalFreecamItem;
+
+typedef struct PalFreecamObjs {
+    f32 *view;
+    f32 *viewCopy;
+    f32 *camMatrix;
+    f32 *camYaw;
+    f32 *eye;
+    f32 *at;
+    f32 *up;
+    f32 *fov;
+    f32 *fovPrev;
+    f32 *roll;
+    PalFreecamItem proj[5];
+    void (*applyProjection)(void);
+} PalFreecamObjs;
+
+void Pal_FreecamField(s32 on);
+void Pal_FreecamBegin(const PalFreecamObjs *objs);
+void Pal_FreecamEnd(void);
+
+/*
+ * The stages of Frame_Draw after the world, in the order of the code (the freecam pose's hide mask has a bit for each). The
+ * scene's own stages (the two fades and the loading letters) are never hidden by a pose.
+ */
+enum {
+    PAL_STAGE_PRIM = 0,      /* the primitives (Prim_DrawAll) */
+    PAL_STAGE_TEXT6,         /* text list 6 and page 6 */
+    PAL_STAGE_TEXT0,         /* lists 0a and 0b and page 0 */
+    PAL_STAGE_TEXT1,         /* list 1 and page 1 */
+    PAL_STAGE_EQUIP,         /* the equipment preview */
+    PAL_STAGE_TEXT2,         /* list 2 and page 2 */
+    PAL_STAGE_TEXT4,         /* list 4 and page 4 */
+    PAL_STAGE_OT3,           /* text layer 3's ordering table */
+    PAL_STAGE_FADE_B,        /* FadeB_Draw (the scene's) */
+    PAL_STAGE_TEXT3,         /* page 3 */
+    PAL_STAGE_TEXT5,         /* list 5 and page 5 */
+    PAL_STAGE_FADE_A,        /* FadeA_Draw, from Callbacks_Run (the scene's) */
+    PAL_STAGE_LOADING,       /* Loading_DrawLetters, from Callbacks_Run (the scene's) */
+    PAL_STAGE_COUNT
+};
+/* 1 when the stage is hidden in the draw in progress. */
+s32 Pal_FreecamHide(s32 stage);
+
+/*
+ * Asked at the start of each step of the game main loop (SubMain_Step): 1 when this step is a frozen frame (the last field
+ * frame's draw again and the flip, nothing else), 0 for a real frame, 2 for the first real frame after frozen ones (its flip
+ * timing is put back). See pc/core/pal_freecam.h.
+ */
+s32 Pal_FreezeStep(void);
 
 /*
  * A poll event: the game's code is in a spin and

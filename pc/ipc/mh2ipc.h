@@ -40,7 +40,7 @@ typedef int mh2ipc_s32;
 typedef unsigned long long mh2ipc_u64;
 
 #define MH2IPC_MAGIC 0x3243504Du   /* "MPC2", little-endian */
-#define MH2IPC_VERSION 6u
+#define MH2IPC_VERSION 7u
 /* The release build (MH2_RELEASE) leaves out some of the host's features, so its header lacks the development
  * build's two blocks (Mh2IpcPlay, Mh2IpcWatch) and the words that answer them. Every other field is at the same
  * offset in both, and the blocks that only the development build has are last (or in reserved space): the release
@@ -54,7 +54,8 @@ typedef unsigned long long mh2ipc_u64;
 #define MH2IPC_GS_BYTES (32u << 20)        /* about ten frames of the busiest scenes */
 #define MH2IPC_AUDIO_BYTES (256u << 10)    /* 65536 frames, 1.37 s */
 #define MH2IPC_RB_BYTES (4u << 20)         /* the GS's whole memory */
-#define MH2IPC_TOTAL_BYTES (MH2IPC_HEADER_BYTES + MH2IPC_GS_BYTES + MH2IPC_AUDIO_BYTES + MH2IPC_RB_BYTES)
+#define MH2IPC_STATE_BYTES (8u << 20)      /* the window for the renderer's part of a save state (4.2 MB today) */
+#define MH2IPC_TOTAL_BYTES (MH2IPC_HEADER_BYTES + MH2IPC_GS_BYTES + MH2IPC_AUDIO_BYTES + MH2IPC_RB_BYTES + MH2IPC_STATE_BYTES)
 
 /* The largest payload of one record; GIF data and readbacks are split. */
 #define MH2IPC_REC_MAX (1u << 20)
@@ -102,6 +103,10 @@ enum {
     MH2IPC_REC_READBACK = 4,     /* arg0 = qwords (<= MH2IPC_RB_BYTES / 16); arg1 = sequence number */
     MH2IPC_REC_MOVIE_OPEN = 5,   /* payload: Mh2IpcMovieOpen, then the file's path (NUL-terminated) */
     MH2IPC_REC_MOVIE_CLOSE = 6,  /* arg0 = the movie's id: it ends or is skipped */
+    /* Save states (Mh2IpcState): the core waits for the answer (rb_done_seq = arg1), as for a readback. In the ring so
+     * that the renderer's state is that of the records before it. */
+    MH2IPC_REC_STATE_GET = 7,    /* arg1 = sequence number: the renderer's block goes to the state window (gs_bytes, gs_result) */
+    MH2IPC_REC_STATE_SET = 8,    /* arg0 = the block's bytes in the state window; arg1 = sequence number: the renderer takes it (gs_result) */
 };
 
 typedef struct Mh2IpcRec {
@@ -209,7 +214,12 @@ typedef struct Mh2IpcRing {
  *    empty and horizon < N it waits (MH2IPC_EV_SCHED) until the host has pushed more. Before the first entry the
  *    pad is neutral (connected, nothing pressed, sticks centred).
  *  - The ports other than 0, and the keyboard, come from the mailbox as ever. VBlanks count as in Ipc_Pace,
- *    in 32 bits. */
+ *    in 32 bits.
+ *  - A load of a save state goes back in VBlanks (version 7). The core then asks the host to start the schedule again:
+ *    it stores rewind_vblank (the VBlank that starts next), then epoch + 1, and waits (the host looks each pass of its
+ *    loop) for epoch_ack to equal epoch. The host, seeing a new epoch, drops the entries the core has not taken
+ *    (head = tail: the core takes none while it waits), pushes again from the entry that holds at rewind_vblank on,
+ *    stores horizon, and stores epoch_ack last. The core then forgets the pad it held. */
 #define MH2IPC_SCHED_RING 256u   /* entries; a power of two */
 typedef struct Mh2IpcSchedEntry {
     mh2ipc_u32 vblank;
@@ -221,12 +231,115 @@ typedef struct Mh2IpcSched {
     mh2ipc_u32 reserved0[15];
     mh2ipc_u32 head;           /* the host's: entries pushed */
     mh2ipc_u32 horizon;        /* the host's: written after head */
-    mh2ipc_u32 reserved1[14];
+    mh2ipc_u32 epoch_ack;      /* the host's: the epoch it has handled (written last) */
+    mh2ipc_u32 reserved1[13];
     mh2ipc_u32 tail;           /* the core's: entries taken */
     mh2ipc_u32 waiting;        /* the core sleeps on horizon */
-    mh2ipc_u32 reserved2[14];
+    mh2ipc_u32 epoch;          /* the core's: loads that went back; the host starts again for each */
+    mh2ipc_u32 rewind_vblank;  /* the core's: the VBlank that starts next, written before epoch */
+    mh2ipc_u32 reserved2[12];
     Mh2IpcSchedEntry entries[MH2IPC_SCHED_RING];
 } Mh2IpcSched;
+
+/* The freecam's mailbox (host_ipc.c reads it at each VBlank's start; pc/host/freecam.c writes it). Floats travel as their IEEE-754
+ * single bits. seq is the host's, written last (a sequence lock: odd while it writes, 0 until the first write); cam_seq the
+ * core's, the same way. flags: MH2IPC_FC_*. The pose is absolute (pc/core/pal_freecam.h, PalFreecamPose): eye in the game's
+ * world, yaw and pitch and roll in radians, fov in radians (0: the game's). The core publishes the game's camera (eye, at, fov of
+ * the last field frame's draw) after each VBlank's start, so the freecam starts where the game's camera is; cam_seq 0: none yet. */
+enum {
+    MH2IPC_FC_ON = 1u,            /* the freecam has the view */
+    MH2IPC_FC_HOLD = 2u,          /* (the host's: the game has the pad; the pose stays) */
+    MH2IPC_FC_FROZEN = 4u,        /* the pause: the host asks for frozen frames (Pal_FreezeSet's hold) */
+    MH2IPC_FC_HIDE_SHIFT = 8,     /* the hide mask (PalFreecamPose.hide, a bit for each PAL_STAGE_*): 13 bits from here */
+    MH2IPC_FC_HIDE_BITS = 13,
+    MH2IPC_FC_HUD = 0x6FF         /* the HUD's stages together (photo mode's H): all but the scene's two fades and the loading letters */
+};
+typedef struct Mh2IpcFreecam {
+    /* host -> core */
+    mh2ipc_u32 seq;
+    mh2ipc_u32 flags;          /* on, hold, frozen, hide mask */
+    mh2ipc_u32 eye[3];
+    mh2ipc_u32 yaw, pitch, roll;
+    mh2ipc_u32 fov;
+    mh2ipc_u32 reserved_hold;  /* (unused: the pause is the FROZEN flag) */
+    mh2ipc_u32 step_grant;     /* the step count: one real frame for each, while the pause holds; it only grows (Pal_FreezeSet's grant) */
+    mh2ipc_u32 reserved0[13];
+    /* core -> host: the game's camera, so that the freecam starts where it is */
+    mh2ipc_u32 cam_seq;
+    mh2ipc_u32 cam_eye[3];
+    mh2ipc_u32 cam_at[3];
+    mh2ipc_u32 cam_fov;
+    /* core -> host: what the last draw was (its own sequence lock, st_seq: odd while the core writes, 0 until the first write).
+     * st_active: 1 when that draw was a field scene's with the pose in force (0: a menu, a result screen, the title, ...: the
+     * host gives the game its input back and the pose waits). st_echo: the sequence of the pose that was in force for that draw
+     * (the host knows its pose reached the draw once st_echo is at least the sequence it wrote). st_vblank: the VBlank whose
+     * start published these words (low 32 bits). st_state, st_why, st_taken: Pal_FreezeState's answer (0 running, 1 waiting,
+     * 2 frozen; why a pause waits: 1 not a field scene, 2 a movie is open, 3 a memory card request is running; the steps the core has
+     * taken, counted as the host counts them: a load of a save state does not move it against the host's step_grant). */
+    mh2ipc_u32 st_seq;
+    mh2ipc_u32 st_active;
+    mh2ipc_u32 st_echo;
+    mh2ipc_u32 st_vblank;
+    mh2ipc_u32 st_state, st_why, st_taken;
+    mh2ipc_u32 reserved1[1];
+} Mh2IpcFreecam;
+
+/* Save states. The core makes and loads the states (kernel/state.c); the host
+ * asks, and carries the renderer's part:
+ *  - A request (host -> core): the host writes req_kind and req_path, then req_seq last. The core looks at each VBlank's
+ *    start (kernel/state.c, KState_VBlankStart) and, for a new req_seq, saves or loads there. It answers with ack_result,
+ *    ack_vblank and ack_message, and ack_seq last (= req_seq). One request at a time: the host sends the next after the ack.
+ *  - The renderer's block (the GS's memory and registers: 4.2 MB, mh2gs_state_get): the GS state is in the host's process, so
+ *    the block crosses in the state window (MH2IPC_STATE_BYTES, at window_offset). For a save the core puts a
+ *    MH2IPC_REC_STATE_GET in the GS ring, which the host's GS thread answers in order with the others, so the block is that of
+ *    the records before it: it writes the block into the window, then gs_bytes and gs_result, then rb_done_seq (= the
+ *    record's arg1, the sequence the readbacks use), and wakes the core. For a load the core copies the block into
+ *    the window and puts MH2IPC_REC_STATE_SET (arg0 = bytes); the host applies it at that record and answers the same way.
+ *    gs_result is 0, or mh2gs's negative code as an unsigned number.
+ *  - identity (host, once, before the core starts): the renderer's build and the settings that change its state (ssaa, hires,
+ *    texture packs); "" without a renderer. The header of a state keeps it, and a load under another is refused.
+ *  - After a load (the core's, in its resume): loads counts them; audio_flush_head is the audio ring's head at that moment,
+ *    and audio_flush_seq goes up: the host's sound thread drops what the ring holds up to that position (the old timeline's
+ *    sound) and fades the rest in. The key ring is emptied by the core (tail = head). The pad schedule starts again
+ *    (Mh2IpcSched). Real-time pacing ties its clock again at the loaded VBlank (the core's own). */
+#define MH2IPC_STATE_PATH 1024u
+#define MH2IPC_STATE_MSG 160u
+enum {   /* req_kind */
+    MH2IPC_ST_NONE = 0,
+    MH2IPC_ST_SAVE = 1,
+    MH2IPC_ST_LOAD = 2,
+};
+enum {   /* ack_result */
+    MH2IPC_ST_DONE = 0,        /* it went through */
+    MH2IPC_ST_REFUSED = 1,     /* ack_message says why */
+};
+typedef struct Mh2IpcState {
+    /* the host's, once, before the core starts */
+    mh2ipc_u32 window_offset;
+    mh2ipc_u32 window_bytes;
+    char identity[32];
+    mh2ipc_u32 reserved0[6];
+    /* host -> core */
+    mh2ipc_u32 req_seq;
+    mh2ipc_u32 req_kind;
+    mh2ipc_u32 reserved1[14];
+    char req_path[MH2IPC_STATE_PATH];
+    /* core -> host */
+    mh2ipc_u32 ack_seq;
+    mh2ipc_u32 ack_result;
+    mh2ipc_u32 ack_vblank_lo, ack_vblank_hi;   /* the state's VBlank: the one that starts when it is loaded */
+    mh2ipc_u32 reserved2[12];
+    char ack_message[MH2IPC_STATE_MSG];
+    /* the renderer's block, core <-> host */
+    mh2ipc_u32 gs_bytes;
+    mh2ipc_u32 gs_result;
+    mh2ipc_u32 reserved3[14];
+    /* after a load, the core's */
+    mh2ipc_u32 loads;
+    mh2ipc_u32 audio_flush_head;
+    mh2ipc_u32 audio_flush_seq;
+    mh2ipc_u32 reserved4[13];
+} Mh2IpcState;
 
 typedef struct Mh2IpcHeader {
     /* 0x000: written once by the host, before it starts the core */
@@ -266,7 +379,10 @@ typedef struct Mh2IpcHeader {
     mh2ipc_u32 reserved2[7];
     /* 0x0C0: host -> core */
     Mh2IpcInput input;
-    mh2ipc_u32 reserved3[(0x200 - 0x0C0 - sizeof(Mh2IpcInput)) / 4];
+    mh2ipc_u32 reserved3a[(0x140 - 0x0C0 - sizeof(Mh2IpcInput)) / 4];   /* where the development build has its injections */
+    /* 0x140, both builds: the freecam's mailbox, reserved and unused until the host's freecam */
+    Mh2IpcFreecam freecam;
+    mh2ipc_u32 reserved3[(0x200 - 0x140 - sizeof(Mh2IpcFreecam)) / 4];
     /* 0x200: core -> host, with core_state = FATAL */
     char fatal_message[512];
     /* 0x400 */
@@ -276,6 +392,8 @@ typedef struct Mh2IpcHeader {
     Mh2IpcKeys keys;
     /* host -> core, a scripted run's pad states by VBlank (the same in both builds) */
     Mh2IpcSched sched;
+    /* save states: the requests, the answers, the renderer's block window (both builds) */
+    Mh2IpcState state;
 } Mh2IpcHeader;
 
 #define MH2IPC_ASSERT(c, m) _Static_assert(c, m)
@@ -296,8 +414,12 @@ MH2IPC_ASSERT(__builtin_offsetof(Mh2IpcHeader, keys) == 0x400 + 2 * 192, "Mh2Ipc
 MH2IPC_ASSERT(sizeof(Mh2IpcSchedEntry) == 32 && __builtin_offsetof(Mh2IpcSched, head) == 64 && __builtin_offsetof(Mh2IpcSched, tail) == 128 && __builtin_offsetof(Mh2IpcSched, entries) == 192, "Mh2IpcSched");
 MH2IPC_ASSERT(__builtin_offsetof(Mh2IpcHeader, sched) == 0x400 + 2 * 192 + sizeof(Mh2IpcKeys), "Mh2IpcHeader");
 MH2IPC_ASSERT(sizeof(Mh2IpcKeys) == 128 + 4 * MH2IPC_KEY_RING && __builtin_offsetof(Mh2IpcKeys, tail) == 64 && __builtin_offsetof(Mh2IpcKeys, events) == 128, "Mh2IpcKeys");
-MH2IPC_ASSERT(sizeof(Mh2IpcHeader) == 0x400 + 2 * 192 + sizeof(Mh2IpcKeys) + sizeof(Mh2IpcSched), "Mh2IpcHeader");
+MH2IPC_ASSERT(sizeof(Mh2IpcHeader) == 0x400 + 2 * 192 + sizeof(Mh2IpcKeys) + sizeof(Mh2IpcSched) + sizeof(Mh2IpcState), "Mh2IpcHeader");
 MH2IPC_ASSERT(sizeof(Mh2IpcHeader) <= MH2IPC_HEADER_BYTES, "Mh2IpcHeader");
+MH2IPC_ASSERT(sizeof(Mh2IpcFreecam) == 160 && __builtin_offsetof(Mh2IpcHeader, freecam) == 0x140, "Mh2IpcFreecam");
+MH2IPC_ASSERT(__builtin_offsetof(Mh2IpcHeader, state) == 0x400 + 2 * 192 + sizeof(Mh2IpcKeys) + sizeof(Mh2IpcSched), "Mh2IpcState");
+MH2IPC_ASSERT(__builtin_offsetof(Mh2IpcState, req_seq) == 64 && __builtin_offsetof(Mh2IpcState, req_path) == 128 &&
+                  __builtin_offsetof(Mh2IpcState, ack_seq) == 128 + MH2IPC_STATE_PATH, "Mh2IpcState");
 
 /* ---- the rings' logic (both sides) ---- */
 
@@ -336,6 +458,8 @@ static inline void mh2ipc_layout(Mh2IpcHeader *h, mh2ipc_u32 host_pid)
     h->audio.size = MH2IPC_AUDIO_BYTES;
     h->rb_offset = MH2IPC_HEADER_BYTES + MH2IPC_GS_BYTES + MH2IPC_AUDIO_BYTES;
     h->rb_size = MH2IPC_RB_BYTES;
+    h->state.window_offset = MH2IPC_HEADER_BYTES + MH2IPC_GS_BYTES + MH2IPC_AUDIO_BYTES + MH2IPC_RB_BYTES;
+    h->state.window_bytes = MH2IPC_STATE_BYTES;
     h->host_state = MH2IPC_STATE_RUNNING;
     mh2ipc_fence();
     mh2ipc_store(&h->magic, MH2IPC_MAGIC);

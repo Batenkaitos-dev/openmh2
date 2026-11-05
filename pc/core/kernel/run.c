@@ -112,6 +112,7 @@ static void LoadBootElf(void)
     Host_Free(elf);
 }
 
+
 void Kern_Boot(u64 maxFrames, int argc, char **argv)
 {
     Kern_Start(maxFrames, argc, argv);

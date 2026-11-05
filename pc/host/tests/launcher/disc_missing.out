@@ -1,0 +1,6 @@
+launcher shot home_banner 848c7bd386f0c1a0
+launcher shot disc_missing ca852e3e3bbc58b8
+launcher shot home_again 848c7bd386f0c1a0
+launcher shot play_refused ef03d448f175ba34
+launcher shot home_after 48f7e44aeb73b2a0
+launcher script: quit

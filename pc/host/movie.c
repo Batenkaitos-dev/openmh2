@@ -35,13 +35,7 @@
 #include <string.h>
 
 #include "mh2host.h"
-#include "../../pc/movie/mh2movie.h"
-
-#ifdef _WIN32
-#define MH2MOVIE_LIB "mh2movie.dll"
-#else
-#define MH2MOVIE_LIB "mh2movie.so"
-#endif
+#include "movielib.h"
 
 #define NFRAMES 6
 #define RING_FRAMES (48000 * 4) /* the sound decoded ahead: 4 s */
@@ -79,6 +73,12 @@ static struct {
     float gain;
 } mv;
 
+/* The frames of movie `early_id`'s sound that passed before the GS thread had opened it: a delay,
+ * as a dry ring's, never a skip (the original's movie plays from its first sample). The ids are the core's count of
+ * movies opened, which a load of a save state sets back: a movie's id can come again, so the count is forgotten when
+ * the movie closes. */
+static unsigned int early_id, early_frames;
+
 int g_movie_sound;   /* audio.c: a sound device takes the samples (else the decoder drops the sound) */
 
 /* The display modes (the descriptor's +0xE): 512x448; 256x224; a 512x432 picture on the 448-line screen. */
@@ -91,24 +91,22 @@ static int load_lib(void)
     if (lib.tried)
         return lib.ok;
     lib.tried = 1;
-    const char *base = SDL_GetBasePath();
-    char path[1200];
-    SDL_snprintf(path, sizeof(path), "%s%s", base ? base : "", MH2MOVIE_LIB);
-    lib.so = SDL_LoadObject(path);
-    if (!lib.so) {
-        host_log("movies: cannot load %s (%s): not shown", path, SDL_GetError());
+    char path[1200], why[300];
+    MovieLib ml;
+    int rc = movielib_load(&ml, NULL, path, sizeof(path), why, sizeof(why));
+    if (rc == MOVIELIB_NOLOAD) {
+        host_log("movies: cannot load %s (%s): not shown", path, why);
         return 0;
     }
-    mh2movie_abi_fn abi = (mh2movie_abi_fn)SDL_LoadFunction(lib.so, "mh2movie_abi");
-    lib.open = (mh2movie_open_fn)SDL_LoadFunction(lib.so, "mh2movie_open");
-    lib.next_frame = (mh2movie_next_frame_fn)SDL_LoadFunction(lib.so, "mh2movie_next_frame");
-    lib.audio = (mh2movie_audio_fn)SDL_LoadFunction(lib.so, "mh2movie_audio");
-    lib.close = (mh2movie_close_fn)SDL_LoadFunction(lib.so, "mh2movie_close");
-    if (!abi || abi() != MH2MOVIE_ABI_VERSION || !lib.open || !lib.next_frame || !lib.audio || !lib.close) {
+    if (rc != MOVIELIB_OK) {
         host_log("movies: %s is from another version: not shown", path);
-        SDL_UnloadObject(lib.so);
         return 0;
     }
+    lib.so = ml.so;
+    lib.open = ml.open;
+    lib.next_frame = ml.next_frame;
+    lib.audio = ml.audio;
+    lib.close = ml.close;
     lib.ok = 1;
     return 1;
 }
@@ -292,8 +290,19 @@ void movie_open(const Mh2IpcMovieOpen *o, const char *path)
              mv.info.fps, mv.info.duration, (int)o->volume, (double)mv.gain);
 }
 
+int movie_active(void)
+{
+    return mv.active && !mv.closing;
+}
+
 void movie_close(unsigned int id)
 {
+    if (mv.mu) {
+        SDL_LockMutex(mv.mu);   /* the audio thread reads the early count */
+        if (early_id == id)
+            early_id = early_frames = 0;
+        SDL_UnlockMutex(mv.mu);
+    }
     if (mv.active && mv.id == id) {
         mv.closing = 1;
         movie_reap();
@@ -350,9 +359,6 @@ void movie_shutdown(void)
 
 /* ------------------------------------------------------------ the audio thread */
 
-/* The frames of movie `early_id`'s sound that passed before the GS thread had opened it: a delay,
- * as a dry ring's, never a skip (the original's movie plays from its first sample). */
-static unsigned int early_id, early_frames;
 
 void movie_mix(int16_t *out, unsigned int frames, unsigned int pos)
 {

@@ -380,4 +380,11 @@ enum {
 typedef void (*KernVblankFn)(u64 vblank);
 void Kern_SetVblankHook(int step, KernVblankFn fn);
 
+/* ------------------------------------------------------------ save states */
+
+/* Data that belongs to the process, not to the game: a save state (state.h) skips these sections. The files of
+ * the host seam get them whole (hostsec.h); a file that holds a handle of the host declares it with these. */
+#define KERN_HOSTBSS __attribute__((section("hostbss")))
+#define KERN_HOSTDAT __attribute__((section("hostdat")))
+
 #endif /* MH2_KERNEL_KERN_H */

@@ -1,0 +1,5 @@
+launcher shot save_question d0e26b8d753bbdaa
+launcher shot back_on_home b7a92bb5482bd542
+launcher shot back_selected f05b59e797acf50c
+launcher shot launcher_open b7a92bb5482bd542
+launcher script: quit

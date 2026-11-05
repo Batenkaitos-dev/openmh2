@@ -15,6 +15,8 @@
 
 #include "mh2host.h"
 
+#define FADE_FRAMES 240u   /* 5 ms at 48 kHz */
+#define MUTE_FRAMES 4800.0f   /* the pause's fade out and back in: 100 ms */
 #define TARGET_MS 60
 #define MAX_MS 250
 
@@ -28,6 +30,11 @@ static struct {
     Uint64 first_ms, last_ms;         /* the first and last pull that had the core's samples */
     Uint64 late_ms[4096];             /* the underruns after first_ms (the first 4096) */
     unsigned int n_late;
+    unsigned int flush_seen;          /* the loads of save states handled (Mh2IpcState.audio_flush_seq) */
+    unsigned int fade_left;           /* frames of fade-in still to apply after a load's flush */
+    SDL_AtomicInt muted;              /* the pause (freecam.c): the sound fades out while it is 1 and back in when it is 0 */
+    float gain;                       /* the audio thread's: 1 at rest, 0 when muted */
+    int gain_init;
 } au;
 
 #define STEADY_END_MS 1500
@@ -40,6 +47,21 @@ static void SDLCALL pull(void *user, SDL_AudioStream *stream, int additional, in
     (void)total;
     static unsigned char buf[16384] __attribute__((aligned(4)));
     Mh2IpcRing *r = &g_ipc->audio;
+    /* a load of a save state: the old timeline's sound still in the ring is dropped, and the sound after it fades in over
+     * a few milliseconds, so that the jump does not click */
+    unsigned int fs = mh2ipc_load(&g_ipc->state.audio_flush_seq);
+    if (fs != au.flush_seen) {
+        au.flush_seen = fs;
+        int drop = (int)(g_ipc->state.audio_flush_head - r->tail);
+        while (drop > 0) {
+            unsigned int n = (unsigned int)drop < sizeof(buf) ? (unsigned int)drop : (unsigned int)sizeof(buf);
+            unsigned int got = mh2ipc_stream_read(r, g_block, buf, n);
+            if (!got)
+                break;
+            drop -= (int)got;
+        }
+        au.fade_left = FADE_FRAMES;
+    }
     unsigned int queued = mh2ipc_load(&r->head) - r->tail;
     unsigned int max = MH2IPC_AUDIO_RATE * MAX_MS / 1000 * 4, target = MH2IPC_AUDIO_RATE * TARGET_MS / 1000 * 4;
     if (queued > max) {
@@ -57,6 +79,39 @@ static void SDLCALL pull(void *user, SDL_AudioStream *stream, int additional, in
             want = 4;
         unsigned int pos = r->tail;
         unsigned int got = mh2ipc_stream_read(r, g_block, buf, want);
+        if (au.fade_left) {   /* after a load: a ramp from silence */
+            int16_t *sm = (int16_t *)buf;
+            for (unsigned int i = 0; i < got / 4 && au.fade_left; i++, au.fade_left--) {
+                int g = (int)(FADE_FRAMES - au.fade_left);
+                sm[2 * i] = (int16_t)(sm[2 * i] * g / (int)FADE_FRAMES);
+                sm[2 * i + 1] = (int16_t)(sm[2 * i + 1] * g / (int)FADE_FRAMES);
+            }
+        }
+        if (!au.gain_init) {
+            au.gain_init = 1;
+            au.gain = 1.0f;
+        }
+        {   /* the pause: the core's sound is faded out while the game is frozen and back in on the resume */
+            float tgt = SDL_GetAtomicInt(&au.muted) ? 0.0f : 1.0f;
+            if (au.gain != tgt) {
+                int16_t *sm = (int16_t *)buf;
+                for (unsigned int i = 0; i < got / 4; i++) {
+                    if (au.gain < tgt) {
+                        au.gain += 1.0f / MUTE_FRAMES;
+                        if (au.gain > tgt)
+                            au.gain = tgt;
+                    } else if (au.gain > tgt) {
+                        au.gain -= 1.0f / MUTE_FRAMES;
+                        if (au.gain < tgt)
+                            au.gain = tgt;
+                    }
+                    sm[2 * i] = (int16_t)(sm[2 * i] * au.gain);
+                    sm[2 * i + 1] = (int16_t)(sm[2 * i + 1] * au.gain);
+                }
+            } else if (tgt == 0.0f) {
+                memset(buf, 0, got);
+            }
+        }
         movie_mix((int16_t *)buf, got / 4, pos);   /* the movie's sound, by position (movie.c) */
         if (got) {
             au.last_ms = SDL_GetTicks();
@@ -100,6 +155,12 @@ int audio_init(void)
     SDL_ResumeAudioStreamDevice(au.stream);
     host_log("sound: %s", SDL_GetCurrentAudioDriver());
     return 0;
+}
+
+/* The pause: 1 fades the game's sound out (100 ms), 0 brings it back. The core keeps the stream running. */
+void audio_set_muted(int on)
+{
+    SDL_SetAtomicInt(&au.muted, on != 0);
 }
 
 void audio_shutdown(void)

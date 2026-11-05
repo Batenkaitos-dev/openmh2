@@ -1,4 +1,5 @@
 /* The host seam on Linux (and other POSIX systems): see host.h. */
+#define _FILE_OFFSET_BITS 64   /* HostFile_Open is the files' fopen: on i686 the large-file one, as the callers had it (files over 2 GB) */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,6 +7,7 @@
 #include <unistd.h>
 
 #include "host.h"
+#include "host_file.h"
 
 extern char __executable_start;
 extern char _end;
@@ -81,6 +83,32 @@ HOST void Host_ImageRange(unsigned int *lo, unsigned int *hi)
 HOST const char *Host_Getenv(const char *name)
 {
     return getenv(name);
+}
+
+HOST void Host_Args(int *argc, char ***argv)
+{
+    (void)argc;
+    (void)argv;   /* the paths are UTF-8 already */
+}
+
+HOST FILE *HostFile_Open(const char *path, const char *mode)
+{
+    return fopen(path, mode);
+}
+
+HOST int HostFile_Remove(const char *path)
+{
+    return remove(path);
+}
+
+HOST int HostFile_Rename(const char *from, const char *to)
+{
+    return rename(from, to);
+}
+
+HOST int HostFile_Replace(const char *from, const char *to)
+{
+    return rename(from, to);
 }
 
 HOST unsigned int Host_PageSize(void)

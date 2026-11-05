@@ -12,7 +12,10 @@
  * x' = c + (x - c) * 3 / 4 is integer arithmetic (C's division, toward zero, so that the left and right of a symmetric
  * element stay symmetric); c is the GS's coordinate centre (the middle of the frame) or, for an element placed from a
  * 3D point (Pal_HudPivot), that point's x. A primitive that spans the frame's whole width (a fade, a background, a
- * letterbox bar) is left as it is: it covers the stretched picture's edges too. The frame is 512 pixels wide in the
+ * letterbox bar) is left as it is: it covers the stretched picture's edges too. Outside a pivot, a vertex that is at
+ * the frame's left or right edge (or past it) stays there, so a band or a window that touches the screen's edge in
+ * the original still reaches it; every other vertex follows the 3/4 map, so pieces that share a vertex stay joined.
+ * The frame is 512 pixels wide in the
  * game's usual display mode (the display stretches it to 640) and 640 in the other; the emitters take 640-wide
  * coordinates and scale them to it, so the pivot, which is in those coordinates, is scaled the same way.
  */
@@ -91,7 +94,8 @@ void Pal_HudPacket(u32 *packet, s32 frameWidth)
     }
     centre = sPivoted ? left + (sPivot * frameWidth) / 40 : GS_CENTRE;
     for (i = 0; i < count; i++) {
-        s32 x = Shrink((s32)(*xyz[i] & 0xFFFF), centre);
+        s32 vx = (s32)(*xyz[i] & 0xFFFF);
+        s32 x = (!sPivoted && (vx <= left || vx >= right)) ? vx : Shrink(vx, centre);
         *xyz[i] = (*xyz[i] & 0xFFFF0000u) | ((u32)x & 0xFFFFu);
     }
 }

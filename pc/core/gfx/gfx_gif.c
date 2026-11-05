@@ -13,6 +13,7 @@
  * gif_transfer calls. A partial tag waits here for the rest of its data. */
 #include "gfx_rt.h"
 #include "host.h"
+#include "pal_arena.h"
 
 static u32 g_gif_ctrl, g_gif_mode;
 static int g_path3_vif_mask;
@@ -65,11 +66,12 @@ static void keep(PathAsm *a, const u8 *src, u32 qwords)
         u32 cap = a->cap ? a->cap : 1024;
         while (cap < a->n + qwords)
             cap *= 2;
-        u8 *nb = Host_Alloc(cap * 16); /* the old one is left: it grows a few times in a run */
+        u8 *nb = Pal_ArenaAlloc(cap * 16); /* the arena: a state holds it */
         if (!nb)
             rt_fatal("out of memory (GIF path buffer)");
         if (a->n)
             memcpy(nb, a->buf, (size_t)a->n * 16);
+        Pal_ArenaFree(a->buf);
         a->buf = nb;
         a->cap = cap;
     }

@@ -134,6 +134,7 @@ def main() -> int:
     ap.add_argument("--lib", type=Path, default=ROOT / "build" / "port", help="the folder with mh2movie")
     ap.add_argument("--out", type=Path, help="the table (default: mh2-movies.txt beside the archive)")
     ap.add_argument("--force", action="store_true", help="write it even if it is up to date")
+    ap.add_argument("--progress", action="store_true", help="print 'progress I N' before each movie (the launcher's)")
     ap.add_argument("--if-able", action="store_true",
                     help="without the archive or the movie library, say so and succeed (the core's build)")
     a = ap.parse_args()
@@ -164,13 +165,15 @@ def main() -> int:
     lines = ["# The movies' timing (tools/pc/movie_table.py): derived from the disc, build/ only.", head]
     t0 = time.monotonic()
     for i, (off, size) in enumerate(entries):
+        if a.progress:
+            print(f"progress {i + 1} {count}", flush=True)
         frames, shown, sound, top, err = measure(lib, disc, foff + off, size)
         if err:
             print(f"movie_table: movie {i}: {err}")
         lines.append(f"{i} {off} {size} {frames} {shown} {sound} {top!r}")
         print(f"movie_table: movie {i}: {frames} frames, shown at {shown}, sound {sound}", flush=True)
     tmp = out.with_suffix(".tmp")
-    tmp.write_text("\n".join(lines) + "\n", encoding="ascii")
+    tmp.write_bytes(("\n".join(lines) + "\n").encode("ascii"))   # LF on every system, as the launcher's maker writes it
     os.replace(tmp, out)
     print(f"movie_table: {count} movies -> {out} ({time.monotonic() - t0:.0f} s)")
     return 0

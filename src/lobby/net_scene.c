@@ -16,6 +16,7 @@
  * file also keeps the play time's count (Lobby_CountPlayTime) and the
  * lobby's copies of the offline pause (Lobby_SetPause, Lobby_GetPauseState).
  */
+#include "pal.h"
 #include "common.h"
 #include "net_save.h"
 #include "syssettings.h"
@@ -417,7 +418,9 @@ s32 NetScene_StateOnline(TaskSlot *task)
         }
         NetScene_TickEnd();
         if (gLobby->phase != LOBBY_PHASE_ROOM) {
+            PC_FREECAM_FIELD(1);
             NetScene_DrawFrame();
+            PC_FREECAM_FIELD(0);
         }
         break;
     case NET_STEP_QUEST_CONNECT:
@@ -570,7 +573,9 @@ s32 NetScene_StateOffline(TaskSlot *task)
     }
     switch (LobbyScreen_Run()) {
     case 0:
+        PC_FREECAM_FIELD(1);
         NetScene_DrawFrame();
+        PC_FREECAM_FIELD(0);
         break;
     case 1:
         task->mode++;

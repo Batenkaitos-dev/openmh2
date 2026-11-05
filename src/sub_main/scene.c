@@ -35,6 +35,7 @@
 #include "obj.h"
 #include "place_rules.h"
 #include "camera.h"
+#include "pal.h"
 #include "capsule.h"
 #include "hud.h"
 #include "light.h"
@@ -750,7 +751,9 @@ s32 Scene_FieldFrame(void)
     if (Game_PauseState() < PAUSE_CAPTURED) {
     draw:
         Field_UpdateAll();
+        PC_FREECAM_FIELD(1);
         Frame_Draw();
+        PC_FREECAM_FIELD(0);
         Hit_ClearStatusAll();
         return 0;
     }

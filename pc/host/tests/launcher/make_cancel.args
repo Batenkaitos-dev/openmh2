@@ -1,0 +1,4 @@
+--set
+archive=@WORKDIR@/out/mh2-disc.arc
+--archive-slow
+3:60000

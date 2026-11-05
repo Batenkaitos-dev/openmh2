@@ -16,6 +16,7 @@
 #include "pal_core.h"
 
 #include "pal_camera.h"
+#include "pal_freecam.h"
 #include "host.h"
 #include "kernel/kern_int.h"
 #include "ipc/core_ipc.h"
@@ -54,6 +55,7 @@ int main(int argc, char **argv)
 {
     u64 frames = 0;
     int i;
+    Host_Args(&argc, &argv);   /* UTF-8 on Windows too */
     Host_SetEndHooks(Main_Fatal, Ipc_Exit);
     Pal_CheckLowMemory();
     Pal_OverlayInit();

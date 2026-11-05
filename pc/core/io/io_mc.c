@@ -8,6 +8,8 @@
 #include "io/io_host.h"
 #include "io/io_kernel.h"
 #include "io/io_mc.h"
+#include "pal_arena.h"
+#include "kernel/state.h"
 #include "io/io_mcfs.h"
 
 typedef struct Card {
@@ -87,8 +89,8 @@ static s32 GetDir(Card *cd, McRequest *q)
         if (n < 0)
             return n;
         if (n > g_snapCap) {
-            Host_IoFree(g_snap);
-            g_snap = Host_Alloc((u32)n * sizeof(McDirInfo));
+            Pal_ArenaFree(g_snap);
+            g_snap = Pal_ArenaAlloc((u32)n * sizeof(McDirInfo));
             g_snapCap = g_snap ? n : 0;
         }
         g_snapN = g_snap ? mcfs_getdir(cd->fs, q->name, 0, n, g_snap) : 0;
@@ -141,9 +143,9 @@ static s32 Write(McRequest *q)
         return MC_ERR_NOENT;
     u32 head = q->headSize > 16 ? 16 : q->headSize, size = (u32)q->size;
     if (head + size + 1 > cap) {
-        Host_IoFree(buf);
+        Pal_ArenaFree(buf);
         cap = head + size + 1;
-        buf = Host_Alloc(cap);
+        buf = Pal_ArenaAlloc(cap);
         if (!buf) {
             cap = 0;
             return MC_ERR_CHANGED;
@@ -316,7 +318,111 @@ int IoMc_SaveCopy(int port, const char *path)
     return mcfs_save_copy(g_card[port].fs, path);
 }
 
+/*
+ * The cards in a save state (kernel/state.h). The cards' files and the McFs objects are the host's and stay; the
+ * state holds what the game can see of them: each card's open files and directory, and, when the state embeds the
+ * cards (Kern_StateCardEmbedded), the images. A state is good for the same cards present.
+ */
+static u32 StateCards(void)
+{
+    return (g_card[0].fs ? 1u : 0u) | (g_card[1].fs ? 2u : 0u);
+}
+
+static u64 ImageHash(const McFs *fs)
+{
+    u32 size = 0, i;
+    const u8 *img = mcfs_image(fs, &size);
+    u64 h = 0xcbf29ce484222325ull;
+    for (i = 0; i < size; i++) {
+        h = (h ^ img[i]) * 0x100000001b3ull;
+    }
+    return h;
+}
+
+static void StateSave(KStateOut *out)
+{
+    u32 embed = (u32)Kern_StateCardEmbedded(), zero = 0;
+    for (int p = 0; p < 2; p++) {
+        if (!g_card[p].fs) {
+            continue;
+        }
+        u32 n = mcfs_session_size(), size = 0;
+        const u8 *img = mcfs_image(g_card[p].fs, &size);
+        u8 *sess = Host_Alloc(n);
+        if (!sess) {
+            Host_Fatal("io: out of memory for the card in a state");
+        }
+        mcfs_session_get(g_card[p].fs, sess);
+        Kern_StatePut(out, &n, 4);
+        Kern_StatePut(out, sess, n);
+        Host_Free(sess);
+        Kern_StatePut(out, embed ? &size : &zero, 4);
+        if (embed) {
+            Kern_StatePut(out, img, size);
+        }
+        u64 h = ImageHash(g_card[p].fs);   /* what the card held when the game's view of it was made */
+        Kern_StatePut(out, &h, 8);
+    }
+}
+
+static s32 StateLoad(const void *data, u32 size)
+{
+    const u8 *d = (const u8 *)data;
+    u32 at = 0;
+    for (int p = 0; p < 2; p++) {
+        u32 n, imgSize;
+        if (!g_card[p].fs) {
+            continue;
+        }
+        if (size - at < 4) {
+            return -1;
+        }
+        __builtin_memcpy(&n, d + at, 4);
+        at += 4;
+        if (n > size - at || mcfs_session_set(g_card[p].fs, d + at, n) != 0 || size - at - n < 4) {
+            return -1;
+        }
+        at += n;
+        __builtin_memcpy(&imgSize, d + at, 4);
+        at += 4;
+        if (imgSize) {
+            if (imgSize > size - at || mcfs_image_set(g_card[p].fs, d + at, imgSize) != 0) {
+                return -1;
+            }
+            at += imgSize;
+        }
+        if (size - at < 8) {
+            return -1;
+        }
+        u64 was;
+        __builtin_memcpy(&was, d + at, 8);
+        at += 8;
+        /* The card outside the state holds what the game left on it since, which the game's memory (the directory it
+         * listed, the results it keeps) does not know. Report it as libmc does when a card is swapped: the next
+         * GetInfo says "changed" once, and the game reads the card again. */
+        g_card[p].seen = ImageHash(g_card[p].fs) == was ? g_card[p].seen : 0;
+    }
+    return 0;
+}
+
+/* A state is not made, or loaded, while a card file is open: libmc closes every handle when a card is swapped, so a state
+ * loaded after the card changed would bring back handles the card no longer has. The request waits for a VBlank with none. */
+static const char *StateBusy(void)
+{
+    for (int p = 0; p < 2; p++) {
+        if (g_card[p].fs && mcfs_open_files(g_card[p].fs)) {
+            return "a memory card operation is running";
+        }
+    }
+    return 0;
+}
+
+static const KStateOwner sStateOwner = { "CARD", StateSave, 0, StateLoad, 0, StateCards, 0, StateBusy };
+
 void IoMc_Register(void)
 {
     Iop_RegisterService(MC_SID, "mcserv", Service);
+    Kern_StateHostWord(&g_card[0].fs, sizeof(g_card[0].fs));   /* the host's objects: a state leaves them */
+    Kern_StateHostWord(&g_card[1].fs, sizeof(g_card[1].fs));
+    Kern_StateRegister(&sStateOwner);
 }

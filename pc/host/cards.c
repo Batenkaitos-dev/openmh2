@@ -32,6 +32,7 @@
 
 static char g_dir[1200];
 static char g_locks[2][1300];
+static int pid_alive(unsigned long pid);
 
 static int is_file(const char *path)
 {
@@ -79,12 +80,14 @@ static int copy_in(const char *from, const char *name)
     return 0;
 }
 
-/* The first start: the old version's cards, copied in if the player says so. */
-static void offer_import(const char *old1, const char *old2)
+/* The old version's cards: its files named by memcard1/memcard2 in the settings, else the memcards folder in the user data
+ * folder. FROM[p] is NULL for a port with none. */
+static void old_cards(const char *old1, const char *old2, const char *from[2])
 {
     const char *data = play_data_dir();
     static char def1[1300], def2[1300];
-    const char *from[2] = {old1 && is_file(old1) ? old1 : NULL, old2 && is_file(old2) ? old2 : NULL};
+    from[0] = old1 && is_file(old1) ? old1 : NULL;
+    from[1] = old2 && is_file(old2) ? old2 : NULL;
     if (data) {
         snprintf(def1, sizeof(def1), "%smemcards" SEP "Mcd001.ps2", data);
         snprintf(def2, sizeof(def2), "%smemcards" SEP "Mcd002.ps2", data);
@@ -93,6 +96,13 @@ static void offer_import(const char *old1, const char *old2)
         if (!from[1] && is_file(def2))
             from[1] = def2;
     }
+}
+
+/* The first start: the old version's cards, copied in if the player says so. */
+static void offer_import(const char *old1, const char *old2)
+{
+    const char *from[2];
+    old_cards(old1, old2, from);
     if (!from[0] && !from[1])
         return;
     char text[3200];
@@ -105,7 +115,7 @@ static void offer_import(const char *old1, const char *old2)
         {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Copy them"},
         {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "Start with a new card"},
     };
-    const SDL_MessageBoxData box = {SDL_MESSAGEBOX_INFORMATION, NULL, "Monster Hunter 2: memory cards", text, 2, buttons,
+    const SDL_MessageBoxData box = {SDL_MESSAGEBOX_INFORMATION, NULL, "OpenMH2: memory cards", text, 2, buttons,
                                     NULL};
     int pick = 0;
     if (!SDL_ShowMessageBox(&box, &pick))
@@ -212,7 +222,7 @@ static void unlock_all(void)
 {
     for (int i = 0; i < 2; i++)
         if (g_locks[i][0]) {
-            remove(g_locks[i]);
+            hfs_remove(g_locks[i]);
             g_locks[i][0] = 0;
         }
 }
@@ -227,7 +237,7 @@ int cards_lock(char *msg, size_t cap)
         char path[1300];
         snprintf(path, sizeof(path), "%s.lock", g_cfg.core_args[i + 1]);
         for (int tries = 0; tries < 2; tries++) {
-            FILE *f = fopen(path, "wx");
+            FILE *f = hfs_fopen(path, "wx");
             if (f) {
                 fprintf(f, "%u\n", (unsigned int)mh2ipc_pid());
                 fclose(f);
@@ -235,7 +245,7 @@ int cards_lock(char *msg, size_t cap)
                 break;
             }
             unsigned long pid = 0;
-            f = fopen(path, "r");
+            f = hfs_fopen(path, "r");
             if (f) {
                 if (fscanf(f, "%lu", &pid) != 1)
                     pid = 0;
@@ -248,10 +258,155 @@ int cards_lock(char *msg, size_t cap)
                 return -1;
             }
             host_log("cards: %s names a process that is gone (%lu): taken over", path, pid);
-            remove(path);
+            hfs_remove(path);
         }
     }
     if (n)
         atexit(unlock_all);
     return 0;
+}
+
+/* ---------------------------------------------------------------- the launcher's cards page */
+
+/* The cards folder the way cards_dir would name it, without making it. */
+int cards_folder(const char *setting, char *out, size_t cap)
+{
+    if (setting && setting[0]) {
+        snprintf(out, cap, "%s", setting);
+        return 0;
+    }
+    const char *data = play_data_dir();
+    if (!data)
+        return -1;
+    snprintf(out, cap, "%scards", data);
+    return 0;
+}
+
+int cards_name_ok(const char *name)
+{
+    return card_name_ok(name);
+}
+
+typedef struct ListScan {
+    CardInfo *out;
+    int n, max;
+    const char *dir;
+} ListScan;
+
+static SDL_EnumerationResult SDLCALL list_cb(void *ud, const char *dirname, const char *fname)
+{
+    ListScan *s = ud;
+    (void)dirname;
+    char full[1500];
+    SDL_PathInfo info;
+    snprintf(full, sizeof(full), "%s" SEP "%s", s->dir, fname);
+    if (s->n < s->max && card_name_ok(fname) && SDL_GetPathInfo(full, &info) && info.type == SDL_PATHTYPE_FILE) {
+        CardInfo *c = &s->out[s->n++];
+        snprintf(c->name, sizeof(c->name), "%s", fname);
+        c->size = info.size;
+        c->mtime = (long long)(info.modify_time / 1000000000ll);
+        c->in_use = cards_in_use(s->dir, fname);
+    }
+    return SDL_ENUM_CONTINUE;
+}
+
+static int by_newest(const void *a, const void *b)
+{
+    const CardInfo *x = a, *y = b;
+    if (x->mtime != y->mtime)
+        return x->mtime < y->mtime ? 1 : -1;
+    return strcmp(x->name, y->name);
+}
+
+static int by_name(const void *a, const void *b)
+{
+    return strcmp(((const CardInfo *)a)->name, ((const CardInfo *)b)->name);
+}
+
+int cards_list(const char *dir, CardInfo *out, int max, int sort_by_name)
+{
+    ListScan s = {out, 0, max, dir};
+    SDL_EnumerateDirectory(dir, list_cb, &s);
+    qsort(out, (size_t)s.n, sizeof(out[0]), sort_by_name ? by_name : by_newest);
+    return s.n;
+}
+
+/* Another mh2 has the card: its CARD.lock names a process that is alive. */
+int cards_in_use(const char *dir, const char *name)
+{
+    char path[1500];
+    unsigned long pid = 0;
+    snprintf(path, sizeof(path), "%s" SEP "%s.lock", dir, name);
+    FILE *f = hfs_fopen(path, "r");
+    if (!f)
+        return 0;
+    if (fscanf(f, "%lu", &pid) != 1)
+        pid = 0;
+    fclose(f);
+    return pid && pid != (unsigned long)mh2ipc_pid() && pid_alive(pid);
+}
+
+void cards_time_text(long long t, char *out, size_t cap)
+{
+    SDL_DateTime dt;
+    if (t > 0 && SDL_TimeToDateTime((SDL_Time)t * 1000000000ll, &dt, true))
+        snprintf(out, cap, "%04d-%02d-%02d %02d:%02d", dt.year, dt.month, dt.day, dt.hour, dt.minute);
+    else
+        snprintf(out, cap, "?");
+}
+
+int cards_old_count(const char *old1, const char *old2)
+{
+    const char *from[2];
+    old_cards(old1, old2, from);
+    return (from[0] != NULL) + (from[1] != NULL);
+}
+
+/* Copies the old version's cards into DIR (made if missing): port 1's as Mcd001.ps2, port 2's as Mcd002.ps2; a card that is
+ * there already is left alone. Returns 0, or -1 if a copy failed. */
+int cards_import_old(const char *dir, const char *old1, const char *old2, int *copied, int *left)
+{
+    const char *from[2];
+    old_cards(old1, old2, from);
+    *copied = *left = 0;
+    if (!SDL_CreateDirectory(dir)) {
+        host_log("cards: cannot create %s (%s)", dir, SDL_GetError());
+        return -1;
+    }
+    snprintf(g_dir, sizeof(g_dir), "%s", dir);
+    int bad = 0;
+    for (int p = 0; p < 2; p++) {
+        if (!from[p])
+            continue;
+        char to[1400];
+        snprintf(to, sizeof(to), "%s" SEP "Mcd00%d.ps2", dir, p + 1);
+        if (is_file(to)) {
+            (*left)++;
+            host_log("cards: %s is there already: %s not copied", to, from[p]);
+        } else if (copy_in(from[p], p ? "Mcd002.ps2" : "Mcd001.ps2") == 0) {
+            (*copied)++;
+        } else {
+            bad = 1;
+        }
+    }
+    return bad ? -1 : 0;
+}
+
+/* The first name of the form McdNNN.ps2 that is not in DIR. */
+void cards_default_name(const char *dir, char *out, size_t cap)
+{
+    for (int i = 1; i < 1000; i++) {
+        char path[1500];
+        snprintf(out, cap, "Mcd%03d.ps2", i);
+        snprintf(path, sizeof(path), "%s" SEP "%s", dir, out);
+        if (!is_file(path))
+            return;
+    }
+}
+
+int cards_exists(const char *dir, const char *name)
+{
+    char path[1500];
+    snprintf(path, sizeof(path), "%s" SEP "%s", dir, name);
+    return is_file(path);
 }

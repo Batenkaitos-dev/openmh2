@@ -34,12 +34,23 @@ static struct {
     mh2gs_read_fifo_fn read_fifo;
     mh2gs_shutdown_fn shutdown;
     mh2gs_init_fn init;
+    mh2gs_state_get_fn state_get;
+    mh2gs_state_set_fn state_set;
+    mh2gs_state_size_fn state_size;
+    char identity[32];   /* the renderer's build and the settings that change its state (save states) */
     int ok;
     SDL_Semaphore *ready;
     SDL_Thread *thread;
     SDL_AtomicInt stop;
     SDL_AtomicU32 vsyncs;
+    SDL_AtomicU32 last_vblank;   /* the VBlank of the last VSync record: it goes back with a load of a save state */
     uint64_t prev_id, prev_vblank;
+    /* a photo (freecam.c, photo mode): one at a time, the first picture at or after photo_after */
+    SDL_AtomicInt photo_req;     /* 1 while pending */
+    SDL_AtomicInt photo_done;    /* 1 saved, -1 failed, 0 none (gs_photo_result takes it) */
+    SDL_AtomicU32 photo_w, photo_h;
+    uint64_t photo_after;
+    char photo_path[1500];
     /* the previous VSync's movie picture (movie.c), shown in place of the GS's at the next one */
     int prev_movie;
     uint8_t *movie;
@@ -47,6 +58,13 @@ static struct {
     uint32_t movie_w, movie_h;
 } gs;
 
+
+/* The texture code's lines (mh2tex): in the log. */
+static void on_gs_log(const char *line, void *user)
+{
+    (void)user;
+    host_log("%s", line);
+}
 
 static void on_event(int event, uint64_t payload, void *user)
 {
@@ -78,6 +96,15 @@ static int gs_load(void)
     gs.get_frame = (mh2gs_get_frame_fn)SDL_LoadFunction(gs.lib, "mh2gs_get_frame");
     gs.read_fifo = (mh2gs_read_fifo_fn)SDL_LoadFunction(gs.lib, "mh2gs_read_fifo");
     gs.shutdown = (mh2gs_shutdown_fn)SDL_LoadFunction(gs.lib, "mh2gs_shutdown");
+    gs.state_get = (mh2gs_state_get_fn)SDL_LoadFunction(gs.lib, "mh2gs_state_get");
+    gs.state_set = (mh2gs_state_set_fn)SDL_LoadFunction(gs.lib, "mh2gs_state_set");
+    gs.state_size = (mh2gs_state_size_fn)SDL_LoadFunction(gs.lib, "mh2gs_state_size");
+    if (!gs.state_get || !gs.state_set || !gs.state_size) {
+        host_log("%s has no save state functions; running without graphics", path);
+        SDL_UnloadObject(gs.lib);
+        gs.lib = NULL;
+        return -1;
+    }
     if (!gs.init || !gs.gif || !gs.priv_write || !gs.vsync || !gs.get_frame || !gs.read_fifo || !gs.shutdown) {
         host_log("%s is incomplete or from another version; running without graphics", path);
         SDL_UnloadObject(gs.lib);
@@ -101,6 +128,27 @@ static void gs_make_renderer(void)
     cfg.super_sampling = g_cfg.ssaa >= 2 ? (uint32_t)g_cfg.ssaa : 1;
     cfg.high_resolution_scanout = g_cfg.hires ? 1 : 0;
     cfg.on_event = on_event;
+    /* the textures (off unless asked; the folders are the textures folder's dump and packs) */
+    char tex_dump[1100] = "", tex_packs[1100] = "";
+    if (g_cfg.texture_dump || g_cfg.texture_packs) {
+        const char *root = g_cfg.textures;
+        char under_data[1024];
+        if (!root && play_data_dir()) {
+            snprintf(under_data, sizeof(under_data), "%stextures", play_data_dir());
+            root = under_data;
+        }
+        if (!root)
+            host_log("textures: no folder (textures = FOLDER, --textures FOLDER); the textures are neither written nor replaced");
+        else {
+            if (g_cfg.texture_dump)
+                snprintf(tex_dump, sizeof(tex_dump), "%s/dump", root);
+            if (g_cfg.texture_packs)
+                snprintf(tex_packs, sizeof(tex_packs), "%s/packs", root);
+            cfg.texture_dump_dir = tex_dump;
+            cfg.texture_pack_dir = tex_packs;
+            cfg.log = on_gs_log;
+        }
+    }
     int r = gs.init(&cfg);
     if (r == -4 && cfg.super_sampling > 1) {
         /* paraLLEl-GS could not be made with these samples (memory, most likely): the same renderer at one sample,
@@ -131,6 +179,22 @@ static void gs_make_renderer(void)
         host_log("%ux super-sampling%s", cfg.super_sampling, cfg.high_resolution_scanout ? ", double-resolution picture" : "");
 }
 
+/* A picture of the renderer's frame: the colour opaque (the GS's alpha is not alpha), RGB24, SDL_SavePNG (the path is UTF-8).
+ * Written at once on this thread: the core may wait, but sees nothing of it. 1 when written. */
+static int save_png(const mh2gs_frame *f, const char *path, uint64_t vblank)
+{
+    SDL_Surface *s = SDL_CreateSurfaceFrom((int)f->width, (int)f->height, SDL_PIXELFORMAT_RGBA32, (void *)f->pixels,
+                                           (int)f->stride);
+    SDL_Surface *o = s ? SDL_ConvertSurface(s, SDL_PIXELFORMAT_RGB24) : NULL;
+    int ok = o && SDL_SavePNG(o, path);
+    if (ok)
+        host_log("screenshot %s (%ux%u, VBlank %llu)", path, f->width, f->height, (unsigned long long)vblank);
+    else
+        host_log("screenshot %s: %s", path, SDL_GetError());
+    SDL_DestroySurface(o);
+    SDL_DestroySurface(s);
+    return ok;
+}
 
 /* A movie picture kept for the next VSync's presentation (the original's keep_movie_frame). */
 static int keep_movie(const uint8_t *pixels, uint32_t w, uint32_t h)
@@ -154,6 +218,7 @@ static void on_vsync(const Mh2IpcRec *rec, const unsigned char *p)
     uint64_t vblank;
     memcpy(&vblank, p, 8);
     SDL_AddAtomicU32(&gs.vsyncs, 1);
+    SDL_SetAtomicU32(&gs.last_vblank, (Uint32)vblank);
     /* a movie playing (movie.c) replaces the GS's picture */
     const uint8_t *mpix = NULL;
     uint32_t mw = 0, mh = 0;
@@ -161,7 +226,8 @@ static void on_vsync(const Mh2IpcRec *rec, const unsigned char *p)
     if (!gs.ok)
         return;
     int show = !g_cfg.no_window;
-    uint64_t id = gs.vsync(rec->arg0, !movie && show);
+    int photo = SDL_GetAtomicInt(&gs.photo_req) && vblank >= gs.photo_after;
+    uint64_t id = gs.vsync(rec->arg0, !movie && (show || photo));
     if (show && gs.prev_movie) {
         present_submit(gs.movie, gs.movie_w, gs.movie_h, gs.movie_w * 4, gs.prev_vblank, 1);
         mh2ipc_store(&g_ipc->presented_lo, (unsigned int)gs.prev_vblank);
@@ -178,6 +244,50 @@ static void on_vsync(const Mh2IpcRec *rec, const unsigned char *p)
     gs.prev_id = id;
     gs.prev_vblank = vblank;
     gs.prev_movie = show && movie && keep_movie(mpix, mw, mh);
+    if (!photo)
+        return;
+    mh2gs_frame f;
+    memset(&f, 0, sizeof(f));
+    if (movie) {
+        f.pixels = mpix;
+        f.width = mw;
+        f.height = mh;
+        f.stride = mw * 4;
+    } else if (!gs.get_frame(id, &f)) {
+        return;   /* no picture (the display off): the next VBlank's */
+    }
+    if (photo) {
+        SDL_SetAtomicU32(&gs.photo_w, f.width);
+        SDL_SetAtomicU32(&gs.photo_h, f.height);
+        int ok = save_png(&f, gs.photo_path, vblank);
+        SDL_SetAtomicInt(&gs.photo_req, 0);
+        SDL_SetAtomicInt(&gs.photo_done, ok ? 1 : -1);
+    }
+}
+
+/* A photo (photo mode): the first picture at a VBlank of AFTER or later, as the renderer's readback gives it (its size), written to
+ * PATH (UTF-8) on the GS thread. 0 when there is no renderer or one is still pending. */
+int gs_request_photo(const char *path, uint64_t after)
+{
+    if (!gs.ok || SDL_GetAtomicInt(&gs.photo_req))
+        return 0;
+    snprintf(gs.photo_path, sizeof(gs.photo_path), "%s", path);
+    gs.photo_after = after;
+    SDL_SetAtomicInt(&gs.photo_done, 0);
+    SDL_SetAtomicInt(&gs.photo_req, 1);   /* a full barrier: the path is there first */
+    return 1;
+}
+
+/* The photo's end: 1 written (W and H its size), -1 failed, 0 none to report. Taken once. */
+int gs_photo_result(unsigned *w, unsigned *h)
+{
+    int d = SDL_GetAtomicInt(&gs.photo_done);
+    if (!d)
+        return 0;
+    *w = SDL_GetAtomicU32(&gs.photo_w);
+    *h = SDL_GetAtomicU32(&gs.photo_h);
+    SDL_SetAtomicInt(&gs.photo_done, 0);
+    return d;
 }
 
 
@@ -189,6 +299,34 @@ static void on_readback(const Mh2IpcRec *rec)
         gs.read_fifo(dst, qwords);
     else
         memset(dst, 0, (size_t)qwords * 16);
+    mh2ipc_store(&g_ipc->rb_done_seq, rec->arg1);
+    mh2ipc_fence();
+    if (__atomic_load_n(&g_ipc->rb_core_waiting, __ATOMIC_RELAXED))
+        mh2ipc_wake(&g_map, MH2IPC_EV_RB_DONE, &g_ipc->rb_done_seq);
+}
+
+/* A save state's records (Mh2IpcState): the renderer's block into the state window (STATE_GET) or out of it (STATE_SET),
+ * at this place in the ring, and the answer the core waits for, as for a readback. */
+static void on_state(const Mh2IpcRec *rec)
+{
+    Mh2IpcState *st = &g_ipc->state;
+    unsigned char *win = g_block + st->window_offset;
+    int64_t r = -1;   /* MH2GS_STATE_NO_RENDERER */
+    if (rec->type == MH2IPC_REC_STATE_GET) {
+        st->gs_bytes = 0;
+        if (gs.ok) {
+            r = gs.state_get(win, st->window_bytes);
+            if (r > 0) {
+                st->gs_bytes = (uint32_t)r;
+                r = 0;
+            }
+        }
+    } else if (gs.ok && rec->arg0 <= st->window_bytes) {
+        r = gs.state_set(win, rec->arg0);
+    }
+    if (r)
+        host_log("save state: the renderer's part: error %d (%s)", (int)r, rec->type == MH2IPC_REC_STATE_GET ? "save" : "load");
+    st->gs_result = (uint32_t)(int32_t)r;
     mh2ipc_store(&g_ipc->rb_done_seq, rec->arg1);
     mh2ipc_fence();
     if (__atomic_load_n(&g_ipc->rb_core_waiting, __ATOMIC_RELAXED))
@@ -215,6 +353,10 @@ static void on_record(const Mh2IpcRec *rec)
         break;
     case MH2IPC_REC_READBACK:
         on_readback(rec);
+        break;
+    case MH2IPC_REC_STATE_GET:
+    case MH2IPC_REC_STATE_SET:
+        on_state(rec);
         break;
     case MH2IPC_REC_MOVIE_OPEN:
         if (rec->bytes > sizeof(Mh2IpcMovieOpen)) {
@@ -281,6 +423,7 @@ int gs_init(void)
         return -2;
     }
     SDL_WaitSemaphore(gs.ready);
+    gs_state_identity(g_ipc->state.identity, sizeof(g_ipc->state.identity));   /* for the save states: before the core starts */
     return gs.ok ? 0 : -1;
 }
 
@@ -299,4 +442,39 @@ void gs_stop(void)
 uint64_t gs_vsyncs(void)
 {
     return SDL_GetAtomicU32(&gs.vsyncs);
+}
+
+uint64_t gs_last_vblank(void)
+{
+    return SDL_GetAtomicU32(&gs.last_vblank);
+}
+
+/* FNV-1a of the renderer's library file: its build. */
+static uint32_t file_hash(const char *path)
+{
+    uint32_t h = 2166136261u;
+    SDL_IOStream *f = SDL_IOFromFile(path, "rb");
+    unsigned char buf[65536];
+    size_t n;
+    if (!f)
+        return 0;
+    while ((n = SDL_ReadIO(f, buf, sizeof(buf))) > 0)
+        for (size_t i = 0; i < n; i++)
+            h = (h ^ buf[i]) * 16777619u;
+    SDL_CloseIO(f);
+    return h;
+}
+
+/* The identity a save state keeps (Mh2IpcState.identity): the renderer's build and the settings that change the state
+ * its block holds. Once the renderer is made (the samples may have fallen back), before the core starts. */
+void gs_state_identity(char *out, size_t cap)
+{
+    out[0] = 0;
+    if (!gs.ok)
+        return;
+    const char *base = SDL_GetBasePath();
+    char path[1200];
+    snprintf(path, sizeof(path), "%s%s", base ? base : "", MH2GS_LIB);
+    snprintf(out, cap, "gs%d-%08x-s%dh%dp%d", MH2GS_ABI_VERSION, file_hash(path), g_cfg.ssaa >= 2 ? g_cfg.ssaa : 1,
+             g_cfg.hires ? 1 : 0, g_cfg.texture_packs ? 1 : 0);
 }

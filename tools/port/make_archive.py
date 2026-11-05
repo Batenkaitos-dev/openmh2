@@ -136,7 +136,19 @@ def iso_layout(iso: Path) -> dict[str, tuple[int, int]]:
     return {p: found[p.upper()] for p in FILES}
 
 
-def find_source(kind: str) -> tuple[str, Path]:
+def find_source(kind: str, given: Path | None = None) -> tuple[str, Path]:
+    """The player's copy: GIVEN (a disc image, or a folder with the disc's files or an image), else the build's search."""
+    if given is not None:
+        if given.is_file():
+            return "iso", given
+        if not given.is_dir():
+            fail(f"{given} is not a disc image or a folder")
+        if any(p.name.upper() == "SYSTEM.CNF" for p in given.iterdir()):
+            return "extracted", given
+        isos = orig.find_isos(given)
+        if isos:
+            return "iso", isos[0]
+        fail(f"{given} holds no disc image (*.iso) and no extracted disc files (SYSTEM.CNF)")
     base = orig.orig_dir()
     if kind in ("auto", "iso"):
         isos = orig.find_isos(base)
@@ -208,8 +220,8 @@ def read_table(path: Path) -> bytes | None:
         return None
 
 
-def copy_file(src, out, dst_off: int, path: str, size: int, sha1: str) -> None:
-    """size bytes from src (positioned) to out at dst_off, hashed on the way."""
+def copy_file(src, out, dst_off: int, path: str, size: int, sha1: str, progress=None) -> None:
+    """size bytes from src (positioned) to out at dst_off, hashed on the way; PROGRESS(bytes so far) after each chunk."""
     h = hashlib.sha1()
     out.seek(dst_off)
     left = size
@@ -220,6 +232,8 @@ def copy_file(src, out, dst_off: int, path: str, size: int, sha1: str) -> None:
         h.update(chunk)
         out.write(chunk)
         left -= len(chunk)
+        if progress:
+            progress(size - left)
     if left or h.hexdigest() != sha1:
         raise ValueError(f"{path} does not match {MANIFEST.relative_to(ROOT)} "
                          f"({'short by %d bytes' % left if left else 'SHA-1 ' + h.hexdigest()}): "
@@ -229,9 +243,9 @@ def copy_file(src, out, dst_off: int, path: str, size: int, sha1: str) -> None:
         out.write(b"\0" * pad)
 
 
-def write(out: Path, kind: str = "auto") -> None:
+def write(out: Path, kind: str = "auto", given: Path | None = None, progress: bool = False) -> None:
     manifest, layout = load_manifest(), load_layout()
-    src_kind, src = find_source(kind)
+    src_kind, src = find_source(kind, given)
     if src_kind == "iso":
         diffs = check_layout(src, layout)
         if diffs:
@@ -242,14 +256,21 @@ def write(out: Path, kind: str = "auto") -> None:
           flush=True)
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_name(out.name + ".tmp")
+    grand = sum(e[2] for e in entries)
+    before = 0
     try:
         with open(tmp, "wb") as f:
             f.write(head)
-            for (p, lba, size, sha1), off in zip(entries, offsets):
+            for idx, ((p, lba, size, sha1), off) in enumerate(zip(entries, offsets)):
+                report = None
+                if progress:
+                    def report(done, idx=idx, p=p, before=before):
+                        print(f"progress {idx + 1} {len(entries)} {before + done} {grand} {p}", flush=True)
+                    report(0)
                 if src_kind == "iso":
                     with open(src, "rb") as s:
                         s.seek(lba * SECTOR)
-                        copy_file(s, f, off, p, size, sha1)
+                        copy_file(s, f, off, p, size, sha1, report)
                         tail = s.read(-size % SECTOR)
                     if tail.strip(b"\0"):
                         raise ValueError(f"{p}: the rest of its last sector on the disc is not zero")
@@ -260,7 +281,8 @@ def write(out: Path, kind: str = "auto") -> None:
                     if host.stat().st_size != size:
                         raise ValueError(f"{p}: {host.stat().st_size} bytes, {size} in {MANIFEST.name}")
                     with open(host, "rb") as s:
-                        copy_file(s, f, off, p, size, sha1)
+                        copy_file(s, f, off, p, size, sha1, report)
+                before += size
                 print(f"  {p}: sector {lba}, {size} bytes, SHA-1 checked", flush=True)
             f.truncate(total)
         os.replace(tmp, out)
@@ -273,7 +295,8 @@ def write(out: Path, kind: str = "auto") -> None:
     print(f"make_archive: wrote {out} ({len(entries)} files, {total} bytes)", flush=True)
 
 
-def ensure(out: Path, others: list[Path] = (), kind: str = "auto", force: bool = False) -> None:
+def ensure(out: Path, others: list[Path] = (), kind: str = "auto", force: bool = False,
+           given: Path | None = None, progress: bool = False) -> None:
     """out up to date: kept if its table is the expected one, else linked to
     an up-to-date archive among others (the other build's), else written."""
     want = plan(expected_entries(load_manifest(), load_layout()))[0]
@@ -291,7 +314,7 @@ def ensure(out: Path, others: list[Path] = (), kind: str = "auto", force: bool =
                     return
                 except OSError:
                     pass
-    write(out, kind)
+    write(out, kind, given, progress)
 
 
 def verify(path: Path) -> int:
@@ -328,6 +351,10 @@ def main() -> int:
     ap.add_argument("--source", default="auto", choices=["auto", "iso", "extracted"],
                     help="read the ISO or the extracted files (auto: the ISO if there is one)")
     ap.add_argument("--force", action="store_true", help="write it even if it is up to date")
+    ap.add_argument("--from", dest="given", type=Path, metavar="PATH",
+                    help="the player's copy: a disc image, or a folder with the disc's files (the launcher's)")
+    ap.add_argument("--progress", action="store_true", help="print a progress line after each chunk (the launcher's)")
+    ap.add_argument("--size", action="store_true", help="print the archive's size in bytes and stop (the launcher's)")
     ap.add_argument("--verify", type=Path, metavar="FILE", help="re-hash the files of an archive")
     ap.add_argument("--check-layout", action="store_true", help=f"compare {LAYOUT.name} with the ISO")
     ap.add_argument("--write-layout", action="store_true", help=f"write {LAYOUT.name} from the ISO")
@@ -348,7 +375,10 @@ def main() -> int:
         diffs = check_layout(iso, load_layout())
         print("\n".join(diffs) if diffs else f"{LAYOUT.relative_to(ROOT)} agrees with {iso}")
         return 1 if diffs else 0
-    ensure(args.out, kind=args.source, force=args.force)
+    if args.size:
+        print(plan(expected_entries(load_manifest(), load_layout()))[2])
+        return 0
+    ensure(args.out, kind=args.source, force=args.force, given=args.given, progress=args.progress)
     return 0
 
 

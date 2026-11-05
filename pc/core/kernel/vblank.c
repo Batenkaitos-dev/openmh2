@@ -17,7 +17,7 @@
 
 static KernVblankFn sHooks[KERN_VB_STEPS];
 static u64 sVblankCount;
-static u64 sMaxFrames;
+static u64 sMaxFrames KERN_HOSTBSS;     /* the run's end: the process's, not the state's */
 static int sFinished;
 static u64 sCrashAt;     /* MH2_KERNEL_CRASH=N: a fault on purpose at VBlank N (the crash path's test) */
 
@@ -76,10 +76,16 @@ static void VblankEnd(u64 now, u32 param)
     KSif_IopVblank(0);
 }
 
+__attribute__((weak)) void KState_VBlankStart(u64 vblank)
+{
+    (void)vblank;
+}
+
 static void VblankStart(u64 now, u32 param)
 {
     u64 n;
     (void)param;
+    KState_VBlankStart(sVblankCount + 1);   /* a state saved or loaded here is the one before VBlank n */
     n = ++sVblankCount;                  /* 1 */
     Hook(KERN_VB_PACE, n);               /* 2 */
     Spu2_Advance(now);                   /* 3 */

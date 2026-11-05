@@ -87,15 +87,15 @@ static void rotate(const char *dir)
 {
     char from[1200], to[1200];
     snprintf(to, sizeof(to), "%smh2.5.log", dir);
-    remove(to);
+    hfs_remove(to);
     for (int i = 4; i >= 1; i--) {
         snprintf(from, sizeof(from), "%smh2.%d.log", dir, i);
         snprintf(to, sizeof(to), "%smh2.%d.log", dir, i + 1);
-        rename(from, to);
+        hfs_rename(from, to);
     }
     snprintf(from, sizeof(from), "%smh2.log", dir);
     snprintf(to, sizeof(to), "%smh2.1.log", dir);
-    rename(from, to);
+    hfs_rename(from, to);
 }
 
 /* The log's file: PATH if given, else DATA/mh2.log after rotating the older logs (an
@@ -160,7 +160,7 @@ int play_log_open(const char *path)
     char p[1400];
     if (log_path(path, p, sizeof(p)) != 0)
         return -1;
-    lg.file = fopen(p, "wb");
+    lg.file = hfs_fopen(p, "wb");
     if (!lg.file) {
         host_log("cannot write the log %s", p);
         return -1;

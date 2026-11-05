@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "host_file.h"
 #include "io/io_host.h"
 
 #if defined(_WIN32)
@@ -112,7 +113,7 @@ HOST int Host_DiscIsOpen(void)
 HOST int Host_DiscOpen(const char *path)
 {
     Host_DiscClose();
-    FILE *f = fopen(path, "rb");
+    FILE *f = HostFile_Open(path, "rb");
     if (!f)
         return -1;
     unsigned char h[ARC_HEADER];
@@ -193,7 +194,7 @@ HOST int Host_DiscSideFile(const char *name, void **data, unsigned int *size)
     if (dir + strlen(name) >= sizeof(path))
         return -1;
     snprintf(path, sizeof(path), "%.*s%s", (int)dir, g_arcPath, name);
-    f = fopen(path, "rb");
+    f = HostFile_Open(path, "rb");
     if (!f)
         return -1;
     if (SEEKEND64(f) != 0 || (n = (long long)TELL64(f)) < 0 || n > 0x10000000 || SEEK64(f, 0) != 0) {

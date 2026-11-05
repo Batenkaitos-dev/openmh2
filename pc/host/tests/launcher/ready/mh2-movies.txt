@@ -1,0 +1,1 @@
+# fake movie table for the launcher test

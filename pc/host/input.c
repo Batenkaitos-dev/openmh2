@@ -102,6 +102,17 @@ int input_bind(const char *key, const char *value)
     return 0;
 }
 
+int input_button(const char *name, int *key, int *pad)
+{
+    for (size_t i = 0; i < sizeof(k_bind) / sizeof(k_bind[0]); i++)
+        if (!SDL_strcasecmp(name, k_bind[i].name)) {
+            *key = (int)k_bind[i].key;
+            *pad = k_bind[i].pad >= 0 && k_bind[i].pad < 1000 ? k_bind[i].pad : -1;
+            return 0;
+        }
+    return -1;
+}
+
 static struct {
     SDL_Gamepad *gamepad;
     Mh2IpcPad pads[MH2IPC_PADS];
@@ -130,6 +141,11 @@ static void open_first_gamepad(void)
 void input_init(void)
 {
     open_first_gamepad();
+}
+
+SDL_Gamepad *input_gamepad(void)
+{
+    return in.gamepad;
 }
 
 void input_event(const SDL_Event *e)
@@ -225,9 +241,17 @@ void input_update(void)
     Mh2IpcKeyboard kb;
     memset(pads, 0, sizeof(pads));
     pads[1].rx = pads[1].ry = pads[1].lx = pads[1].ly = 0x80;
-    read_pad(&pads[0], k);
-    /* No USB keyboard yet: as in the original game,
-     * the PC's keyboard drives the pad only. It comes with the online play. */
+    /* typing: the keyboard's keys are the game's keyboard's, a gamepad still plays; the freecam in control: the keyboard is
+     * its own (freecam.c) */
+    read_pad(&pads[0], kbd_typing() || freecam_controls() ? NULL : k);
+    freecam_pad_filter(&pads[0].buttons);   /* L3 and R3 together are the freecam's, not the game's */
+    if (freecam_controls() && !freecam_game_pad()) {   /* the freecam has control and the game's input is neutral */
+        memset(&pads[0], 0, sizeof(pads[0]));
+        pads[0].connected = 1;
+        pads[0].rx = pads[0].ry = pads[0].lx = pads[0].ly = 0x80;
+    }
+    /* The original game's keyboard slot (Mh2IpcKeyboard: the keyboard as a pad) is never handed over: the game's USB
+     * keyboard, when connected (usb_keyboard), comes through the key ring (keyboard.c). */
     memset(&kb, 0, sizeof(kb));
     (void)numkeys;
     if (!in.written || memcmp(pads, in.pads, sizeof(pads)) || memcmp(&kb, &in.kb, sizeof(kb))) {

@@ -1,0 +1,10 @@
+# make_ok with a source folder whose name is outside the ANSI code page (SO SU, above the leaf the page shows): the maker opens the files under it
+key Return
+key Down
+key Return
+pick @FIX@/ソース/some_folder
+waitdone
+shot done
+key Return
+shot ready
+end

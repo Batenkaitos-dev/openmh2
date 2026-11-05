@@ -68,6 +68,11 @@ int Io_DiscRead(u32 lba, u32 count, void *dst);
  * look at AFS02.AFS's first two sectors
  * (movie.c: the host's). */
 int Io_DiscReadSectors(u32 lba, u32 count, void *dst);
+
+/* The development log of the loads (io_loadlog.c). */
+void IoLoadLog_Read(u32 lbn, u32 sectors);
+void IoLoadLog_VBlank(void);
+int IoLoadLog_Unpaced(void);
 /* Where sector lba is on the host, for the host's movie player (the
  * original's disc_host_location): the archive's path (absolute when the
  * system gives one; valid while the run lasts) and the byte offset of the

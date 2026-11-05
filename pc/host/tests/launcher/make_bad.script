@@ -1,0 +1,8 @@
+key Return
+key Return
+pick @FIX@/arc/bad_disc
+waitdone
+shot failure
+key Return
+shot disc_after
+end

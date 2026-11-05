@@ -1,0 +1,8 @@
+# my settings
+[display]
+ssaa = 2   # smoother, but not too much
+fullscreen = off
+
+[input]
+key.cross = Space
+foo = bar

@@ -1,0 +1,10 @@
+# step 1: the copy found in MH2_ORIG_DIR; step 2: the archive; step 3: the card; then Home
+shot step1
+key Return
+waitdone
+shot step2_done
+key Return
+shot step3
+key Return
+shot home_ready
+end

@@ -1,0 +1,11 @@
+# my settings
+[display]
+ssaa = 4   # smoother, but not too much
+fullscreen = off
+
+[input]
+key.cross = Space
+foo = bar
+
+[launcher]
+launcher = off

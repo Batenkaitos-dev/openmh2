@@ -37,6 +37,28 @@
 #include "libc.h"
 #include "libkernl.h"
 #include "stageobj.h"
+#include "pal.h"
+#if PLATFORM_PC
+#include "camera.h"
+
+/* The camera's objects the freecam's seam replaces for the length of the draw (pc/core/pal_freecam.c). */
+extern f32 gMtxView[16];
+extern f32 gViewMatrix[16];
+extern f32 gCamMatrix[16];
+extern f32 gCamYawMtx[16];
+extern f32 gMtxCamProj[16];
+extern f32 gViewportMtx[16];
+extern f32 gMtxProjClip[16];
+extern f32 gMtxProjScreen[16];
+extern f32 gFrustumPlanes[20];
+static const PalFreecamObjs sFreecamObjs = {
+    gMtxView, gViewMatrix, gCamMatrix, gCamYawMtx,
+    gCameraData.eye, gCameraData.at, gCameraData.up, &gCameraData.fov, &gCameraData.fovPrev, &gCameraData.roll,
+    { { gMtxCamProj, sizeof gMtxCamProj }, { gViewportMtx, sizeof gViewportMtx }, { gMtxProjClip, sizeof gMtxProjClip },
+      { gMtxProjScreen, sizeof gMtxProjScreen }, { gFrustumPlanes, sizeof gFrustumPlanes } },
+    Camera_ApplyProjection
+};
+#endif
 
 /* The game built this file at optimization level 4. */
 #pragma optimization_level 4
@@ -111,8 +133,8 @@ void Callbacks_Run(void)
             (*slot)();
         }
     }
-    FadeA_Draw();
-    Loading_DrawLetters();
+    PC_FREECAM_HIDE(PAL_STAGE_FADE_A) FadeA_Draw();
+    PC_FREECAM_HIDE(PAL_STAGE_LOADING) Loading_DrawLetters();
 }
 
 /* LoadOverlay for the scenes. */
@@ -269,6 +291,7 @@ void LayerCallbacks_Add(Callback callback, u8 layer)
  * capture, the primitives, then the text layers with their draw lists. */
 void Frame_Draw(void)
 {
+    PC_FREECAM_BEGIN(&sFreecamObjs);
     gFrameDrawing = 1;
     Gfx_SetTexFilter(GFX_TEX_NEAREST);
     Gfx_SetBlend(GFX_BLEND_SRC_ALPHA, GFX_BLEND_INV_SRC_ALPHA);
@@ -296,43 +319,44 @@ void Frame_Draw(void)
     }
     Pause_CaptureScreen();
     Gs_SetState(RS_ZTEST, RS_CMP_ALWAYS);
-    Prim_DrawAll();
+    PC_FREECAM_HIDE(PAL_STAGE_PRIM) Prim_DrawAll();
     Gs_SetState(RS_ZTEST, RS_CMP_LEQUAL);
-    Task_RunList(gDrawListText6);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT6) Task_RunList(gDrawListText6);
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    Text_DrawPage(6);
-    Text_DrawIcons(6);
-    Task_RunList(gDrawListText0a);
-    Task_RunList(gDrawListText0b);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT6) Text_DrawPage(6);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT6) Text_DrawIcons(6);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT0) Task_RunList(gDrawListText0a);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT0) Task_RunList(gDrawListText0b);
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    Text_DrawPage(0);
-    Text_DrawIcons(0);
-    Task_RunList(gDrawListText1);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT0) Text_DrawPage(0);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT0) Text_DrawIcons(0);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT1) Task_RunList(gDrawListText1);
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    Text_DrawPage(1);
-    Text_DrawIcons(1);
-    EquipPreview_Draw();
-    Task_RunList(gDrawListText2);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT1) Text_DrawPage(1);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT1) Text_DrawIcons(1);
+    PC_FREECAM_HIDE(PAL_STAGE_EQUIP) EquipPreview_Draw();
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT2) Task_RunList(gDrawListText2);
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    Text_DrawPage(2);
-    Text_DrawIcons(2);
-    Task_RunList(gDrawListText4);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT2) Text_DrawPage(2);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT2) Text_DrawIcons(2);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT4) Task_RunList(gDrawListText4);
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    Text_DrawPage(4);
-    Text_DrawIcons(4);
-    Task_RunList(gDrawOtText3);
-    FadeB_Draw();
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT4) Text_DrawPage(4);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT4) Text_DrawIcons(4);
+    PC_FREECAM_HIDE(PAL_STAGE_OT3) Task_RunList(gDrawOtText3);
+    PC_FREECAM_HIDE(PAL_STAGE_FADE_B) FadeB_Draw();
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    Text_DrawPage(3);
-    Text_DrawIcons(3);
-    Task_RunList(gDrawListText5);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT3) Text_DrawPage(3);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT3) Text_DrawIcons(3);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT5) Task_RunList(gDrawListText5);
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    Text_DrawPage(5);
-    Text_DrawIcons(5);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT5) Text_DrawPage(5);
+    PC_FREECAM_HIDE(PAL_STAGE_TEXT5) Text_DrawIcons(5);
     Text_Disable();
     Gfx_ResetRenderStates(1);
     gFrameDrawing = 0;
     Text_Reset();
+    PC_FREECAM_END();
 }
 
 /* Draws a frame over the pause's captured screen: the capture, the

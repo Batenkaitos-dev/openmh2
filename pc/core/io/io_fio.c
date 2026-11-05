@@ -6,6 +6,7 @@
 #include "io/io_fio.h"
 #include "io/io_host.h"
 #include "io/io_kernel.h"
+#include "pal_arena.h"
 
 typedef struct IopFile {
     int used;
@@ -23,7 +24,7 @@ static const char RomVer[] = "0220JC20060210\n";
 void IoFio_Reset(void)
 {
     for (int i = 0; i < FIO_IOP_FILES; i++)
-        Host_IoFree(g_files[i].data);
+        Pal_ArenaFree(g_files[i].data);
     __builtin_memset(g_files, 0, sizeof(g_files));
 }
 
@@ -55,9 +56,9 @@ static s32 Open(const char *name)
         if (Io_DiscFind(name, &f.lba, &f.size) != 0)
             return FIO_ENOENT;
         u32 sectors = (f.size + IO_SECTOR - 1) / IO_SECTOR;
-        f.data = Host_Alloc(sectors * IO_SECTOR + 1);
+        f.data = Pal_ArenaAlloc(sectors * IO_SECTOR + 1);   /* the arena: a state holds it */
         if (!f.data || Io_DiscReadSectors(f.lba, sectors, f.data) != 0) {
-            Host_IoFree(f.data);
+            Pal_ArenaFree(f.data);
             return FIO_ENOENT;
         }
     } else if (!Io_StrNCmp(name, "rom0:ROMVER", 12)) {
@@ -73,7 +74,7 @@ static s32 Open(const char *name)
             return i + FIO_FIRST_FD;
         }
     }
-    Host_IoFree(f.data);
+    Pal_ArenaFree(f.data);
     return FIO_EMFILE;
 }
 
@@ -129,7 +130,7 @@ static void Service(IopRpcCall *c)
         IopFile *f = FileOf(q->fd);
         v = f ? 0 : FIO_EBADF;
         if (f) {
-            Host_IoFree(f->data);
+            Pal_ArenaFree(f->data);
             __builtin_memset(f, 0, sizeof(*f));
         }
         break;

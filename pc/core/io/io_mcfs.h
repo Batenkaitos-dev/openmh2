@@ -67,6 +67,15 @@ HOST int mcfs_commit(McFs *fs);
 HOST void mcfs_test_stop_write(long bytes);
 /* The whole image as it is now, to another file. */
 HOST int mcfs_save_copy(const McFs *fs, const char *path);
+/* Save states (io_mc.c): the open files and the current directory as bytes, and the image. mcfs_image_set
+ * replaces the image whole (the pages that differ are written to the card's file); MC_OK, or an error. */
+HOST unsigned int mcfs_session_size(void);
+HOST void mcfs_session_get(const McFs *fs, void *out);
+HOST int mcfs_session_set(McFs *fs, const void *in, unsigned int size);
+/* How many files are open (handles in use). */
+HOST int mcfs_open_files(const McFs *fs);
+HOST const unsigned char *mcfs_image(const McFs *fs, unsigned int *size);
+HOST int mcfs_image_set(McFs *fs, const void *img, unsigned int size);
 HOST int mcfs_open(McFs *fs, const char *path, int flags);
 HOST int mcfs_close(McFs *fs, int fd);
 HOST int mcfs_read(McFs *fs, int fd, void *dst, unsigned int size);
