@@ -53,28 +53,40 @@ typedef struct HostConfig {
      * never touches the user data folder: it names its cards folder and any other it needs, or stops. */
     const char *automated;
     /* The optional enhancements (off by default; they change the host's picture only, never the game's
-     * state or the GS stream: PLAYING.md, "Enhancements") */
+     * state or the GS stream) */
     int ssaa;                  /* --ssaa N, ssaa = N: samples per pixel, 2, 4, 8 or 16; 0 or 1: off */
     int hires;                 /* --hires, hires = on: a picture of twice the width and height (implies ssaa 4) */
+    int fps;                   /* --fps N, fps = N: 0 (not set) or 30: the game's own pictures; 60, 120 or 144: pictures made between them (mh2gs, gs.c, present.c); --fps60 and fps60 = on are 60 */
     /* Textures (off by default; the renderer's picture only): the textures the game draws are written to
      * <textures>/dump (--texture-dump, texture_dump = on) and replaced by the files in <textures>/packs
      * (--texture-packs, texture_packs = on). textures: the folder (--textures FOLDER, textures = FOLDER; default:
      * textures in the user data folder). */
     int texture_dump, texture_packs;
+    int texture_cache_mb;      /* texture_cache_mb = N (MB; 0: the renderer's 1024) */
+    int texture_no_preload;    /* texture_preload = off */
     /* The PC keyboard as the game's USB keyboard (keyboard.c; --usb-keyboard, usb_keyboard = on; off by default): the
      * game is told a keyboard is connected from its first request, and the window's keys reach it while typing. */
     int usb_keyboard;
     const char *textures;
+    const char *text_pack;    /* the setting text_pack: off, a folder of text_packs in the user data folder, or a path (settings.c) */
     const char *states_dir;    /* the setting states: the folder of the save states (states.c) */
     const char *freecam_input; /* the setting freecam_game_input: neutral (default) or pad (freecam.c) */
     const char *freecam_speed; /* the setting freecam_speed: game units a second (default 400) */
-    const char *freecam_pad;   /* the setting freecam_pad_toggle: on (default) or off (freecam.c) */
+    const char *freecam_pad;   /* the setting freecam_pad_toggle: off (default) or on (freecam.c) */
     const char *pictures_dir;  /* the setting pictures: the folder of photo mode's pictures (freecam.c) */
+    int fast_loading;          /* --fast-loading, fast_loading = on: no wait for real time while the game's loading screen is open (pace.c) */
+    const char *fast_forward_cap;   /* the setting fast_forward_cap: a multiple of the game's speed, or none (default 4; pace.c) */
+    /* The camera on the right stick (camstick.c; off by default): camera_stick off|hold|on, camera_stick_button, camera_stick_which,
+     * camera_stick_invert, camera_stick_speed */
+    const char *camera_stick, *camera_stick_button, *camera_stick_which, *camera_stick_invert, *camera_stick_speed;
     int ssaa_asked, hires_asked; /* the renderer could not make the samples (gs.c): what was asked; ssaa and hires then read off */
     /* Widescreen: unlike the two above it changes the game's state (the camera's aspect and the 2D picture's
      * shape), so it is the core's own option (--widescreen) and the host shows the 640x448 picture at 16:9, movies
      * at 4:3. Off by default. */
     int widescreen;            /* 0 off, 2 on (--widescreen, widescreen = on) */
+    /* The offline hub (the core's --offline-hub; off by default): the village's gate leads to the online town, played with
+     * no network. It changes the game's state, so a save state made with it loads only with it. */
+    int offline_hub;
 } HostConfig;
 
 extern HostConfig g_cfg;
@@ -104,7 +116,9 @@ const char *settings_enhancements(void);
 const char *settings_widescreen(void);
 void launcher_core_arg(const char *name, const char *value);
 void launcher_core_flag(const char *name);   /* NAME alone, before the core's own arguments */
+void launcher_text_pack(void);    /* the core's --pack DIR when the setting names a text pack (settings.c) */
 void launcher_widescreen(void);   /* the core's --widescreen when it is on (settings.c) */
+void launcher_offline_hub(void);  /* the core's --offline-hub when the setting is on (settings.c) */
 /* The windows' title: the project's own name, with the game named as what it runs (Capcom's name is its trademark). */
 #define MH2_WINDOW_TITLE "OpenMH2 for Monster Hunter 2 (Dos)"
 int launcher_disc(void);
@@ -127,7 +141,6 @@ void cards_default_name(const char *dir, char *out, size_t cap);
 int cards_exists(const char *dir, const char *name);
 const char *settings_archive(void);   /* the archive the settings name ("" if none) */
 int launcher_disc_path(char *path, size_t cap);   /* 0: the archive found; -1: none, PATH is where it would be made */
-int launcher_disc_present(void);   /* the archive is found (no side effects): the launcher shows only then */
 /* cards.c: mh2's own cards (its folder, the first start's import, the locks) */
 void cards_choose(int play, const char *card1, const char *card2, const char *old1, const char *old2,
                   const char *setting);
@@ -156,6 +169,13 @@ int present_init(void);
 void present_submit(const void *pixels, uint32_t width, uint32_t height, uint32_t stride, uint64_t vblank, int movie);
 /* Main thread: shows the picture submitted last, if new. */
 void present_draw(void);
+/* 120 and 144 (hfr.h): the timed presenter */
+void host_realtime_thread(void);                                  /* the calling thread keeps its time on a busy machine (priority; Windows: MMCSS, no power throttling) */
+void present_hfr(int rate);                                      /* on at RATE (120 or 144), or off (0) */
+void present_queue(const void *pixels, uint32_t width, uint32_t height, uint32_t stride, uint64_t tau_ns, int real);   /* a picture for a time (SDL_GetTicksNS) */
+int present_grid(double *ref_ns, double *refresh_ns, int *divider);   /* a refresh time, the display period, the divider; 0: none yet */
+double present_refresh_hz(void);
+int present_wait_ms(void);                                        /* the main loop's wait for events, ms */
 void present_toggle_fullscreen(void);
 void present_shutdown(void);
 extern uint32_t g_present_event;   /* the SDL event type present_submit pushes */
@@ -170,6 +190,8 @@ void input_event(const SDL_Event *e);
 /* Main thread: the current state into the mailbox, if it changed; the
  * motors from the core. */
 void input_update(void);
+void camstick_reset(void);
+void camstick_apply(Mh2IpcPad *pad);   /* the camera on the right stick: the stick as the D-pad the game reads (camstick.c) */
 void input_shutdown(void);
 SDL_Gamepad *input_gamepad(void);   /* the open gamepad, or NULL */
 
@@ -194,10 +216,19 @@ void states_update(void);                                 /* each pass of the ma
 /* freecam.c: the freecam's controller (the keys, the mouse, a gamepad, the pose in the IPC's block) */
 int freecam_setting(const char *key, const char *value);   /* freecam_key, freecam_key_NAME: 0, -1 (not ours), -2 (no such key) */
 const char *freecam_key_text(const char *key);             /* the key a setting names, as SDL names it, or "none" */
+int freecam_paused(void);                                  /* the free camera's pause is asked for */
 int freecam_key(const SDL_Event *e);                       /* the main loop's key event: 1 when it was the freecam's */
 void freecam_event(const SDL_Event *e);                    /* the mouse's motion and wheel, the window's focus */
 void freecam_update(void);                                 /* each pass of the main loop: the pose, into the block */
 void freecam_pad_filter(uint16_t *buttons);                /* input.c: the gamepad's L3 and R3 together toggle the freecam and are kept from the game */
+int pace_setting(const char *key, const char *value);       /* pace_key_pause, _step, _fast: 0, -1 (not ours), -2 (no such key) */
+const char *pace_key_text(const char *key);
+int pace_key(const SDL_Event *e);                          /* the main loop's key event, after the freecam's: 1 when it was the pause's or the step */
+void pace_update(void);                                    /* each pass of the main loop: the fast-forward key, the words of the pacing (pace.c) */
+void pace_release(void);                                   /* the free camera turns on: the plain pause ends */
+void pace_nudge(void);                                     /* a save state's request waits: let one VBlank through a pause */
+int pace_paused(void);
+int pace_script_cmd(const char *tok, const char *rest);    /* input.c's --pad-script: PZPAUSE, PZFF (0 taken, -1 bad, -2 not ours) */
 int freecam_active(void);                                  /* the freecam is on */
 int freecam_controls(void);                                /* on, and not held, and the keyboard is not typing: the keys are its */
 int freecam_game_pad(void);                                /* freecam_game_input = pad: the gamepad still plays */
@@ -206,6 +237,8 @@ int freecam_script_cmd(const char *tok, const char *rest); /* input.c's --pad-sc
 #endif
 /* present.c: a note over the picture (and in the window title) for a few seconds */
 void present_note(const char *msg);
+void present_set_pace(const char *line);                   /* the pause's or fast-forward's words over the picture's top left and in the title (empty: none) */
+void present_dirty(void);                                  /* the window needs drawing again with the picture it has (the window changed, a line did) */
 void present_set_freecam(const char *line, const char *title);   /* the freecam's line over the picture and its words in the title (NULL: none) */
 void present_relative_mouse(int on);          /* the mouse looks (relative mode) or is the pointer again */
 
@@ -213,11 +246,12 @@ void present_relative_mouse(int on);          /* the mouse looks (relative mode)
 /* Loads mh2movie (beside mh2): 0, or -1 (movies not shown or heard). */
 int movie_init(void);
 /* The GS thread: MOVIE_OPEN and MOVIE_CLOSE; at each VSYNC, its arg1 (the
- * movie clock + 1, or 0): 1 with the movie's picture to show instead of
- * the GS's, or 0. */
+ * movie clock + 1, or 0), and whether the game flipped (the display registers
+ * were written since the VSync before): 1 with the movie's picture to show
+ * instead of the GS's, or 0. The picture changes at a flip only. */
 void movie_open(const Mh2IpcMovieOpen *o, const char *path);
 void movie_close(unsigned int id);
-int movie_vsync(unsigned int clock_plus1, const uint8_t **pixels, uint32_t *w, uint32_t *h);
+int movie_vsync(unsigned int clock_plus1, int flip, const uint8_t **pixels, uint32_t *w, uint32_t *h);
 void movie_shutdown(void);
 int movie_active(void);   /* a movie is open (its pictures or its sound are on): no save state then */
 /* The audio thread: mixes the movie's sound into `frames` frames read from
@@ -227,7 +261,8 @@ extern int g_movie_sound;   /* a sound device plays the samples */
 /* audio.c */
 int audio_init(void);
 void audio_shutdown(void);
-void audio_set_muted(int on);   /* the pause: fade the game's sound out, or back in (audio.c) */
+enum { AUDIO_MUTE_FREEZE = 1, AUDIO_MUTE_PACE = 2 };
+void audio_mute_by(int who, int on);   /* the pauses: fade the game's sound out while one of them holds, back in when none does (audio.c) */
 /* play.c */
 const char *play_data_dir(void);   /* the user data folder, ending in a separator; NULL if none */
 const char *play_stamp(void);      /* session_YYYYMMDD-HHMMSS: the session's start */

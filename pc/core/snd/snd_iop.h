@@ -4,7 +4,7 @@
 /*
  * The sound module's internal header: the IOP's memory map and hardware (iop_hw.c), its kernel services (iop_kern.c), its
  * modules (iop_mod.c) and the SPU2 (spu2.c). The original's iop.h, adapted: the names carry the module's
- * prefixes, the original's runtime (rt.h) is replaced by snd.h, snd_kernel.h and host_snd.h. The original's R3000A
+ * prefixes, the original's runtime is replaced by snd.h, snd_kernel.h and host_snd.h. The original's R3000A
  * interpreter is not in the core: the sound modules are native.
  */
 
@@ -28,7 +28,7 @@ int SndLog_Once(u32 key);
 #define SND_LOG_ONCE(sys, key, ...) do { if (SndLog_Once(key)) SndHost_Log(SND_LOG_WARN, sys, __VA_ARGS__); } while (0)
 void SndLog_Fatal(const char *sys, const char *msg) __attribute__((noreturn));
 
-/* ---- small library: the platform layer has no libc (pc/README.md) ---- */
+/* ---- small library: the platform layer has no libc ---- */
 #define snd_memcpy __builtin_memcpy
 #define snd_memset __builtin_memset
 #define snd_memmove __builtin_memmove

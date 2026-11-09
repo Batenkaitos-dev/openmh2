@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Verify that every tool installed by tools/setup.sh / tools/setup.ps1 runs.
+"""Verify that every tool installed by the setup scripts runs.
 
 Run it from the project environment (the setup scripts call it at the end):
 
-    source tools/env.sh     (or: . .\\tools\\env.ps1)
-    python tools/check_env.py [--markdown] [--skip-native]
+    source tools/env.sh
+    (on Windows:  . .\\tools\\env.ps1)
+    python tools/check_env.py [--markdown]
+                              [--skip-native]
 
 Exits non-zero if a required tool is missing or fails its check.
 """
@@ -75,7 +77,8 @@ def tool_version(name: str, exe: str, args: list[str], pattern: str | None = Non
 
 def python_packages() -> list[Result]:
     results = []
-    dists = ["splat64", "spimdisasm", "rabbitizer", "pyelftools", "pycdlib", "ninja", "cmake"]
+    dists = ["splat64", "spimdisasm", "rabbitizer", "pyelftools", "pycdlib", "ninja"]
+    dists.append("cmake")
     for dist in dists:
         try:
             ver = importlib.metadata.version(dist)
@@ -135,6 +138,21 @@ def binutils_r5900() -> Result:
     return Result(name, True, f"{len(R5900_EXPECT)} insns (EE core, COP1, MMI, VU0 macro)")
 
 
+def content_clang() -> Result:
+    """The clang tools/content_gen.py reads the C files' types with."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import content_gen
+    cmd = content_gen.clang_command()
+    try:
+        p = run([*cmd, "--version"])
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return Result("clang for content_gen", False, "", f"{cmd[0]}: {e}")
+    out = (p.stdout or "") + (p.stderr or "")
+    m = re.search(r"clang version (\S+)", out)
+    return Result("clang for content_gen", p.returncode == 0 and bool(m), m.group(1) if m else first_line(out),
+                  " ".join(cmd))
+
+
 def listing(d: Path) -> list[Path]:
     """The entries of d; none if it cannot be read (the folder above a tree in AppData\\Local has protected ones)."""
     try:
@@ -189,10 +207,9 @@ def main() -> int:
     r.append(tool_version("binutils as", "mips-ps2-decompals-as", ["--version"], r"GNU assembler.*?(\d+\.\d+\S*)"))
     r.append(tool_version("binutils ld", "mips-ps2-decompals-ld", ["--version"], r"GNU ld.*?(\d+\.\d+\S*)"))
     r.append(binutils_r5900())
-
+    r.append(content_clang())
     native_req = not args.skip_native
-    # clang: the matching build too (tools/content_gen.py parses the C with it)
-    r.append(tool_version("clang", "clang", ["--version"], r"clang version (\S+)", True))
+    r.append(tool_version("clang", "clang", ["--version"], r"clang version (\S+)", native_req))
     if shutil.which("clang"):
         r.append(tool_version("clang target", "clang", ["-dumpmachine"], None, native_req))
     r.append(orig_files())

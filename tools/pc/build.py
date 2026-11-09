@@ -75,6 +75,8 @@ def main():
     ap.add_argument("-j", type=int, default=os.cpu_count() or 4)
     ap.add_argument("--llvm-mingw", default=os.environ.get("MH2_LLVM_MINGW"),
                     help="llvm-mingw's directory (Windows; default tools/deps/windows-x64/llvm-mingw, or $MH2_LLVM_MINGW)")
+    ap.add_argument("--kit", action="store_true",
+                    help="the release's kit (tools/pc/dist.py): on Linux the core is linked statically against the kit's C library")
     ap.add_argument("--llvm", default=os.environ.get("MH2_LLVM"),
                     help="the LLVM release's directory (Linux; default tools/deps/linux-x64/llvm, or $MH2_LLVM)")
     a = ap.parse_args()
@@ -85,6 +87,8 @@ def main():
     # include them, so they take the pinned compiler, and change only the target
     tool = {"linux": "linux-", "windows": "mingw-"}[a.platform] + arch
     tooldir = ROOT / "pc" / ("cmake" if a.target == "core" else "host/cmake")
+    if a.kit and a.platform == "linux" and a.target == "core":
+        tooldir = ROOT / "tools" / "pc" / "kit"
     bdir = ROOT / "build" / "pc" / f"{a.platform}-{arch}"
     if a.clean and bdir.exists():
         shutil.rmtree(bdir)

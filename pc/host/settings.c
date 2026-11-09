@@ -22,21 +22,28 @@
  *   key.NAME, pad.NAME    the bindings (input.c, input_bind)
  *   vsync = auto|on|off   as --vsync (auto: on in fullscreen only)
  *   ssaa = N, hires = on  the enhancements (off by default; as --ssaa N and
- *                         --hires: PLAYING.md), drawn by the renderer only;
+ *                         --hires), drawn by the renderer only;
  *   texture_dump = on     the textures the game draws are written, once each, as PNGs to the textures folder's dump
- *                         (as --texture-dump; the renderer's, off by default: PLAYING.md, "Textures");
+ *                         (as --texture-dump; the renderer's, off by default);
  *   texture_packs = on    the PNGs in the textures folder's packs are drawn in place of the textures they are named
  *                         for (as --texture-packs; off by default);
+ *   texture_cache_mb = N  the memory the packs may keep decoded (16 to 16384, default 1024; also the graphics card's images);
+ *   texture_preload = off the packs are not decoded at the start, only when first drawn (default on)
  *   textures = FOLDER     the textures folder (default: textures in the user data folder; as --textures FOLDER)
- *   usb_keyboard = on     the PC keyboard is the game's USB keyboard (as --usb-keyboard; off by default: keyboard.c,
- *                         PLAYING.md, "The keyboard"), usb_keyboard_toggle = KEY (default ScrollLock) switches between
+ *   usb_keyboard = on     the PC keyboard is the game's USB keyboard (as --usb-keyboard; off by default: keyboard.c), usb_keyboard_toggle = KEY (default ScrollLock) switches between
  *                         typing and the pad's keyboard keys, usb_key_yen, usb_key_ro, usb_key_henkan, usb_key_muhenkan,
  *                         usb_key_kana and usb_key_zenkaku = KEY (or none) bind the Japanese keyboard's extra keys
- *   widescreen = on       the 16:9 view (as --widescreen: PLAYING.md). Unlike the two above it changes the
+ *   widescreen = on       the 16:9 view (as --widescreen). Unlike the two above it changes the
  *                         game's state: it is the core's --widescreen; the host shows the picture at 16:9,
  *                         the movies at 4:3. Off by default.
+ *   offline_hub = on      the village's gate leads to the online town (the game's own, with its two quest counters), played with no
+ *                         network (as --offline-hub). It changes the game's state: it is the core's --offline-hub, and a saved session
+ *                         or save state made with it is good only with it. Off by default: the game is Dos as it was.
  *   launcher = off        the launcher's window is not shown at the start (Shift held at the start, or --launcher, shows it)
  *   orig, any_core: the old build's, not needed by mh2 (it says why)
+ *   camera_stick = hold   the camera on the right stick (camstick.c): off (default), hold (while
+ *                         camera_stick_button is held: l3 by default) or on (always); camera_stick_which = right|left,
+ *                         camera_stick_invert = none|x|y|xy, camera_stick_speed = 25|50|75|100 (percent of the game's turn)
  *
  * The launcher: mh2-core gets --disc (mh2's --archive, the setting, else
  * mh2-disc.arc next to mh2, in the user data folder, or the build tree's
@@ -51,6 +58,7 @@
 
 #include "launcher_text.h"
 #include "mh2host.h"
+#include "packs.h"
 #include "settings.h"
 
 static char g_msgs[2048];   /* logged after the options are read */
@@ -61,13 +69,15 @@ static struct {
     char memcard[2][1024];
     char cards[1024], card[2][256];
     int fullscreen, mute, vsync;
-    int ssaa, hires, widescreen;
-    int texture_dump, texture_packs;
+    int ssaa, hires, widescreen, fast_loading, offline_hub;
+    int texture_dump, texture_packs, texture_cache_mb, texture_preload;
     int usb_keyboard;
     char textures[1024];
+    char text_pack[256];
     char states[1024];
     char pictures[1024];
-    char freecam_input[16], freecam_speed[16], freecam_pad[16];
+    char freecam_input[16], freecam_speed[16], freecam_pad[16], fast_forward_cap[16];
+    char camera_stick[8], camera_stick_button[12], camera_stick_which[8], camera_stick_invert[8], camera_stick_speed[8];
     int launcher;   /* launcher = off: the launcher's window is not shown at the start (launcher.c) */
 } st = {.fullscreen = -1, .mute = -1, .vsync = -2, .launcher = 1};
 
@@ -140,6 +150,15 @@ static const Setting g_rows[] = {
     {.key = "texture_packs", .opt = "--texture-packs", .type = SET_FLAG, .how = AP_ON, .page = PAGE_PICTURE,
      .effect = FX_RENDERER, .ckind = C_FLAG, .onval = 1, CFG(texture_packs), .dflt = "off", .label = T_TEXPACKS,
      .help = T_TEXPACKS_H, INTST(texture_packs)},
+    {.key = "texture_cache_mb", .type = SET_RANGE, .how = AP_TEXMB, .page = PAGE_CONTENT, .effect = FX_RENDERER, .restart = 1,
+     .ckind = C_NUM,
+     CFG(texture_cache_mb), .lo = 16, .hi = 16384, .dflt = "1024", .choices = "256|512|1024|2048|4096|8192", .label = T_TEXMB, .help = T_TEXMB_H, INTST(texture_cache_mb)},
+    {.key = "texture_preload", .type = SET_TRI, .how = AP_PRELOAD, .page = PAGE_CONTENT, .effect = FX_RENDERER, .restart = 1,
+     .ckind = C_FLAG, .onval = 1, .choices = "off|on", CFG(texture_no_preload), .dflt = "on", .label = T_TEXPRE, .help = T_TEXPRE_H, INTST(texture_preload)},
+    /* the translation pack: a folder of the text_packs folder, or a path; off: none */
+    {.key = "text_pack", .opt = "--text-pack", .arg = "off|NAME", .type = SET_TEXT, .how = AP_TEXT, .page = PAGE_CONTENT,
+     .effect = FX_START, .restart = 1, .ckind = C_STR, CFG(text_pack), .dflt = "off", .label = T_TEXTPACK, .help = T_TEXTPACK_H,
+     TXTST(text_pack)},
     {.key = "textures", .opt = "--textures", .arg = "FOLDER", .type = SET_TEXT, .how = AP_TEXT, .page = PAGE_PICTURE,
      .effect = FX_RENDERER, .ckind = C_STR, CFG(textures), .dflt = "", .label = T_TEXTURES, .help = T_TEXTURES_H,
      TXTST(textures)},
@@ -147,6 +166,10 @@ static const Setting g_rows[] = {
     {.key = "widescreen", .opt = "--widescreen", .type = SET_FLAG, .how = AP_ON, .page = PAGE_GAME, .effect = FX_COMPUTED,
      .restart = 1, .ckind = C_FLAG, .onval = 2, CFG(widescreen), .dflt = "off", .label = T_WIDESCREEN,
      .help = T_WIDESCREEN_H, INTST(widescreen)},
+    /* the offline hub (Offline Dundorma): the Game page lists it in launcher.c */
+    {.key = "offline_hub", .opt = "--offline-hub", .type = SET_FLAG, .how = AP_ON, .page = PAGE_GAME, .effect = FX_COMPUTED,
+     .restart = 1, .ckind = C_FLAG, .onval = 1, CFG(offline_hub), .dflt = "off", .label = T_OFFLINE_HUB, .help = T_OFFLINE_HUB_H,
+     INTST(offline_hub)},
     {.key = "usb_keyboard", .opt = "--usb-keyboard", .type = SET_FLAG, .how = AP_ON, .page = PAGE_GAME,
      .effect = FX_COMPUTED, .restart = 1, .ckind = C_FLAG, .onval = 1, CFG(usb_keyboard), .dflt = "off",
      .label = T_USBKB, .help = T_USBKB_H, INTST(usb_keyboard)},
@@ -208,14 +231,42 @@ static const Setting g_rows[] = {
      .help = T_FCK_PHOTO_H},
     {.key = "freecam_key_hide", .type = SET_KEY, .page = PAGE_GAME, .effect = FX_START, .dflt = "H", .label = T_FCK_HIDE,
      .help = T_FCK_HIDE_H},
+    /* the pacing (pace.c): fast loading, the pause for the plain game, fast-forward */
+    {.key = "fast_loading", .opt = "--fast-loading", .type = SET_FLAG, .how = AP_ON, .page = PAGE_GAME, .effect = FX_START,
+     .ckind = C_FLAG, .onval = 1, CFG(fast_loading), .dflt = "off", .label = T_FASTLOAD, .help = T_FASTLOAD_H,
+     INTST(fast_loading)},
+    {.key = "pace_key_pause", .type = SET_KEY, .page = PAGE_GAME, .effect = FX_START, .dflt = "Space", .label = T_PZ_PAUSE,
+     .help = T_PZ_PAUSE_H},
+    {.key = "pace_key_step", .type = SET_KEY, .page = PAGE_GAME, .effect = FX_START, .dflt = "Period", .label = T_PZ_STEP,
+     .help = T_PZ_STEP_H},
+    {.key = "pace_key_fast", .type = SET_KEY, .page = PAGE_GAME, .effect = FX_START, .dflt = "`", .label = T_PZ_FAST,
+     .help = T_PZ_FAST_H},
+    {.key = "fast_forward_cap", .type = SET_TEXT, .how = AP_TEXT_SET, .page = PAGE_GAME, .effect = FX_START, .ckind = C_STR,
+     CFG(fast_forward_cap), .dflt = "4", .choices = "2|3|4|6|8|none", .label = T_PZ_CAP, .help = T_PZ_CAP_H,
+     TXTST(fast_forward_cap)},
     {.key = "freecam_game_input", .type = SET_TEXT, .how = AP_TEXT_SET, .page = PAGE_GAME, .effect = FX_START,
      .ckind = C_STR, CFG(freecam_input), .dflt = "neutral", .choices = "neutral|pad", .label = T_FCIN, .help = T_FCIN_H,
      TXTST(freecam_input)},
     {.key = "freecam_speed", .type = SET_TEXT, .how = AP_TEXT_SET, .page = PAGE_GAME, .effect = FX_START,
      .ckind = C_STR, CFG(freecam_speed), .dflt = "400", .choices = "200|400|800|1500|3000", .label = T_FCSPEED,
      .help = T_FCSPEED_H, TXTST(freecam_speed)},
+    /* the camera on the right stick (camstick.c): the stick as the D-pad the game reads; nothing in the game changes */
+    {.key = "camera_stick", .type = SET_TEXT, .how = AP_TEXT_SET, .page = PAGE_GAME, .effect = FX_START, .ckind = C_STR,
+     CFG(camera_stick), .dflt = "off", .choices = "off|hold|on", .label = T_CAMSTICK, .help = T_CAMSTICK_H, TXTST(camera_stick)},
+    {.key = "camera_stick_button", .type = SET_TEXT, .how = AP_TEXT_SET, .page = PAGE_GAME, .effect = FX_START,
+     .ckind = C_STR, CFG(camera_stick_button), .dflt = "l3", .choices = "l3|select|l2|r2", .label = T_CAMSTICK_BTN,
+     .help = T_CAMSTICK_BTN_H, TXTST(camera_stick_button)},
+    {.key = "camera_stick_which", .type = SET_TEXT, .how = AP_TEXT_SET, .page = PAGE_GAME, .effect = FX_START,
+     .ckind = C_STR, CFG(camera_stick_which), .dflt = "right", .choices = "right|left", .label = T_CAMSTICK_WHICH,
+     .help = T_CAMSTICK_WHICH_H, TXTST(camera_stick_which)},
+    {.key = "camera_stick_invert", .type = SET_TEXT, .how = AP_TEXT_SET, .page = PAGE_GAME, .effect = FX_START,
+     .ckind = C_STR, CFG(camera_stick_invert), .dflt = "none", .choices = "none|x|y|xy", .label = T_CAMSTICK_INV,
+     .help = T_CAMSTICK_INV_H, TXTST(camera_stick_invert)},
+    {.key = "camera_stick_speed", .type = SET_TEXT, .how = AP_TEXT_SET, .page = PAGE_GAME, .effect = FX_START,
+     .ckind = C_STR, CFG(camera_stick_speed), .dflt = "100", .choices = "25|50|75|100", .label = T_CAMSTICK_SPEED,
+     .help = T_CAMSTICK_SPEED_H, TXTST(camera_stick_speed)},
     {.key = "freecam_pad_toggle", .type = SET_TEXT, .how = AP_TEXT_SET, .page = PAGE_GAME, .effect = FX_START,
-     .ckind = C_STR, CFG(freecam_pad), .dflt = "on", .choices = "on|off", .label = T_FCPAD, .help = T_FCPAD_H,
+     .ckind = C_STR, CFG(freecam_pad), .dflt = "off", .choices = "on|off", .label = T_FCPAD, .help = T_FCPAD_H,
      TXTST(freecam_pad)},
     /* the launcher */
     {.key = "launcher", .type = SET_FLAG, .how = AP_NONE, .page = PAGE_HOME, .effect = FX_START, .dflt = "on",
@@ -239,8 +290,12 @@ static const Setting g_rows[] = {
     /* bindings, and the original's keys */
     {.key = "key.", .type = SET_BIND, .prefix = 1, .label = T_BIND, .help = T_BIND_H},
     {.key = "pad.", .type = SET_BIND, .prefix = 1, .label = T_BIND, .help = T_BIND_H, .hidden = 1},
+    {.key = "pack.", .type = SET_PACK, .prefix = 1, .hidden = 1},
     {.key = "orig", .type = SET_OLD, .hidden = 1, .help = T_OLD_ORIG},
     {.key = "any_core", .type = SET_OLD, .hidden = 1, .help = T_OLD_ANYCORE},
+    /* fps and fps60 come from a development build's file: read and ignored, as the original's keys are */
+    {.key = "fps", .type = SET_OLD, .hidden = 1, .help = T_OLD_ANYCORE},
+    {.key = "fps60", .type = SET_OLD, .hidden = 1, .help = T_OLD_ANYCORE},
 };
 #define NROWS ((int)(sizeof(g_rows) / sizeof(g_rows[0])))
 
@@ -320,6 +375,8 @@ static void apply(const char *key, const char *v, int line)
             if (r == -1)
                 r = freecam_setting(key, v);
             if (r == -1)
+                r = pace_setting(key, v);
+            if (r == -1)
                 continue;
             if (r == -2)
                 note("%s: \"%s\" is not a key name", at(line), v);
@@ -331,6 +388,14 @@ static void apply(const char *key, const char *v, int line)
                 note("%s: no button \"%s\"", at(line), key + 4);
             else if (r == -2)
                 note("%s: \"%s\" is not a %s name", at(line), v, key[0] == 'k' ? "key" : "gamepad button");
+            break;
+        }
+        case SET_PACK: {
+            int r = packs_setting(key, v);
+            if (r == -2)
+                note("%s: %s is on or off", at(line), key);
+            else if (r == -1)
+                note("%s: \"%s\" is not a pack's name", at(line), key);
             break;
         }
         case SET_OLD:
@@ -563,6 +628,13 @@ void settings_apply(int cli_fullscreen, int cli_mute)
             if (((char *)s->st)[0])
                 *(const char **)cfg_at(at) = (const char *)s->st;
             break;
+        case AP_TEXMB:
+            if (st.texture_cache_mb)
+                g_cfg.texture_cache_mb = st.texture_cache_mb;
+            break;
+        case AP_PRELOAD:
+            g_cfg.texture_no_preload = st.texture_preload < 0;
+            break;
         case AP_VSYNC:
             if (g_cfg.vsync == -2)   /* not on the command line */
                 g_cfg.vsync = st.vsync == -2 ? -1 : st.vsync;
@@ -589,8 +661,9 @@ static char g_cur[sizeof(g_rows) / sizeof(g_rows[0])][SBUF];    /* the values no
 static int owned(int i)
 {
     const Setting *s = &g_rows[i];
-    return s->page != PAGE_NONE && s->page != PAGE_DEV && (s->type == SET_FLAG || s->type == SET_VSYNC ||
-                                                           s->type == SET_CHOICE || s->type == SET_TEXT);
+    return s->page != PAGE_NONE && s->page != PAGE_DEV &&
+           (s->type == SET_FLAG || s->type == SET_VSYNC || s->type == SET_CHOICE || s->type == SET_TEXT ||
+            s->type == SET_RANGE || s->type == SET_TRI);
 }
 
 const char *settings_text(int i)
@@ -601,11 +674,12 @@ const char *settings_text(int i)
     if (s->type == SET_KEY) {
         snprintf(b, SBUF, "%s", !strncmp(s->key, "state_key_", 10)  ? states_key_text(s->key)
                                 : !strncmp(s->key, "freecam_key", 11) ? freecam_key_text(s->key)
+                                : !strncmp(s->key, "pace_key", 8) ? pace_key_text(s->key)
                                                                       : kbd_key_name(s->key));
     } else if (s->cfg && s->ckind) {
         switch (s->ckind) {
         case C_FLAG:
-            snprintf(b, SBUF, "%s", (*(int *)cfg_at(s->cfg) != 0) != (s->how == AP_INVERT) ? "on" : "off");
+            snprintf(b, SBUF, "%s", (*(int *)cfg_at(s->cfg) != 0) != (s->how == AP_INVERT || s->how == AP_PRELOAD) ? "on" : "off");
             break;
         case C_VSYNC: {
             int v = *(int *)cfg_at(s->cfg);
@@ -615,7 +689,7 @@ const char *settings_text(int i)
         case C_NUM: {
             int v = *(int *)cfg_at(s->cfg);
             if (s->type == SET_CHOICE)
-                snprintf(b, SBUF, "%d", v < 2 ? 1 : v);
+                snprintf(b, SBUF, "%d", v < 2 ? (s->dflt ? atoi(s->dflt) : 1) : v);   /* (no value: the choice's default, 1 for the samples, 30 for the frame rate) */
             else if (v)
                 snprintf(b, SBUF, "%d", v);
             break;
@@ -655,6 +729,8 @@ int settings_changed(int i)
 
 int settings_dirty(void)
 {
+    if (packs_changed())
+        return 1;
     for (int i = 0; i < NROWS; i++)
         if (settings_changed(i) && !g_given[i])
             return 1;
@@ -741,7 +817,7 @@ void settings_put(int i, const char *text)
     if (s->cfg && s->ckind) {
         switch (s->ckind) {
         case C_FLAG:
-            *(int *)cfg_at(s->cfg) = (flag(text) != 0) != (s->how == AP_INVERT) ? s->onval : 0;
+            *(int *)cfg_at(s->cfg) = (flag(text) != 0) != (s->how == AP_INVERT || s->how == AP_PRELOAD) ? s->onval : 0;
             break;
         case C_VSYNC:
             *(int *)cfg_at(s->cfg) = !SDL_strcasecmp(text, "auto") ? -1 : flag(text);
@@ -773,14 +849,31 @@ int settings_step(int i, int dir)
         return 0;
     int n = choice_index(i, g_cur[i]);
     int m;
-    if (n < 0)
-        n = 0;
-    if (s->type == SET_FLAG && count == 2)
-        m = 1 - n;
-    else
-        m = n + dir < 0 ? 0 : n + dir >= count ? count - 1 : n + dir;
-    if (m == n && n == choice_index(i, g_cur[i]))
-        return 0;
+    if (n < 0 && s->type == SET_RANGE) {   /* a number of the file between the listed ones: the next listed one that way */
+        int cur = SDL_atoi(g_cur[i][0] ? g_cur[i] : s->dflt ? s->dflt : "");
+        m = -1;
+        for (int k = 0; k < count; k++) {
+            int v = SDL_atoi(nth_word(choice_words(s), k));
+            if (dir > 0 && v > cur) {
+                m = k;
+                break;
+            }
+            if (dir < 0 && v < cur)
+                m = k;
+        }
+        if (m < 0)
+            return 0;
+        n = m;
+    } else {
+        if (n < 0)
+            n = 0;
+        if ((s->type == SET_FLAG || s->type == SET_TRI) && count == 2)
+            m = 1 - n;
+        else
+            m = n + dir < 0 ? 0 : n + dir >= count ? count - 1 : n + dir;
+        if (m == n && n == choice_index(i, g_cur[i]))
+            return 0;
+    }
     char word[SBUF];
     snprintf(word, sizeof(word), "%s", nth_word(choice_words(s), m));
     char before[SBUF];
@@ -860,6 +953,14 @@ static int line_key(const Line *l, char *key, size_t kcap, size_t *vs, size_t *v
     return 1;
 }
 
+/* A line of a pack key (pack.NAME): the loader's reading of it. */
+static int is_pack_line(const Line *l)
+{
+    char key[PACK_NAME_MAX + 16];
+    size_t vs, ve;
+    return line_key(l, key, sizeof(key), &vs, &ve) && !strncmp(key, "pack.", 5);
+}
+
 typedef struct Out {
     char *p;
     size_t len, cap;
@@ -883,6 +984,19 @@ static void out_add(Out *o, const char *s, size_t n)
     memcpy(o->p + o->len, s, n);
     o->len += n;
     o->p[o->len] = 0;
+}
+
+/* The list of packs as lines: pack.NAME = on|off, in the list's order. */
+static void out_packs(Out *o, const char *nl, size_t nll)
+{
+    for (int i = 0; i < packs_key_count(); i++) {
+        int on = 0;
+        const char *name = packs_key(i, &on);
+        out_add(o, "pack.", 5);
+        out_add(o, name, strlen(name));
+        out_add(o, on ? " = on" : " = off", on ? 5 : 6);
+        out_add(o, nl, nll);
+    }
 }
 
 int settings_save(char *err, size_t cap)
@@ -985,22 +1099,36 @@ int settings_save(char *err, size_t cap)
     int any_pending = 0;
     for (int i = 0; i < NROWS; i++)
         any_pending |= pending[i] == 1;
+    /* the packs the page changed: every pack line goes and the list takes the first one's place; with no line, it goes where
+     * the new keys go */
+    int packs_edit = packs_changed(), pack_at = -1;
+    if (packs_edit)
+        for (int k = 0; k < nlines && pack_at < 0; k++)
+            if (is_pack_line(&lines[k]))
+                pack_at = k;
+    int pack_pending = packs_edit && pack_at < 0 && packs_key_count() > 0;
+    any_pending |= pack_pending;
     int inserted = 0;
     for (int k = 0; k < nlines; k++) {
         const Line *l = &lines[k];
         char key[128];
         size_t vs, ve;
-        if (repl[k] && line_key(l, key, sizeof(key), &vs, &ve)) {
-            out_add(&o, l->p, vs);
-            out_add(&o, repl[k], strlen(repl[k]));
-            out_add(&o, l->p + ve, l->len - ve);
+        if (packs_edit && is_pack_line(l)) {   /* (the insertion below still follows it if it ends the [launcher] section) */
+            if (k == pack_at)
+                out_packs(&o, nl, nll);
         } else {
-            out_add(&o, l->p, l->len);
+            if (repl[k] && line_key(l, key, sizeof(key), &vs, &ve)) {
+                out_add(&o, l->p, vs);
+                out_add(&o, repl[k], strlen(repl[k]));
+                out_add(&o, l->p + ve, l->len - ve);
+            } else {
+                out_add(&o, l->p, l->len);
+            }
+            if (l->eol)
+                out_add(&o, l->p + l->len, 1);
+            else if (k + 1 < nlines || any_pending)
+                out_add(&o, nl, nll);
         }
-        if (l->eol)
-            out_add(&o, l->p + l->len, 1);
-        else if (k + 1 < nlines || any_pending)
-            out_add(&o, nl, nll);
         if (any_pending && k == launcher_end && !inserted) {   /* an existing [launcher] section takes them */
             for (int i = 0; i < NROWS; i++)
                 if (pending[i] == 1) {
@@ -1009,6 +1137,8 @@ int settings_save(char *err, size_t cap)
                     out_add(&o, g_cur[i], strlen(g_cur[i]));
                     out_add(&o, nl, nll);
                 }
+            if (pack_pending)
+                out_packs(&o, nl, nll);
             inserted = 1;
         }
     }
@@ -1024,6 +1154,8 @@ int settings_save(char *err, size_t cap)
                 out_add(&o, g_cur[i], strlen(g_cur[i]));
                 out_add(&o, nl, nll);
             }
+        if (pack_pending)
+            out_packs(&o, nl, nll);
     }
     free(repl);
     free(pending);
@@ -1050,6 +1182,7 @@ int settings_save(char *err, size_t cap)
     for (int i = 0; i < NROWS; i++)
         if (owned(i))
             snprintf(g_base[i], SBUF, "%s", g_cur[i]);
+    packs_saved();
     return 0;
 }
 
@@ -1057,7 +1190,7 @@ const char *settings_enhancements(void)
 {
     static char b[160];
     if (g_cfg.ssaa_asked) {   /* gs.c: the renderer could not make the samples and runs at one */
-        snprintf(b, sizeof(b), "off (ssaa %d%s asked: the renderer could not make the samples; one sample)", g_cfg.ssaa_asked,
+        snprintf(b, sizeof(b), "off (ssaa %d%s asked: the graphics card could not make the samples; one sample)", g_cfg.ssaa_asked,
                  g_cfg.hires_asked ? ", hires" : "");
         return b;
     }
@@ -1167,22 +1300,14 @@ int launcher_disc(void)
     if (disc_find(path, sizeof(path)) != 0)
         return -1;
     if (!is_file(path)) {
-        host_log("the disc archive %s is not a file", path);
+        host_log("the game archive %s is not a file", path);
         return -1;
     }
     if (!has_arg("--disc"))
         launcher_core_arg("--disc", path);
     g_cfg.disc_path = path;   /* MH2_DISC too (process.c): io's default archive; io finds the movie table beside it */
-    host_log("disc archive: %s", path);
+    host_log("game archive: %s", path);
     return 0;
-}
-
-/* Is there an archive to play? No messages and no changes: the launcher asks before it opens (a missing archive keeps
- * the fatal message of main.c until the first-run steps exist). */
-int launcher_disc_present(void)
-{
-    char path[1200];
-    return disc_find(path, sizeof(path)) == 0 && is_file(path);
 }
 
 /* The archive the settings name: --archive (or the launcher's choice), else mh2.ini's archive; "" if none. */
@@ -1224,11 +1349,44 @@ void launcher_widescreen(void)
     host_log("widescreen: on (the camera and the 2D picture are 16:9; movies are shown at 4:3)");
 }
 
+/* The offline hub reaches the core as its own option, --offline-hub. */
+void launcher_offline_hub(void)
+{
+    if (has_arg("--offline-hub"))
+        g_cfg.offline_hub = 1;
+    if (!g_cfg.offline_hub)
+        return;
+    if (!has_arg("--offline-hub"))
+        launcher_core_flag("--offline-hub");
+    host_log("offline hub: on (the village's gate leads to the online town, played with no network)");
+}
+
+/* The text pack reaches the core as its folder, --pack DIR: the setting's NAME is a folder of text_packs in the user data
+ * folder, or (with a separator in it) a path. A pack that was asked for and is not there stops the core (it says why). */
+void launcher_text_pack(void)
+{
+    const char *name = g_cfg.text_pack;
+    static char dir[1200];
+    if (!name || !*name || !strcmp(name, "off") || has_arg("--pack"))
+        return;
+    if (strpbrk(name, "/\\")) {
+        snprintf(dir, sizeof(dir), "%s", name);
+    } else if (play_data_dir()) {
+        snprintf(dir, sizeof(dir), "%stext_packs/%s", play_data_dir(), name);
+    } else {
+        host_log("text_pack = %s: there is no user data folder to look in (name a path)", name);
+        snprintf(dir, sizeof(dir), "%s", name);
+    }
+    host_log("translation pack: %s", dir);
+    launcher_core_arg("--pack", dir);
+}
+
 
 #ifdef MH2_SETTINGS_TEST
 /* The settings test (pc/host/tests/settings_writer_test.c) starts each case from nothing. */
 void settings_test_reset(void)
 {
+    packs_reset();
     memset(&st, 0, sizeof(st));
     st.fullscreen = -1;
     st.mute = -1;

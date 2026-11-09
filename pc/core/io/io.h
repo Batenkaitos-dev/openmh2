@@ -69,10 +69,17 @@ int Io_DiscRead(u32 lba, u32 count, void *dst);
  * (movie.c: the host's). */
 int Io_DiscReadSectors(u32 lba, u32 count, void *dst);
 
+/* The pack of io_host.h (Host_DiscPackOpen): 0, or -1. */
+int Io_DiscPackOpen(const char *dir);
+int Io_DiscPackFind(const char *key, u32 *lba, u32 *size);
+/* The open pack's hash (64 hex digits and a NUL): 0, or -1 when no pack is open. */
+int Io_DiscPackHash(char hex[65]);
+/* The open pack's name from its pack.ini ("" when no pack is open). */
+const char *Io_DiscPackName(void);
+
 /* The development log of the loads (io_loadlog.c). */
 void IoLoadLog_Read(u32 lbn, u32 sectors);
 void IoLoadLog_VBlank(void);
-int IoLoadLog_Unpaced(void);
 /* Where sector lba is on the host, for the host's movie player (the
  * original's disc_host_location): the archive's path (absolute when the
  * system gives one; valid while the run lasts) and the byte offset of the
@@ -93,7 +100,7 @@ void IoFio_Register(void);       /* fileio 0x80000001: io_fio.c */
 void IoFio_Reset(void);          /* every file closed (tests; an IOP reboot) */
 void IoCdvd_Register(void);
 void IoKb_Register(void);         /* the USB keyboard 0x80000211: io_usbkb.c */
-/* The USB keyboard (io_usbkb.c; the original's model, iop_usbkb.c). Not connected (the default), the
+/* The USB keyboard (io_usbkb.c; the original's model). Not connected (the default), the
  * service answers that there is none and the game never sees a key. Connected when --usb-keyboard says so, or the
  * host does (Io_KbHostWants, set by the glue: MH2IPC_HOST_USB_KEYBOARD).
  * The keyboard is the pad's software keyboard otherwise. */

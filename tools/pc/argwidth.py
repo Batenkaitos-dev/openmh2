@@ -33,7 +33,7 @@ at VBlank 0xV, time 0xN, ra 0xADDR", in hex: the IR calls no C library function 
 name, since game data has names like snprintf), the first, second, fourth, eighth ...
 time at each site, with the VBlank and, for a result, the caller's return address
 (llvm-nm on mh2-core names it); and each site once, when a run first reaches it
-("argwidth reached: SITE"). tools/pc/variants.py collects them.
+("argwidth reached: SITE"). the verification build collects them.
 
     argwidth.py --table OUT [REPO]    writes the table: proto_check's `unit` and
                                       `xunit` declarations of the PC build

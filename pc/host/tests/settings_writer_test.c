@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "mh2host.h"
+#include "packs.h"
 #include "settings.h"
 
 HostConfig g_cfg;
@@ -62,6 +63,17 @@ const char *freecam_key_text(const char *key)
     (void)key;
     return "none";
 }
+int pace_setting(const char *key, const char *value)
+{
+    (void)key;
+    (void)value;
+    return 0;
+}
+const char *pace_key_text(const char *key)
+{
+    (void)key;
+    return "none";
+}
 
 void settings_test_reset(void);
 
@@ -108,6 +120,7 @@ static void run(const char *name, const char *ini, const char *const *args, cons
     if (ini)
         write_file(path, ini, strlen(ini));
     settings_test_reset();
+    packs_reset();
     memset(&g_cfg, 0, sizeof(g_cfg));
     g_cfg.vsync = -2;
     g_cfg.config_path = path;
@@ -133,6 +146,24 @@ static void run(const char *name, const char *ini, const char *const *args, cons
     settings_apply(0, 0);
     settings_session_begin();
     for (const Step *s = steps; s && s->key; s++) {
+        if (!strcmp(s->key, "@packs")) {   /* the Content page's list: "name=on,name=off" in order */
+            PackInfo list[16];
+            int np = 0;
+            char text[256];
+            snprintf(text, sizeof(text), "%s", s->value);
+            for (char *tok = strtok(text, ","); tok && np < 16; tok = strtok(NULL, ",")) {
+                char *eq = strchr(tok, '=');
+                if (!eq)
+                    continue;
+                *eq = 0;
+                snprintf(list[np].name, PACK_NAME_MAX, "%s", tok);
+                list[np].on = !strcmp(eq + 1, "on");
+                list[np].present = 1;
+                np++;
+            }
+            packs_set(list, np);
+            continue;
+        }
         int row = settings_find(s->key);
         if (row < 0) {
             fprintf(stderr, "%s: no row %s\n", name, s->key);
@@ -201,6 +232,21 @@ int main(int argc, char **argv)
     run("skip the launcher", NULL, NULL, (Step[]){{"launcher", "off"}, {0}}, "[launcher]\nlauncher = off\n", NULL);
     run("a blank line before the section is not doubled", "mute = on\n\n", NULL, (Step[]){{"vsync", "off"}, {0}},
         "mute = on\n\n[launcher]\nvsync = off\n", NULL);
+
+    /* the Content page's pack list: the lines it writes, in its order */
+    run("packs: no lines, a launcher section", NULL, NULL, (Step[]){{"@packs", "Zed=on,alpha=off"}, {0}},
+        "[launcher]\npack.Zed = on\npack.alpha = off\n", NULL);
+    run("packs: the list takes the first line's place, in its order", "# mine\nmute = on\npack.a = on\nfoo = 1\npack.b = off\n", NULL,
+        (Step[]){{"@packs", "b=on,a=off,c=on"}, {0}}, "# mine\nmute = on\npack.b = on\npack.a = off\npack.c = on\nfoo = 1\n", NULL);
+    run("packs: a line ends the launcher section, and a new key follows it", "[launcher]\nssaa = 2\npack.a = on\n[input]\nkey.cross = Space\n",
+        NULL, (Step[]){{"@packs", "b=on,a=on"}, {"vsync", "on"}, {0}},
+        "[launcher]\nssaa = 2\npack.b = on\npack.a = on\nvsync = on\n[input]\nkey.cross = Space\n", NULL);
+    run("packs: all of them gone", "pack.a = on\nmute = on\n", NULL, (Step[]){{"@packs", ""}, {0}}, "mute = on\n", NULL);
+    run("packs: a Japanese name, CRLF", "ssaa = 2\r\n", NULL, (Step[]){{"@packs", "\xe3\x83\x87\xe3\x82\xa3=on"}, {0}},
+        "ssaa = 2\r\n\r\n[launcher]\r\npack.\xe3\x83\x87\xe3\x82\xa3 = on\r\n", NULL);
+    run("packs: the last line has no end of line", "mute = on\npack.a = on", NULL, (Step[]){{"@packs", "a=off"}, {0}},
+        "mute = on\npack.a = off\n", NULL);
+    run("packs: unchanged, the file is left alone", "pack.b = off\npack.a = on\n", NULL, (Step[]){{0}}, "pack.b = off\npack.a = on\n", NULL);
 
     /* a file that cannot be made */
     {

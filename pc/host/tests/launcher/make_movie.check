@@ -1,3 +1,0 @@
-exists out/mh2-disc.arc
-exists out/mh2-movies.txt
-absent out/mh2-disc.arc.tmp

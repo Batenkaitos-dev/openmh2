@@ -34,6 +34,7 @@
 #include "stream.h"
 #include "texture.h"
 #include "game_util.h"
+#include "pal.h"
 #include "area.h"
 #include "camera.h"
 #include "display_util.h"
@@ -385,6 +386,55 @@ s32 Game_IsOnline(void)
 {
     return gOnlineFlag != 0;
 }
+
+#if PLATFORM_PC
+/* The offline hub's rules (include/game_util.h): set while the player is in the town's areas and the houses reached from
+ * them, never saved on a card, and part of a save state with the rest of the game's memory. */
+static s32 sHubRules;
+
+s32 Game_RulesOnline(void)
+{
+    return gOnlineFlag != 0 || sHubRules != 0;
+}
+
+void Game_HubRulesSet(s32 on)
+{
+    sHubRules = on != 0;
+}
+
+s32 Game_HubRules(void)
+{
+    return sHubRules;
+}
+
+s32 Game_HubOffered(void)
+{
+    return Pal_OfflineHub() != 0 && gOnlineFlag == 0;
+}
+
+s32 Game_HubTownArea(u16 area)
+{
+    return area >= AREA_HUB_0x84 && area <= AREA_ELDER_HALL;
+}
+
+u16 Game_HubReturnArea(void)
+{
+    extern u16 gQuestReturnArea;
+
+    if (Game_HubOffered() == 1 && Game_HubTownArea(gQuestReturnArea) == 1) {
+        return gQuestReturnArea;
+    }
+    return 0;
+}
+
+s32 Game_HubBanksChange(u16 from, u16 to)
+{
+    if (Game_HubOffered() == 0) {
+        return 0;
+    }
+    return (from == AREA_HUB_0x89 && Game_HubTownArea(to)) || (Game_HubTownArea(from) && to == AREA_HUB_0x89);
+}
+#endif
 
 /*
  * 1 when the quest is a drill (QUEST_FLAG_DRILL): online, the flag of the

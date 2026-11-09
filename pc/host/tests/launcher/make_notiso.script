@@ -1,8 +1,0 @@
-key Return
-key Return
-pick junk.iso
-waitdone
-shot failure
-key Return
-shot disc_after
-end

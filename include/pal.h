@@ -41,8 +41,15 @@
  *   that draw the world (a quest in the field, the village) bracket their Frame_Draw with PC_FREECAM_FIELD(1) and (0): the
  *   freecam is on only for their draw. Frame_Draw starts with PC_FREECAM_BEGIN(&objs), which hands over the camera's objects
  *   (PalFreecamObjs below), and ends with PC_FREECAM_END(). Nothing on the PS2.
- * - PC_FREECAM_HIDE(stage) in front of a draw statement: the draw is skipped while the freecam's pose hides that stage of
- *   Frame_Draw (PAL_STAGE_* below), in a field scene's draw only. Nothing on the PS2.
+ * - PC_LOADING_SCREEN(on): the game's loading screen opens (Loading_Open: 1) or closes (Loading_Close: 0). The host's fast
+ *   loading (pc/core/ipc/host_ipc.c) does not wait for real time while it is open; nothing the game computes changes. Nothing on
+ *   the PS2.
+ * - PC_TEXT(s) at the top of each of the text layer's entry points (text_layer.c, font.c): s is the string the function was
+ *   given, and the text pack (if one is chosen) may answer with its replacement for it (pc/core/io/host_text.c); the same
+ *   string without one. Nothing on the PS2.
+ * - PC_FREECAM_STAGE(stage) in front of a draw statement names the stage of Frame_Draw (PAL_STAGE_* below) that follows: the
+ *   statement runs as the game has it, and while the freecam's pose hides the stage its 2D packets draw nothing (in a field
+ *   scene's draw only). Nothing on the PS2.
  */
 #if PLATFORM_PS2
 #define PAL_POLL() ((void)0)
@@ -51,12 +58,16 @@
 #define PC_VIEW_X(halfW) (halfW)
 #define PC_HUD_2D() ((void)0)
 #define PC_HUD_PACKET(p, frameWidth) ((void)0)
+#define PC_HUD_QUEUED(q) ((void)0)
 #define PC_HUD_PIVOT(x) ((void)0)
 #define PC_HUD_PIVOT_END() ((void)0)
 #define PC_FREECAM_FIELD(on) ((void)0)
 #define PC_FREECAM_BEGIN(objs) ((void)0)
 #define PC_FREECAM_END() ((void)0)
-#define PC_FREECAM_HIDE(stage)
+#define PC_FREECAM_STAGE(stage)
+#define PC_TEXT(s) ((void)0)
+#define PC_LOADING_SCREEN(on) ((void)0)
+#define PC_GS_CAMERA(view, proj) ((void)0)
 #define PAL_SYNC_EI() __asm__ volatile ("sync.l\n\tei")
 #define PAL_NOPS_8() __asm__ volatile ("nop\n nop\n nop\n nop\n nop\n nop\n nop\n nop")
 #define PAL_NOPS_7() __asm__ volatile ("nop\n nop\n nop\n nop\n nop\n nop\n nop")
@@ -70,12 +81,16 @@
 #define PC_VIEW_X(halfW) Pal_ViewHalfWidth(halfW)
 #define PC_HUD_2D() Pal_HudMark()
 #define PC_HUD_PACKET(p, frameWidth) Pal_HudPacket((p), (frameWidth))
+#define PC_HUD_QUEUED(q) Pal_HudQueued(q)
 #define PC_HUD_PIVOT(x) Pal_HudPivot(x)
 #define PC_HUD_PIVOT_END() Pal_HudPivotEnd()
 #define PC_FREECAM_FIELD(on) Pal_FreecamField(on)
 #define PC_FREECAM_BEGIN(objs) Pal_FreecamBegin(objs)
 #define PC_FREECAM_END() Pal_FreecamEnd()
-#define PC_FREECAM_HIDE(stage) if (!Pal_FreecamHide(stage))
+#define PC_FREECAM_STAGE(stage) Pal_FreecamStage(stage);
+#define PC_TEXT(s) ((s) = (void *)Pal_Text((const char *)(s)))
+#define PC_LOADING_SCREEN(on) Pal_LoadingScreen(on)
+#define PC_GS_CAMERA(view, proj) Pal_GsCamera((view), (proj))
 #endif
 
 #if PLATFORM_PC
@@ -148,6 +163,13 @@ f32 Pal_FrustumAspect(void);
 f32 Pal_ViewHalfWidth(f32 halfW);   /* PC_VIEW_X: 320 becomes 4/3 of it at level 2, any other value stays */
 
 /*
+ * The offline hub enhancement's setting (pc/core/pal_hub.c): 1 when the village's gate leads to the online town played
+ * offline (the core's --offline-hub), else 0. Off by default; with it off the game is Dos as it was. Game code asks it
+ * only inside PLATFORM_PC blocks.
+ */
+s32 Pal_OfflineHub(void);
+
+/*
  * The 2D picture's shape (pc/core/pal_hud.c; level 2): Pal_HudMark marks the packet the emitter is about to send,
  * Pal_HudPacket(packet, frameWidth) rewrites the x coordinates of a marked packet (the GS's 12.4 fixed point, in
  * integers: x' = c + (x - c) * 3/4 about the pivot c, the picture's centre unless Pal_HudPivot named a point) and
@@ -155,9 +177,19 @@ f32 Pal_ViewHalfWidth(f32 halfW);   /* PC_VIEW_X: 320 becomes 4/3 of it at level
  * Pal_HudPivot(x): the pivot, in the 640-wide coordinates the emitters take; Pal_HudPivotEnd: the centre again.
  */
 void Pal_HudMark(void);
+/* PC_TEXT: the text pack's replacement for a string, or the string (pc/core/pal_text.c). */
+const char *Pal_Text(const char *s);
 void Pal_HudPacket(u32 *packet, s32 frameWidth);
 void Pal_HudPivot(s32 x);
 void Pal_HudPivotEnd(void);
+/*
+ * The freecam's hide (photo mode; pc/core/pal_hud.c): while Pal_HudHide(1) is set, a marked 2D packet keeps its place in the
+ * buffers and the queue and draws nothing (its vertices go outside the scissor), so every stage runs as the game has it.
+ * Set by Pal_FreecamStage for the stage in progress. Pal_HudHideStats: the packets hidden, and those of a shape it can't read.
+ */
+void Pal_HudHide(s32 on);
+void Pal_HudQueued(u32 *queued);   /* PC_HUD_QUEUED: the queued packet, after PC_HUD_PACKET */
+void Pal_HudHideStats(u32 *hidden, u32 *unparsed);
 
 /*
  * The freecam's seam (pc/core/pal_freecam.c). The game hands over the objects the camera publishes and the draw reads:
@@ -214,8 +246,19 @@ enum {
     PAL_STAGE_LOADING,       /* Loading_DrawLetters, from Callbacks_Run (the scene's) */
     PAL_STAGE_COUNT
 };
-/* 1 when the stage is hidden in the draw in progress. */
-s32 Pal_FreecamHide(s32 stage);
+/* The stage that is about to draw (PC_FREECAM_STAGE): while the pose hides it, its 2D packets draw nothing (Pal_HudHide). Every
+ * stage runs. A stage outside the list (PAL_STAGE_COUNT) is the end of the stages. */
+void Pal_FreecamStage(s32 stage);
+
+/* The loading screen is open (1) or closed (0): the pacer's signal for fast loading (pc/core/ipc/ipc_glue.c). */
+void Pal_LoadingScreen(s32 on);
+
+/*
+ * The camera a model is drawn with (Model_Draw: gMtxView and gMtxProjClip, the two matrices the packet builders multiply a model's own
+ * matrix by), handed to the renderer for the in-between pictures of a higher frame rate. Pal_GsCamera sends the 32 floats only when
+ * they differ from the last it sent. It changes nothing the game sees. Nothing on the PS2.
+ */
+void Pal_GsCamera(const f32 *view, const f32 *proj);
 
 /*
  * Asked at the start of each step of the game main loop (SubMain_Step): 1 when this step is a frozen frame (the last field
@@ -226,7 +269,7 @@ s32 Pal_FreezeStep(void);
 
 /*
  * A poll event: the game's code is in a spin and
- * its test said "not ready". config/pc/polls.txt lists the spins. The original's "not ready" is the taken
+ * its test said "not ready". The polled-wait table lists the spins. The original's "not ready" is the taken
  * backward branch to a listed loop head (a `loop` record), or the return of a listed library function whose
  * result says so (a `ret` record). The game's C calls PAL_POLL() exactly there:
  *   - where the loop decides to go round again: after the test came out true, before the body runs again.

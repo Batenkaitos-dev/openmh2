@@ -1,5 +1,5 @@
 /* Names the code uses inside C-owned data objects, each defined relative to
- * the object that contains it. tools/ld_aliases.py writes this file. */
+ * the object that contains it. The matching build's ld_aliases tool writes this file. */
 gPrimLinePacket = gPrimLinePacket_u64 + 0x0;
 gPrimRectPacket = gPrimRectPacket_u64 + 0x0;
 gPrimGradRectPacket = gPrimGradRectPacket_u64 + 0x0;

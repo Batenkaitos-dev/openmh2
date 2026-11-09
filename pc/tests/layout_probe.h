@@ -1,5 +1,5 @@
 /* Structs whose layout depends on the host ABI's rules, not on the game's data: tools/pc/layout.py
- * compares them with MWCC's layout like the game's own records (pc/README.md, "Layout").
+ * compares them with MWCC's layout like the game's own records (config/pc/layout).
  * The game's bit-fields are whole 32-bit words today (dma.h, model.h, sprite_queue.h, kbd.c); this
  * probe is what would notice a mixed one, and a target whose bit-field rules differ (mingw's
  * default is the Microsoft layout, which the Windows build turns off with -mno-ms-bitfields). */

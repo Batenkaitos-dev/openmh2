@@ -11,7 +11,7 @@
  * revalidates them against the raw words, so code written by any path is
  * picked up.
  *
- * vu1_ref.c keeps the plain per-element interpreter all this was derived
+ * the original's plain per-element interpreter is what all this was derived
  * from; --vu1-check runs every microprogram on both and reports any
  * difference in registers, data memory, timing state or GIF output.
  * --vu1-interp turns the compiled code off. */
@@ -44,7 +44,7 @@ static u32 imm11(u32 lo) { return (lo & 0x400) ? (lo & 0x7FF) | 0xFFFFF800u : lo
 static u32 imm15(u32 lo) { return ((lo >> 10) & 0x7800) | (lo & 0x7FF); }
 static u32 imm12(u32 lo) { return ((lo >> 10) & 0x800) | (lo & 0x7FF); }
 
-/* Mirrors upper() and upper_regs() of vu1_ref.c. */
+/* Mirrors upper() and upper_regs() of the original's plain interpreter. */
 static void decode_upper(Dec *d, u32 up)
 {
     u32 f = up & 0x3F;
@@ -116,7 +116,7 @@ static void decode_upper(Dec *d, u32 up)
         return;
     }
     case 0x2E: d->uk = UK_OPMULA; return;
-    case 0x2B: d->uk = UK_UNDEF; d->uacc = 0; return;   /* stalls still count fs/ft, as vu1_ref.c */
+    case 0x2B: d->uk = UK_UNDEF; d->uacc = 0; return;   /* stalls still count fs/ft, as the plain interpreter */
     }
     d->uacc = 0;
     d->ur2 = 0;
@@ -131,7 +131,7 @@ static void decode_upper(Dec *d, u32 up)
     d->ur1 = 0;
 }
 
-/* Mirrors lower() and lower_regs() of vu1_ref.c. */
+/* Mirrors lower() and lower_regs() of the original's plain interpreter. */
 static void decode_lower(Dec *d, u32 lo)
 {
     u32 op = lo >> 25;
@@ -300,7 +300,7 @@ static u32 s_res(float r, int *over)
     return u;
 }
 
-/* OPMULA / OPMSUB, per element as in vu1_ref.c. */
+/* OPMULA / OPMSUB, per element as in the plain interpreter. */
 u32 vu1_opm_calc(int msub, const VF *s, const VF *t, const VF *acc, VF *out)
 {
     static const int a[3] = {1, 2, 0}, b[3] = {2, 0, 1};
@@ -465,7 +465,7 @@ static int g_use_gen = 1;
 static void run_body(void);
 
 /* The original game runs VU1 inside the guest's thread, whose MXCSR is 0xFFC0:
- * every exception masked, rounding toward zero, FTZ and DAZ (fpu.c
+ * every exception masked, rounding toward zero, FTZ and DAZ (the original's
  * MXCSR_GUEST). The core's own code keeps the host's default. */
 #define VU1_MXCSR 0xFFC0u
 
@@ -546,14 +546,14 @@ u64 vu1_hash_bytes(u64 h, const void *p, u32 n)
 
 /*
  * The compiled microprograms against the interpreter (the original's
- * --vu1-check, vu1.c checked_run): with the check on, every run is made twice
+ * --vu1-check, checked_run): with the check on, every run is made twice
  * from the same state, first on the interpreter (its GIF output hashed, not
  * sent), then as usual (compiled where it can be, its output sent). The two
  * must leave the same registers (VF 1-31, ACC, VI, Q, P, I, R, the flags, TPC,
  * the cycle count, the VF ready times), the same data memory and the same GIF
  * output. A difference is an anomaly ("vu1-check", the run's start address).
  * The core keeps the second run's state. In the original game the interpreter of
- * the check is vu1_ref.c, the plain one this file's interpreter was derived
+ * the check is the plain one this file's interpreter was derived
  * from; in the core it is this file's, which runs the same pairs.
  */
 static int sCheck;

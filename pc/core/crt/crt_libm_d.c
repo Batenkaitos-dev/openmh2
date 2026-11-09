@@ -47,7 +47,7 @@ typedef u64 dbl;   /* a double as its bits */
 #define SET_HI(x, h) ((x) = WORDS((h), LO(x)))
 
 /* The constants: newlib's decimal literals as the game's toolchain
- * converted them. DC(toward zero, nearest) (tools/port/rz_float.py -d). */
+ * converted them. DC(toward zero, nearest) (the same program with -d). */
 #ifdef LIBM_D_NEAREST
 #define DC(rz, rn) (rn##ull)
 #else
@@ -58,7 +58,7 @@ typedef u64 dbl;   /* a double as its bits */
 /* The C library's double helpers (dpadd, dpsub, litodp, dptoli) and its unnamed
  * multiply and divide: ps2dp.h, re-hosted from the earlier port's libgcc.c and from this
  * file's own model, and tested against both
- * (tools/pc/ps2fp/tests/run.sh, oracle_dp). */
+ * (the ps2fp tests, oracle_dp). */
 static inline dbl d_add(dbl a, dbl b) { return ps2dp_add(a, b); }
 static inline dbl d_sub(dbl a, dbl b) { return ps2dp_sub(a, b); }
 static inline dbl d_neg(dbl a) { return a ^ D_SIGN; }

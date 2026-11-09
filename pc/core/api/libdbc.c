@@ -198,7 +198,7 @@ s32 IoDbc_Send(s32 socket, u32 cmd, s32 *size, const void *data)
 }
 
 /* ------------------------------------------------------------ the taps
- * verify's trace tap for each function the game calls (pc/core/verify/verify.h). */
+ * verify's trace tap for each function the game calls. */
 
 s32 sceDbcInit(void)
 {

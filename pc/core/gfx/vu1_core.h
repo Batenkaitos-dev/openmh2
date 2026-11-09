@@ -1,4 +1,4 @@
-/* VU1 core, shared by the interpreter (vu1.c) and the microprograms that
+/* VU1 core, shared by the interpreter (gfx_vu1.c) and the microprograms that
  * tools/pc/vu1rec.py compiles ahead of time from the decomp's
  * src/sub_main/vu1_microcode.vsm (pc/core/gfx/sources.cmake).
  *
@@ -8,9 +8,9 @@
  * keeps the pipeline state in g_vu1. The compiled microprograms call the
  * same functions with constant operation codes, keep the registers in C
  * locals and have their pipeline timing worked out at build time (see
- * vu1rec.py); --vu1-check compares both with vu1_ref.c.
+ * vu1rec.py); --vu1-check compares both with the original's plain interpreter.
  *
- * Arithmetic follows vu0.c (PCSX2 clamp mode 3; rounding toward zero, FTZ
+ * Arithmetic follows the original's VU0 code (PCSX2 clamp mode 3; rounding toward zero, FTZ
  * and DAZ come from the guest thread's MXCSR). Timing is modelled where
  * results depend on it:
  *   - FMAC results are ready 4 cycles after issue; readers stall until then;
@@ -138,7 +138,7 @@ typedef struct Dec {
 
 void vu1_decode(Dec *d, u32 lo, u32 up);
 
-/* Out-of-line parts (vu1.c): rare or long operations. */
+/* Out-of-line parts (gfx_vu1.c): rare or long operations. */
 typedef struct UpRes UpRes;
 void vu1_opm(const Dec *d, int msub, UpRes *o);   /* OPMULA/OPMSUB, per lane */
 void vu1_clip(const Dec *d);

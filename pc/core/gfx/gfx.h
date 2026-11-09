@@ -22,12 +22,12 @@
 void Gfx_Init(void);
 /* VBlank start:
  * GS CSR's FIELD flips, VSINT is set, and the GS cause is raised unless IMR
- * masks VSINT (hw.c hw_vblank(1)). */
+ * masks VSINT (the original's hw_vblank(1)). */
 void Gfx_VBlankStart(u64 vblank);
 /* VBlank end: the frame's GS stream is complete; it goes to the host. */
 void Gfx_VBlankEnd(u64 vblank);
 /* The kernel library's GS calls: SetGsCrt (syscall 2) programs SMODE1 and
- * SMODE2, which go into the GS stream (hw.c hw_set_gs_crt); GsPutIMR (0x71)
+ * SMODE2, which go into the GS stream (the original's hw_set_gs_crt); GsPutIMR (0x71)
  * and GsGetIMR (0x70) set and read IMR. */
 void Gfx_SetGsCrt(u32 interlace, u32 mode, u32 ffmd);
 void Gfx_GsPutImr(u32 imr);

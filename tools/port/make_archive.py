@@ -18,13 +18,11 @@ files. It is only read.
 
 Contents: FILES below, the files the port opens or reads: the boot
 executable (main.c load_elf), the game's data files (the CD/DVD
-service, iop_cdvd.c; the movies, movie.c; --lib-test,
-the old libtest_net.c, since removed), the IOP sound modules (the file service,
-iop_misc.c), and one file the game reads a sector of without opening it:
+service; the movies), the IOP sound modules (the file service), and one file the game reads a sector of without opening it:
 it reads 0FLIST.DIR (43 bytes, one sector) as two sectors, and the second
 is the first of NTGUIDVD/BIN/BG.RGB, so that file is held too (whole, so
 it is hash-checked like the others). Every route's log lists the files a
-run uses ("first lookup of", "first read of": disc.c).
+run uses ("first lookup of", "first read of").
 
 Integrity: each file's size and SHA-1 must be the ones in config/disc.sha1.
 A mismatch stops the tool and names the file; no archive is written.

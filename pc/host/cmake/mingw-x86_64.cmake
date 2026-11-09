@@ -7,5 +7,6 @@ string(REPLACE "x86_64-w64-mingw32-clang" "x86_64-w64-mingw32-clang++" CMAKE_CXX
 set(CMAKE_C_COMPILER_TARGET x86_64-w64-mingw32)
 set(CMAKE_CXX_COMPILER_TARGET x86_64-w64-mingw32)
 string(REPLACE "i686-w64-mingw32" "x86_64-w64-mingw32" CMAKE_RC_COMPILER "${CMAKE_RC_COMPILER}")
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=lld")
-set(CMAKE_SHARED_LINKER_FLAGS_INIT "-fuse-ld=lld")
+# --no-insert-timestamp: two links of the same objects give the same bytes (as pc/cmake/mingw-i686.cmake)
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=lld -Wl,--no-insert-timestamp")
+set(CMAKE_SHARED_LINKER_FLAGS_INIT "-fuse-ld=lld -Wl,--no-insert-timestamp")

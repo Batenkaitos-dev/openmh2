@@ -510,7 +510,7 @@ static s32 sceUsbKbSetReadModeWork(s32 port, u32 mode)
 }
 
 /* ------------------------------------------------------------ the taps
- * verify's trace tap for each function the game calls (pc/core/verify/verify.h). */
+ * verify's trace tap for each function the game calls. */
 
 s32 sceUsbKbGetInfo(void *info)
 {

@@ -1,4 +1,4 @@
-// Function starts of game, pinned for splat (tools/pin_functions.py).
+// Function starts of game, pinned for splat (the matching build's pin_functions tool).
 // 261 unnamed functions; named ones are in the module's symbol files (config/symbols/, its YAML's list).
 func_006AF240 = 0x006AF240; // type:func
 AnimatedScenery_UsesAreaModel = 0x006FD010; // type:func

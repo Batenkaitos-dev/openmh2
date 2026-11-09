@@ -1,5 +1,5 @@
 /* The memory card file system on a raw card image (PCSX2's .ps2 format):
- * the original's mcfs.c, adapted for the core as a
+ * the original's card file system code, adapted for the core as a
  * host file (io_mcfs.h): the host's C library, Host_Log, and the time stamps
  * from mcfs_set_clock (the kernel's calendar) instead of the original's
  * rt_calendar. The rest is the original's, unchanged. Its comment follows.
@@ -627,7 +627,7 @@ McFs *mcfs_load(const char *path, int create)
         long sz = ftell(f);
         fseek(f, 0, SEEK_SET);
         if (sz < (long)RAWPAGE * 1024 || sz % RAWPAGE) {
-            LOGW("mc", "%s: %ld bytes is not a PS2 memory card image (528-byte pages)", path, sz);
+            LOGW("mc", "%s: %d bytes is not a PS2 memory card image (528-byte pages)", path, (int)sz);
             fclose(f);
             free(fs);
             return NULL;

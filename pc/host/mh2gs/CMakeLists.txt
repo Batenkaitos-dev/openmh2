@@ -19,7 +19,8 @@ host_add_exe_test(host_mh2tex host_mh2tex_test "${CMAKE_BINARY_DIR}")
 # built into the test (a copy of the exe in a temporary folder, MH2_TEST_COPY, has no mh2gs.dll beside it); it
 # needs a GPU, so it is skipped (exit 77) where mh2gs finds none.
 add_executable(host_mh2gs_state_test "${MH2_ROOT}/pc/gs/tests/mh2gs_state_test.cpp"
-               "${MH2_ROOT}/pc/gs/mh2gs.cpp" "${MH2_ROOT}/pc/gs/mh2tex.cpp")
+               "${MH2_ROOT}/pc/gs/mh2gs.cpp" "${MH2_ROOT}/pc/gs/mh2tex.cpp"
+               "${MH2_ROOT}/pc/gs/mh2interp.cpp")
 target_link_libraries(host_mh2gs_state_test PRIVATE parallel-gs Threads::Threads)
 target_include_directories(host_mh2gs_state_test PRIVATE "${MH2_ROOT}/pc/gs")
 set_target_properties(host_mh2gs_state_test PROPERTIES CXX_STANDARD 14)
@@ -28,3 +29,10 @@ if(MINGW)
 endif()
 host_add_exe_test(host_mh2gs_state host_mh2gs_state_test)
 set_tests_properties(host_mh2gs_state PROPERTIES SKIP_RETURN_CODE 77)
+
+# The in-between picture's parser, matcher and substitution (pc/gs/mh2interp.cpp), without a GPU.
+add_executable(host_mh2interp_test "${MH2_ROOT}/pc/gs/tests/mh2interp_test.cpp"
+               "${MH2_ROOT}/pc/gs/mh2interp.cpp")
+target_include_directories(host_mh2interp_test PRIVATE "${MH2_ROOT}/pc/gs")
+set_target_properties(host_mh2interp_test PROPERTIES CXX_STANDARD 14)
+host_add_exe_test(host_mh2interp host_mh2interp_test)

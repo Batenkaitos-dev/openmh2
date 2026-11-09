@@ -1,7 +1,7 @@
 /*
  * The EE's register dispatch (include/pal.h: Pal_EeRegRead32, Pal_EeRegWrite32,
  * Pal_EeRegWrite128, Pal_GsRegRead64, Pal_GsRegWrite64) and the DMAC, from
- * hw.c.
+ * the original's hardware model.
  *
  * A DMA runs to completion at the store to its CHCR that starts it (or, for
  * the GIF's while PATH3 is masked, when the mask is lifted): VIF0 and VIF1
@@ -127,7 +127,7 @@ static void DmaSpr(int ch)
 /* ---- the peripherals' channels ---- */
 
 /* `qwc` quadwords at `addr` (memory, or the scratchpad if `spr`) to the
- * channel's peripheral, 64 at a time (hw.c dma_sink). */
+ * channel's peripheral, 64 at a time (the original's dma_sink). */
 static void DmaSink(int ch, u32 addr, u32 qwc, int spr)
 {
     GPR buf[64];
@@ -162,7 +162,7 @@ static void DmaTagSink(int ch, u64 tagHi)
         rt_log_once("dma", 0x5500 + ch, "DMA with TTE not supported");
 }
 
-/* VIF1 in the GS-to-EE direction (hw.c dma_from_gs). */
+/* VIF1 in the GS-to-EE direction (the original's dma_from_gs). */
 static void DmaFromGs(u32 *c)
 {
     GPR buf[64];
@@ -179,7 +179,7 @@ static void DmaFromGs(u32 *c)
     }
 }
 
-/* Source-chain mode (VIF0, VIF1, GIF, toIPU): the tags from TADR (hw.c
+/* Source-chain mode (VIF0, VIF1, GIF, toIPU): the tags from TADR (the original's
  * dma_source_chain). */
 static void DmaSourceChain(int ch)
 {
@@ -345,7 +345,7 @@ u32 Gfx_DmaChanPs2Addr(u32 addr)
     return sDmaBase[(addr - lo) / 0x100] + (addr - lo) % 0x100;
 }
 
-/* ---- the dispatch (hw.c hw_read32, hw_write32, hw_write64, hw_write128) ---- */
+/* ---- the dispatch (the original's hw_read32, hw_write32, hw_write64, hw_write128) ---- */
 
 static int IsIntc(u32 addr)
 {

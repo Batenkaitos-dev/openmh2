@@ -27,6 +27,10 @@ static struct {
     int movie_clock;
     unsigned long long vblank;   /* the VBlank starting (Ipc_Pace, step 2), for --quit-after */
     int pace_tied;               /* the pacer's clock is tied to a VBlank (a load unties it) */
+    int loading;                 /* the game's loading screen is open (Ipc_LoadingScreen) */
+    int pace_movie;              /* a movie is open: no VBlank is unpaced */
+    int unpaced;                 /* this VBlank is not waited for: its samples are dropped */
+    unsigned int taken;          /* the pause's grants taken */
     int sched_have;              /* the pad schedule has held a state (a load forgets it) */
     int keys_reset;              /* a load emptied the key ring: the next event is "every key up" */
     unsigned int st_seen, st_inflight;   /* the host's last request seen, and the one being handled */
@@ -198,24 +202,106 @@ void Ipc_FreecamStatus(int active, unsigned int echo, unsigned long long vblank,
 
 #define VBLANK_NS 16683350ull   /* the kernel's VBlank period (kern.h) */
 
+/* What the host asks of the pacing, and what the core tells it. Pacing is only the wait for real time: no value the game computes, no
+ * VBlank's number and no line a recorded session holds depends on it. The modes:
+ *  - the plain pause (HOLD): before the VBlank does anything, the core waits for the host to grant it (pace_grant) or to resume;
+ *  - fast-forward (FF), and fast loading (the host's setting and the game's loading screen open, Ipc_LoadingScreen): the VBlank
+ *    is not waited for (FF's cap: it is, at 100 / cap of its time), its samples are dropped (Ipc_AudioWrite), and the next paced
+ *    VBlank ties the clocks again;
+ *  - a movie open (Ipc_PaceMovie) is never unpaced: its picture and sound are timed by the VBlanks;
+ *  - otherwise, with MH2IPC_HOST_PACE, the wait for the VBlank's time. */
+void Ipc_LoadingScreen(int on)
+{
+    g.loading = on != 0;
+}
+
+void Ipc_PaceMovie(int open)
+{
+    g.pace_movie = open != 0;
+}
+
+static void pace_publish(unsigned int state)
+{
+    mh2ipc_store(&g.h->pace_state, state);
+    mh2ipc_store(&g.h->pace_taken, g.taken);
+    mh2ipc_store(&g.h->pace_vblank, (unsigned int)g.vblank);
+}
+
+/* The pause: returns when the host grants a VBlank, resumes, or asks the game to quit (or the host is gone). */
+static void pace_hold(void)
+{
+    for (;;) {
+        unsigned int grant = mh2ipc_load(&g.h->pace_grant);
+        if (!(mh2ipc_load(&g.h->pace_flags) & MH2IPC_PACE_HOLD)) {
+            g.taken = grant;   /* resumed: a step asked for just before it is not left over for the next pause */
+            break;
+        }
+        if ((int)(grant - g.taken) > 0) {
+            g.taken++;
+            break;
+        }
+        if (mh2ipc_load(&g.h->quit_request))
+            break;
+        pace_publish(MH2IPC_PACE_HELD);
+        mh2ipc_wait_until_ns(mh2ipc_time_ns() + 2000000ull);
+        check_host();
+    }
+    g.pace_tied = 0;
+}
+
+/* The VBlanks the freecam's pause has put back (Pal_FreezeBias): the pacer counts the real ones. */
+static unsigned long long g_pace_bias;
+void Ipc_PaceBias(unsigned long long bias)
+{
+    g_pace_bias = bias;
+}
 
 void Ipc_Pace(unsigned long long vblank)
 {
-    static unsigned long long ref_host, ref_vblank;
+    static unsigned long long ref_host, ref_vblank, ref_period;
     g.vblank = vblank;
-    if (!g.on || !(mh2ipc_load(&g.h->host_flags) & MH2IPC_HOST_PACE))
+    vblank += g_pace_bias;   /* (g.vblank, the game's number, is what the pad schedule and --quit-after read) */
+    if (!g.on)
         return;
+    unsigned int pf = mh2ipc_load(&g.h->pace_flags);
+    if (pf & MH2IPC_PACE_HOLD) {
+        pace_hold();
+        pf = mh2ipc_load(&g.h->pace_flags);
+    } else {
+        g.taken = mh2ipc_load(&g.h->pace_grant);
+    }
+    unsigned int hf = mh2ipc_load(&g.h->host_flags);
+    unsigned long long period = VBLANK_NS;   /* the time one VBlank takes; 0: it is not waited for */
+    g.unpaced = 0;
+    if (!g.pace_movie) {
+        if (pf & MH2IPC_PACE_FF) {
+            unsigned int cap = mh2ipc_load(&g.h->pace_cap);
+            period = cap ? VBLANK_NS * 100ull / cap : 0;
+            g.unpaced = 1;
+        } else if ((hf & MH2IPC_HOST_FASTLOAD) && g.loading) {
+            period = 0;
+            g.unpaced = 1;
+        }
+    }
+    pace_publish((g.unpaced ? MH2IPC_PACE_UNPACED : 0) | (g.loading ? MH2IPC_PACE_LOADING : 0));
+    if (!(hf & MH2IPC_HOST_PACE))
+        return;
+    if (!period) {
+        g.pace_tied = 0;    /* the next paced VBlank ties the clocks again */
+        return;
+    }
     unsigned long long now = mh2ipc_time_ns();
-    if (!g.pace_tied || vblank < ref_vblank) {
+    if (!g.pace_tied || vblank < ref_vblank || period != ref_period) {
         g.pace_tied = 1;
         ref_host = now;
         ref_vblank = vblank;
+        ref_period = period;
         return;
     }
-    unsigned long long due = ref_host + (vblank - ref_vblank) * VBLANK_NS;
+    unsigned long long due = ref_host + (vblank - ref_vblank) * period;
     if (now < due)
         mh2ipc_wait_until_ns(due);
-    else if (now - due > 3 * VBLANK_NS) {   /* a stall: carry on from here, without hurrying */
+    else if (now - due > 3 * period) {   /* a stall: carry on from here, without hurrying */
         ref_host = now;
         ref_vblank = vblank;
     }
@@ -280,6 +366,12 @@ void Ipc_GsVSync(unsigned int field, unsigned long long vblank)
         put(MH2IPC_REC_VSYNC, field, (unsigned int)(g.movie_clock + 1), &vblank, 8, NULL, 0);
 }
 
+void Ipc_GsCamera(const float m[32])
+{
+    if (g.on)
+        put(MH2IPC_REC_CAMERA, 0, 0, m, 32 * sizeof(float), NULL, 0);
+}
+
 /* Waits for the host to answer the record of sequence number `seq` (rb_done_seq). */
 static void wait_done(unsigned int seq)
 {
@@ -319,7 +411,7 @@ int Ipc_GsReadback(void *dst, unsigned int qwords)
 
 void Ipc_AudioWrite(const short *samples, unsigned int frames)
 {
-    if (g.on && frames)
+    if (g.on && frames && !g.unpaced)   /* an unpaced VBlank's samples are dropped, so that the sound after it is not late */
         mh2ipc_stream_write(&g.h->audio, g.block, samples, frames * 4u);
 }
 
@@ -338,6 +430,9 @@ static void neutral_pad(IpcPad *out)
 static void SchedPad(Mh2IpcPad *out)
 {
     static Mh2IpcPad cur;
+    /* The last entries taken, for a VBlank number that comes again (the freecam's pause puts the game back to an earlier VBlank). */
+    static Mh2IpcPad hist_pad[16];
+    static unsigned int hist_vb[16], hist_n;
     Mh2IpcSched *s = &g.h->sched;
     unsigned int v = (unsigned int)g.vblank;
     if (!g.sched_have) {
@@ -352,6 +447,9 @@ static void SchedPad(Mh2IpcPad *out)
         unsigned int tail = s->tail;
         while (tail != head && s->entries[tail & (MH2IPC_SCHED_RING - 1u)].vblank <= v) {
             memcpy(&cur, &s->entries[tail & (MH2IPC_SCHED_RING - 1u)].pad, sizeof(cur));
+            hist_vb[hist_n & 15u] = s->entries[tail & (MH2IPC_SCHED_RING - 1u)].vblank;
+            hist_pad[hist_n & 15u] = cur;
+            hist_n++;
             tail++;
         }
         mh2ipc_store(&s->tail, tail);
@@ -363,6 +461,22 @@ static void SchedPad(Mh2IpcPad *out)
             mh2ipc_wait(&g.map, MH2IPC_EV_SCHED, &s->horizon, horizon, WAIT_MS);
         mh2ipc_store(&s->waiting, 0);
         check_host();
+    }
+    if (hist_n && hist_vb[(hist_n - 1u) & 15u] > v) {   /* a VBlank that comes again: the pad of that time */
+        unsigned int k;
+        Mh2IpcPad first;
+        memset(&first, 0, sizeof(first));
+        first.connected = 1;
+        first.rx = first.ry = first.lx = first.ly = 0x80;
+        *out = first;
+        for (k = 0; k < 16u && k < hist_n; k++) {
+            unsigned int at = (hist_n - 1u - k) & 15u;
+            if (hist_vb[at] <= v) {
+                *out = hist_pad[at];
+                break;
+            }
+        }
+        return;
     }
     *out = cur;
 }

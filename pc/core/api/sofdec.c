@@ -118,9 +118,9 @@ static void MainServer(void *arg)
 }
 
 /* The IDLE thread's (priority 25): with no handle, one section under the
- * lock, then one step of Sofdec's library wait (polls.txt's func_00151730:
+ * lock, then one step of Sofdec's library wait (the polled-wait table's func_00151730:
  * one arrival and one step each time the server runs, 6,066 each over the
- * village route; port-frame-clock.md, 6.3). The step is the jump to the next
+ * village route). The step is the jump to the next
  * event, and it holds back every thread of lower priority until then: the
  * PSP thread (priority 40) that psp-link's route starts gets its first alarm
  * at the SPU2 tick after the VBlank's start, 1.23 ms later, not at the

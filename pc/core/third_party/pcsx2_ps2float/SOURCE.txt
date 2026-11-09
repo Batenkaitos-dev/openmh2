@@ -1,0 +1,21 @@
+The EE FPU's multiplier model (ps2float_mul.h) and adder model (ps2float_add.h), adapted to C from PCSX2.
+
+Origin:  PCSX2 pull request 12001, "[Soft-Float] Initial interpreter implementation of the PS2's
+         floating point unit" (https://github.com/PCSX2/pcsx2/pull/12001), the commit
+         0392a64e992ac3fa5445dbe484933616cb204674.
+File:    pcsx2/PS2Float.cpp at that commit, SHA-256 2fa504d2ec7fbad7c3c7a40ea0e106f67e19321d46c2b6c54328327be53f5511
+         (downloaded 2026-11-05 from the pull request's commit; the file is not kept here).
+         Used: Booth, Add3, MulMantissa, DoMul and the zero/denormal test of Mul (ps2float_mul.h); DoAdd, and the
+         zero/denormal tests, the exponent-difference masking and the call of DoAdd in Add and Sub (ps2float_add.h). The same commit's
+         PS2Float.h (SHA-256 2c7a6550a756f2e8e994ef5027ec67c4ed7cb07f81490da209a2f8e34d7b6b68) and
+         common/BitUtils.h (SHA-256 6b669c934089c13d7ceb8df54f12e12651dcfc5495ef0165a52215ce3d44192e)
+         were read for the constants and types, and BitUtils.h's normalizeAmounts table and bit counting became a table and
+         compiler builtins in ps2float_add.h; no other line of them is in this directory.
+Licence: GPL-3.0-or-later (the files' SPDX line: "SPDX-License-Identifier: GPL-3.0+"; copyright
+         2002-2024 PCSX2 Dev Team). The licence text is COPYING (the GNU General Public License, version 3,
+         from the Debian common-licenses package, SHA-256 3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986).
+Changes: C structures for the C++ ones, functions of raw bit patterns for the members, the project's
+         integer type names (macros at the top); the arithmetic is the file's. See the headers of
+         ps2float_mul.h and ps2float_add.h.
+What it models and its evidence: docs/port-fpu.md. Its use makes a core built with the "ps2" float model
+GPL-3.0-or-later as a whole; the rest of the project's files are CC0 1.0.

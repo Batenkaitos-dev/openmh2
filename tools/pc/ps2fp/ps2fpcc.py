@@ -114,8 +114,12 @@ def main(argv):
         # 2. the pass
         with open(ll1, encoding="utf-8", errors="surrogateescape") as f:
             text = f.read()
-        rw = ps2fp.Rewriter(text, src)
+        trace = os.environ.get("PS2FP_SITES") if "-DMH2_FPTRACE=1" in args else None   # the trace build
+        rw = ps2fp.Rewriter(text, src, order=ps2fp.read_order(), trace=trace)
         res = rw.run()
+        if trace and rw.sites:
+            with open(trace, "a", encoding="utf-8") as f:
+                f.write("".join(s + "\n" for s in rw.sites))
         if rw.errors:
             for e in rw.errors[:50]:
                 sys.stderr.write("ps2fp: " + e + "\n")

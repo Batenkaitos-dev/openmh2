@@ -159,6 +159,31 @@ void AreaMenu_Update(void)
     }
 }
 
+#if PLATFORM_PC
+/* The offline hub's rules follow the area a door leads to: on for the town's areas, off for the village and the outpost, and
+ * unchanged for the houses (they are reached from either). The quest lists are built again when the rules change: the town
+ * lists the online quests, the village its own. */
+static void AreaMenu_HubRules(u16 area)
+{
+    s32 on;
+
+    if (Game_HubOffered() == 0) {
+        return;
+    }
+    if (Game_HubTownArea(area) == 1) {
+        on = 1;
+    } else if (area == AREA_HUB_0x89 || area == AREA_HUB_0x57) {
+        on = 0;
+    } else {
+        return;
+    }
+    if (Game_HubRules() != on) {
+        Game_HubRulesSet(on);
+        QuestList_Rebuild();
+    }
+}
+#endif
+
 extern SpawnPt gAreaGoSpawn89FromAA;
 extern SpawnPt gAreaGoSpawnTavern;
 extern SpawnPt gAreaGoSpawn85;
@@ -197,6 +222,20 @@ void AreaMenu_GoTo(u16 area)
 
     switch (area) {
     case AREA_HUB_0x89:
+#if PLATFORM_PC
+        if (Game_HubOffered() == 1 && Game_HubRules() == 1) {
+            /* The offline hub: a house leads back to the town, as online; the town's exit leads to the village. */
+            switch (menu->fromArea) {
+            case AREA_ONLINE_HOUSE_0:
+            case AREA_ONLINE_HOUSE_1:
+            case AREA_ONLINE_HOUSE_2:
+                area = AREA_HUB_0x84;
+                spawn = &gAreaGoSpawn84FromHouse;
+                break;
+            }
+            break;
+        }
+#endif
         if (Game_IsOnline() == 1) {
             area = AREA_HUB_0x84;
             switch (menu->fromArea) {
@@ -280,6 +319,9 @@ void AreaMenu_GoTo(u16 area)
         }
         break;
     }
+#if PLATFORM_PC
+    AreaMenu_HubRules(area);
+#endif
     setIndex = Area_GetSetIndex(area);
     if (spawn == NULL) {
         spawn = &gSpawnPoints[setIndex];

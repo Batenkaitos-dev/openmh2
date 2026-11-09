@@ -6,7 +6,7 @@
 The game uploads its VU1 microprograms from its own files: each one is a
 VIF packet (DMA tag, a VIFcode, then one or more MPG with code) in the ELF
 or an overlay under build/orig/. This finds those packets, decodes every
-instruction pair the same way vu1.c does, and writes
+instruction pair the same way gfx_vu1.c does, and writes
 DIR/vu1_gen.c (default build/vu1): one C function per packet (a "unit"), which
 vu1_gen_exec() enters when a run starts at an address it knows.
 
@@ -92,7 +92,7 @@ def imm12(lo): return ((lo >> 10) & 0x800) | (lo & 0x7FF)
 
 
 def decode_upper(d: dict, up: int) -> None:
-    """Mirror of decode_upper() in vu1.c."""
+    """Mirror of decode_upper() in gfx_vu1.c."""
     f = up & 0x3F
     d.update(udm=REV4[dest(up)], ufs=fs(up), uft=ft(up), ufd=fd(up), uacc=0, ubsrc=-1, uop=0, uk=UK["FMAC"])
     d["ur1"], d["ur2"] = d["ufs"], d["uft"]
@@ -162,7 +162,7 @@ IMM15 = {"IADDIU", "ISUBIU"}
 
 
 def decode_lower(d: dict, lo: int) -> None:
-    """Mirror of decode_lower() in vu1.c."""
+    """Mirror of decode_lower() in gfx_vu1.c."""
     op = lo >> 25
     d.update(ldm=REV4[dest(lo)], lfs=fs(lo), lft=ft(lo), lfd=fd(lo), lis=fs(lo) & 15, lit=ft(lo) & 15,
              lid=fd(lo) & 15, lfsf=fsf(lo), lftf=ftf(lo), lr1=0, lr2=0, lw=0, lwq=0, lwp=0, limm=0)
@@ -291,7 +291,7 @@ def c_dec(d: dict) -> str:
 
 # ------------------------------------------------------------ the pipeline, abstractly
 
-# Latencies, as in vu1_core.h and vu1.c: FMAC and VF loads 4, flags
+# Latencies, as in vu1_core.h and gfx_vu1.c: FMAC and VF loads 4, flags
 # 4, DIV/SQRT 7, RSQRT 13, EFU by operation (checked by vu1_gen_selfcheck).
 EFU_LATENCY = {0x70: 11, 0x71: 18, 0x72: 18, 0x73: 24, 0x74: 54, 0x75: 54, 0x76: 12, 0x78: 12, 0x79: 18,
                0x7A: 12, 0x7C: 29, 0x7D: 54, 0x7E: 44}
@@ -834,7 +834,7 @@ class UnitGen:
         return L, ("cond", self.ref(tp[1], S2), self.ref(nxt, S2), guard, self.bail(nxt, S2) if nxt <= pc else None)
 
     def end(self, S: State, tp, nxt: int) -> tuple:
-        """The run ends after this pair: the pipeline drains (run() in vu1.c)."""
+        """The run ends after this pair: the pipeline drains (run() in gfx_vu1.c)."""
         L = []
         drain = max([0] + [o for o, _ in S.fq] + [x for x in (S.q, S.p) if x is not None])
         for off, kind in S.fq:

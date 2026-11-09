@@ -20,6 +20,7 @@ enum {
     SET_KEY,     /* a key's name (keyboard.c), or none */
     SET_BIND,    /* key.NAME, pad.NAME: a binding (input.c) */
     SET_OLD,     /* a key of the original's, said to be ignored */
+    SET_PACK,    /* pack.NAME: a texture pack on or off (packs.c) */
 };
 /* How the file's value joins the command line's (settings_apply). */
 enum {
@@ -32,6 +33,10 @@ enum {
     AP_VSYNC,
     AP_SSAA,
     AP_DAMAGE,
+    AP_TEXMB,     /* texture_cache_mb: the file's, when set */
+    AP_PRELOAD,   /* texture_preload: on unless the file says off */
+    AP_FPS,       /* fps: the file's, unless the command line gave one */
+    AP_FPS60,     /* fps60 = on: 60, unless fps or the command line says */
 };
 /* The pages of the launcher; PAGE_NONE: not on a page of its own (kept in the file, or development only). */
 enum { PAGE_NONE, PAGE_HOME, PAGE_PICTURE, PAGE_GAME, PAGE_CARDS, PAGE_DISC, PAGE_CONTENT, PAGE_DEV };

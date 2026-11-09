@@ -25,17 +25,20 @@ if [ -x "$MH2_DEPS/llvm/bin/clang" ]; then
     export CC="$MH2_DEPS/llvm/bin/clang"
     export CXX="$MH2_DEPS/llvm/bin/clang++"
 else
-    echo "tools/env.sh: the pinned clang is not installed (tools/setup.sh); clang is the system's" >&2
-    export CC="${CC:-clang}"
+    export CC="${CC:-clang}"      # not installed (tools/setup.sh without --no-native installs it): the system's
     export CXX="${CXX:-clang++}"
 fi
 export CMAKE_PREFIX_PATH="$MH2_DEPS/sdl3${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
 
-for _mh2_p in binutils uv venv/bin llvm/bin; do
+# The directories of the tools, the first one listed ending last on PATH.
+_mh2_dirs=()
+_mh2_dirs+=(binutils uv venv/bin)
+_mh2_dirs+=(llvm/bin)
+for _mh2_p in "${_mh2_dirs[@]}"; do
     case ":$PATH:" in
         *":$MH2_DEPS/$_mh2_p:"*) ;;
         *) PATH="$MH2_DEPS/$_mh2_p:$PATH" ;;
     esac
 done
 export PATH
-unset _mh2_p
+unset _mh2_p _mh2_dirs

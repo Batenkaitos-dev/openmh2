@@ -34,6 +34,12 @@ if(MH2_PLATFORM STREQUAL "linux")
   list(APPEND MH2_FLAGS "-malign-double")      # 8-byte types align to 8 inside structs, as on the EE
 endif()
 
+# MH2_FPTRACE (build.py, MH2_FPTRACE=1 in the environment): the product trace, a build of its own (the float model notes)
+option(MH2_FPTRACE "the product trace" OFF)
+if(MH2_FPTRACE)
+  list(APPEND MH2_FLAGS -DMH2_FPTRACE=1)
+endif()
+
 
 option(MH2_PS2FP "compile the game's C through tools/pc/ps2fp/ps2fpcc.py (the EE's float, division and shift semantics)" ON)
 
@@ -130,7 +136,10 @@ foreach(mod IN LISTS MH2_MODULES)
 endforeach()
 
 # ---- the platform layer ----
-set(MH2_PAL_SOURCES main.c pal_mem.c pal_overlay.c pal_camera.c pal_hud.c pal_freecam.c)
+set(MH2_PAL_SOURCES main.c pal_mem.c pal_overlay.c pal_camera.c pal_fpmodel.c pal_hud.c pal_freecam.c pal_text.c pal_hub.c)
+if(MH2_FPTRACE)   # the product trace (pal_fptrace.c; PS2FP_SITES names the site list the pass writes)
+  list(APPEND MH2_PAL_SOURCES pal_fptrace.c)
+endif()
 # Each module owns a directory here, and the library
 # functions go in api/, one file per library (3.8). Every .c file in them is built, so none of them edits this
 # file: host_*.c files use the system headers and go into pal_host (host_*_linux.c and host_*_windows.c only
@@ -183,6 +192,9 @@ foreach(_f IN LISTS MH2_FLAGS)
   endif()
 endforeach()
 add_library(pal_host OBJECT host_${MH2_PLATFORM}.c ${MH2_LANE_HOST_SOURCES})
+if(MH2_FPTRACE)
+  target_sources(pal_host PRIVATE host_fptrace.c)
+endif()
 target_include_directories(pal_host PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${MH2_ROOT}/pc")
 target_compile_options(pal_host PRIVATE ${MH2_HOST_FLAGS} -Wall -Wextra -Werror -Wno-unused-parameter)
 
@@ -217,12 +229,12 @@ set_target_properties(mh2-core PROPERTIES LINKER_LANGUAGE C)
 if(MH2_PLATFORM STREQUAL "linux")
   target_link_libraries(mh2-core PRIVATE -Wl,-Map=${CMAKE_BINARY_DIR}/mh2-core.map)
 endif()
-# Tests of the executables. MH2_TEST_COPY (set by tools/pc/winrun.py: the build tree is on WSL's file share)
+# Tests of the executables. MH2_TEST_COPY (set by the Windows test runner: the build tree is on WSL's file share)
 # runs a copy from the Windows temp directory: an executable run in place on that share stays locked,
 # cannot be deleted or relinked (Permission denied) even from Windows, and its name is lost for good.
 option(MH2_TEST_COPY "run the tests' executables from a copy in the temp directory" OFF)
 # The disc archive the tests that need game data read: the checkout's build/port (python tools/port/make_archive.py), or
-# $MH2_DISC, which winrun.py sets for a build in its copy on the Windows disk (the archive stays on the share).
+# $MH2_DISC, which the Windows test runner sets for a build in its copy on the Windows disk (the archive stays on the share).
 if(DEFINED ENV{MH2_DISC})
   file(TO_CMAKE_PATH "$ENV{MH2_DISC}" MH2_DISC_ARC)
 else()

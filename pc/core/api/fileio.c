@@ -254,7 +254,7 @@ static s32 sceOpenWork(void *name, s32 flags, s32 mode)
     Begin(&result);
     Rpc(FIO_OPEN, &g_fio.req, sizeof(g_fio.req), 4);
     s32 r = Finish(&result);
-    if (g_refused)   /* the slot stays reserved (port-libraries.md, session 26) */
+    if (g_refused)   /* the slot stays reserved */
         return r;
     s32 t = g_fio.tableSema[0];
     WaitSema(t);
@@ -373,7 +373,7 @@ static s32 func_00118378Work(void (*func)(s32), s32 arg)
 }
 
 /* ------------------------------------------------------------ the taps
- * verify's trace tap for each function the game calls (pc/core/verify/verify.h). */
+ * verify's trace tap for each function the game calls. */
 
 s32 sceFsReset(void)
 {

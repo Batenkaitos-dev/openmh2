@@ -168,7 +168,7 @@ void Adx_Unlock(void)
 }
 
 /* The lock thread: it only keeps the processor while a lock holder waits (a
- * library wait: polls.txt's func_00160C20). */
+ * library wait: the polled-wait table's func_00160C20). */
 static void LockThread(void *arg)
 {
     (void)arg;
@@ -403,7 +403,7 @@ static void func_00165400Work(AdxDvdFsParam *param)
  * name upper case in 0x21 bytes. The list itself is read into the library's
  * own buffer of two sectors (cleared first). Before the list's search the
  * library waits until no N-command is in flight, and after its read it
- * waits for the read's end: both are library waits (polls.txt, the two loops
+ * waits for the read's end: both are library waits (the polled-wait table, the two loops
  * of func_0016F0D8), so the arrival is a delivery point and the read's end
  * (the SIF's) comes before the first check, as in the original game. Each name's
  * search asks sceCdSync(1) once first (a query, not a wait).
@@ -552,6 +552,8 @@ struct AdxStm {
     s32 opening;     /* the file's open is the next pass's */
     char name[64];
     s32 ofs, want;   /* the open's sector offset, and its sectors (< 0: the file's) */
+    s32 known;       /* the file is a pack's, whose first sector and size are known: no cache, no search */
+    u32 klsn, ksize;
     u32 lsn;         /* the file's first sector (with the AFS offset) */
     u32 size;        /* bytes */
     u32 nsct;        /* sectors */
@@ -635,7 +637,10 @@ static void OpenFile(AdxStm *s)
 {
     u32 lsn, size;
     s->opening = 0;
-    if (!CacheFind(s->name, &lsn, &size)) {
+    if (s->known) {   /* a pack's file: the open the cache would have answered, with the pack's place */
+        lsn = s->klsn;
+        size = s->ksize;
+    } else if (!CacheFind(s->name, &lsn, &size)) {
         CdFile f;
         char path[64];
         u32 n = 0;
@@ -807,8 +812,8 @@ void Adx_FsServer(void *arg)
 }
 
 /* ADXF's open (the original's 0x164818): the open asked under the lock, then
- * the wait (polls.txt's head 0x164830) with a pass per going-round. */
-AdxStm *AdxStm_Open(const char *name, s32 ofs, s32 nsct)
+ * the wait (the polled-wait table's head 0x164830) with a pass per going-round. */
+static AdxStm *OpenCommon(const char *name, s32 ofs, s32 nsct, s32 known, u32 klsn, u32 ksize)
 {
     if (!name)
         return 0;
@@ -825,6 +830,9 @@ AdxStm *AdxStm_Open(const char *name, s32 ofs, s32 nsct)
     s->name[n] = 0;
     s->ofs = ofs;
     s->want = nsct;
+    s->known = known;
+    s->klsn = klsn;
+    s->ksize = ksize;
     s->opening = 1;
     Adx_Unlock();
     Kern_LibWaitArrive();
@@ -838,6 +846,16 @@ AdxStm *AdxStm_Open(const char *name, s32 ofs, s32 nsct)
         return 0;
     }
     return s;
+}
+
+AdxStm *AdxStm_Open(const char *name, s32 ofs, s32 nsct)
+{
+    return OpenCommon(name, ofs, nsct, 0, 0, 0);
+}
+
+AdxStm *AdxStm_OpenKnown(const char *name, u32 lba, u32 size, s32 ofs, s32 nsct)
+{
+    return OpenCommon(name, ofs, nsct, 1, lba, size);
 }
 
 /* The device's request of a stream dropped, a read in progress waited for.
@@ -975,7 +993,7 @@ void AdxStm_StopNow(AdxStm *s)
 }
 
 /* ------------------------------------------------------------ the taps
- * verify's trace tap for each function the game calls (pc/core/verify/verify.h). */
+ * verify's trace tap for each function the game calls. */
 
 void func_00162220(s32 param)
 {
@@ -992,7 +1010,7 @@ void func_00162188(void)
     func_00162188Work();
 }
 
-/* Traced as void (config/pc/seam_calls.txt): no caller reads its result. */
+/* Traced as void (the seam table): no caller reads its result. */
 s32 func_00162040(void)
 {
     s32 r = func_00162040Work();

@@ -268,8 +268,8 @@ void KSif_EndServiceCall(void)
 /* ------------------------------------------------------------- services */
 
 /*
- * The services in the original's order of registration (its iop_cdvd.c, iop_misc.c, iop_pad.c,
- * iop_mc.c, with the sound modules on the interpreter): the n-th gets the server record 0x18000 + n x 0x40
+ * The services in the original's order of registration (its disc, file, pad and
+ * card services, with the sound modules on the interpreter): the n-th gets the server record 0x18000 + n x 0x40
  * and the buffer 0x600000 + n x 0x10000 that a bind answers with. A service an IOP module registers, or one
  * bound without being known, joins the list at its end (an unknown one answers its calls with zeros).
  */
@@ -624,7 +624,7 @@ static void ResetAll(void)
     sNumModules = 0;
 }
 
-/* The SIF's registers as the EE sees them (the original's hw.c and sif.c): MAINADDR 0x1000F200, SUBADDR
+/* The SIF's registers as the EE sees them (as the original has them): MAINADDR 0x1000F200, SUBADDR
  * 0x1000F210, MSFLAG 0x1000F220 (a write sets bits), SMFLAG 0x1000F230 (a write clears bits). */
 u32 KSif_RegRead(u32 addr)
 {

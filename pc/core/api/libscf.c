@@ -36,7 +36,7 @@ static u8 sceScfGetLanguageWork(void)
 }
 
 /* ------------------------------------------------------------ the taps
- * verify's trace tap for each function the game calls (pc/core/verify/verify.h). */
+ * verify's trace tap for each function the game calls. */
 
 u8 sceScfGetLanguage(void)
 {

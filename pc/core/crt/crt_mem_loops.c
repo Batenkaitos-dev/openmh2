@@ -8,7 +8,7 @@
  * used); ld/sd and lw/sw do the plain access (the EE raises an address error on a misaligned one,
  * which the game never causes).
  *
- * Tested against the original game's routines by tools/pc/ps2fp/tests/run_mem.sh. The
+ * Tested against the original game's routines by the ps2fp tests. The
  * parameters are the game's: (src, dst, n) for the copies, (dst, n) and (dst, n, value) for
  * the clears and fills; Mem_FillQwords takes its 128-bit value as four words (a u128 argument
  * is one 128-bit general register on the EE; no C caller passes one on PC).

@@ -30,7 +30,7 @@ find_package(SDL3 REQUIRED CONFIG)
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/arc_tables.cmake")
 mh2_arc_tables("${CMAKE_CURRENT_BINARY_DIR}/arc_tables.inc" "${MH2_ROOT}")
 
-add_executable(mh2 main.c hostfs.c core_args.c process.c gs.c present.c input.c keyboard.c states.c freecam.c audio.c movie.c settings.c launcher.c launcher_make.c arcmake.c sha1.c movietable.c movielib.c launcher_ui.c launcher_stb.c launcher_font.c launcher_text.c play.c cards.c crash.c
+add_executable(mh2 main.c textpack.c hostfs.c core_args.c process.c gs.c present.c hfr.c input.c camstick.c keyboard.c states.c freecam.c pace.c packs.c audio.c movie.c settings.c launcher.c launcher_make.c launcher_build.c arcmake.c sha1.c movietable.c movielib.c launcher_ui.c launcher_stb.c launcher_font.c launcher_text.c play.c cards.c crash.c
                    "${MH2_ROOT}/pc/ipc/mh2ipc_os_${MH2_PLATFORM}.c")
   # the release host: without the development-only features
 target_include_directories(mh2 PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "${MH2_ROOT}/pc")
@@ -54,6 +54,12 @@ if(MH2_PLATFORM STREQUAL "windows")
   add_custom_command(TARGET mh2 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:SDL3::SDL3> $<TARGET_FILE_DIR:mh2>)
 endif()
+  if(MH2_PLATFORM STREQUAL "linux")
+    # The release folder carries its own SDL3: the executable finds libSDL3.so.0 beside itself, never in the build tree.
+    set_target_properties(mh2 PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE INSTALL_RPATH "$ORIGIN")
+    add_custom_command(TARGET mh2 POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:SDL3::SDL3> $<TARGET_FILE_DIR:mh2>/$<TARGET_SONAME_FILE_NAME:SDL3::SDL3>)
+  endif()
 
 # The movies: mh2movie (pc/movie, FFmpeg's LGPL shared libraries), which mh2 loads at run
 # time; tools/pc/movie_table.py drives the same library at setup to measure the movies' timing.
@@ -120,7 +126,15 @@ if(MH2_PLATFORM STREQUAL "linux")
                     --archive "${CMAKE_CURRENT_BINARY_DIR}/test-disc.arc"
                     --no-window --gs-off --mute --no-card --quit-after 2 --core "${_fake}" ${_dirs})
   set_tests_properties(host_settings PROPERTIES PASS_REGULAR_EXPRESSION
-    "line 4: no button .bogus.*line 5: .nonsense. is not a gamepad button name.*line 9: ssaa is 1 [(]off[)], 2, 4, 8 or 16: ignored.*line 11: expected key = value.*line 12: .orig. .the original files. is the original.s.*line [0-9]+: .Nonsense. is not a key name.*unknown setting .usb_key_bogus.*line [0-9]+: .Nonsensestate. is not a key name.*enhancements: ssaa 4, hires on.*textures: dump on, packs on, folder /tmp/mh2-settings-test-textures.*USB keyboard: connected [(]F9 switches between typing.*widescreen: on [(]the camera and the 2D picture are 16:9.*save states: folder /tmp/mh2-settings-test-states; F5 saves, End loads, none and PageUp choose the slot.*mh2-core ended [(]0[)] after 2 VSyncs")
+    "line 4: no button .bogus.*line 5: .nonsense. is not a gamepad button name.*line 9: ssaa is 1 [(]off[)], 2, 4, 8 or 16: ignored.*line 11: expected key = value.*line 12: .orig. is a setting of an earlier version.*line [0-9]+: .Nonsense. is not a key name.*unknown setting .usb_key_bogus.*line [0-9]+: .Nonsensestate. is not a key name.*enhancements: ssaa 4, hires on.*textures: dump on, packs on, folder /tmp/mh2-settings-test-textures.*keyboard typing: connected [(]F9 switches between typing.*widescreen: on [(]the camera and the 2D picture are 16:9.*save states: folder /tmp/mh2-settings-test-states; F5 saves, End loads, none and PageUp choose the slot.*mh2-core ended [(]0[)] after 2 VSyncs")
+    # a settings file of a development build (fps = 144, fps60 = on): the game starts, the two keys are settings it does not use
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/test-old-fps.ini" "fps = 144\nfps60 = on\n")
+    host_add_exe_test(host_old_fps mh2 --config "${CMAKE_CURRENT_BINARY_DIR}/test-old-fps.ini"
+                      --archive "${CMAKE_CURRENT_BINARY_DIR}/test-disc.arc"
+                      --no-window --gs-off --mute --no-card --quit-after 2 --core "${_fake}" ${_dirs})
+    set_tests_properties(host_old_fps PROPERTIES PASS_REGULAR_EXPRESSION
+      "line 1: .fps. is a setting of an earlier version and is not used now.*line 2: .fps60. is a setting of an earlier version and is not used now.*mh2-core ended [(]0[)]"
+      FAIL_REGULAR_EXPRESSION "frames per second|in-between|unknown setting")
   # the enhancements' options: --ssaa N alone, --hires (implies ssaa 4), --ssaa 1 over hires = on; off says nothing
   host_add_exe_test(host_ssaa mh2 --config "${CMAKE_CURRENT_BINARY_DIR}/test-empty.ini"
                     --archive "${CMAKE_CURRENT_BINARY_DIR}/test-disc.arc" --ssaa 8
@@ -167,12 +181,12 @@ if(MH2_PLATFORM STREQUAL "linux")
            "-DEXPECT=mh2-core stopped: the fake core's fatal error"
            -P "${CMAKE_CURRENT_LIST_DIR}/tests/expect_error.cmake")
   set_tests_properties(host_fatal PROPERTIES ENVIRONMENT "MH2_FAKE_FATAL=30" TIMEOUT 90)
-  # a card another mh2 holds (cards.c): its lock names a live process (1, init), so mh2 refuses it
+  # a card another copy of OpenMH2 holds (cards.c): its lock names a live process (1, init), so OpenMH2 refuses it
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/test-locked.ps2" "")
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/test-locked.ps2.lock" "1\n")
   add_test(NAME host_card_lock COMMAND "${CMAKE_COMMAND}" "-DEXE=$<TARGET_FILE:mh2>"
            "-DARGS=--config;${CMAKE_CURRENT_BINARY_DIR}/test-empty.ini;--archive;${CMAKE_CURRENT_BINARY_DIR}/test-disc.arc;--no-window;--gs-off;--mute;--no-card;--quit-after;2;--memcard1;${CMAKE_CURRENT_BINARY_DIR}/test-locked.ps2;--core;${_fake};${_dirs}"
-           "-DEXPECT=is in use by another mh2 [(]process 1[)]"
+           "-DEXPECT=is in use by another copy of OpenMH2 [(]process 1[)]"
            -P "${CMAKE_CURRENT_LIST_DIR}/tests/expect_error.cmake")
 endif()
 
@@ -189,12 +203,49 @@ elseif(NOT MH2_TEST_COPY)   # Windows: the stops only; %APPDATA% can't be moved 
            -DRELEASE=1 -P "${CMAKE_CURRENT_LIST_DIR}/tests/guard_test.cmake")
 endif()
 
+# 1.0.0 draws 30 pictures a second and has no frame rate option: --help names none and --fps is an option mh2 does not know (the
+# release's view of the settings table; the development build keeps the row and the options).
+  host_add_exe_test(host_release_help mh2 --help)
+  set_tests_properties(host_release_help PROPERTIES PASS_REGULAR_EXPRESSION "usage: mh2 .options.*--ssaa"
+    FAIL_REGULAR_EXPRESSION "--fps|frames per second|in-between")
+  host_add_exe_test(host_release_no_fps mh2 --fps 60)
+  set_tests_properties(host_release_no_fps PROPERTIES PASS_REGULAR_EXPRESSION "usage: mh2" FAIL_REGULAR_EXPRESSION "mh2-core")
+  host_add_exe_test(host_release_no_fps60 mh2 --fps60)
+  set_tests_properties(host_release_no_fps60 PROPERTIES PASS_REGULAR_EXPRESSION "usage: mh2" FAIL_REGULAR_EXPRESSION "mh2-core")
+
 # The PC keyboard as the game's USB keyboard (keyboard.c): the mapping, the typing toggle, the bindings, the ring.
+# The timing of 120 and 144 frames per second (hfr.c): the alphas of a game frame, the clock, the divider, the step down.
+add_executable(host_hfr_test tests/hfr_test.c hfr.c)
+target_include_directories(host_hfr_test PRIVATE "${CMAKE_CURRENT_LIST_DIR}")
+target_compile_options(host_hfr_test PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(host_hfr_test PRIVATE m)
+host_add_exe_test(host_hfr host_hfr_test)
+
 add_executable(host_keyboard_test tests/keyboard_test.c keyboard.c)
 target_include_directories(host_keyboard_test PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${MH2_ROOT}/pc")
 target_compile_options(host_keyboard_test PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(host_keyboard_test PRIVATE SDL3::SDL3)
 host_add_exe_test(host_keyboard host_keyboard_test)
+
+# The camera on the right stick (camstick.c): the mapping of the stick to the D-pad.
+add_executable(host_camstick_test tests/camstick_test.c camstick.c)
+target_include_directories(host_camstick_test PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${MH2_ROOT}/pc")
+target_compile_options(host_camstick_test PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(host_camstick_test PRIVATE SDL3::SDL3)
+host_add_exe_test(host_camstick host_camstick_test)
+# The texture packs list (packs.c): the folders, the file order, a Japanese name.
+add_executable(host_packs_test tests/packs_test.c packs.c)
+target_include_directories(host_packs_test PRIVATE "${CMAKE_CURRENT_LIST_DIR}")
+target_compile_options(host_packs_test PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(host_packs_test PRIVATE SDL3::SDL3)
+host_add_exe_test(host_packs host_packs_test)
+
+# A text pack's pack.ini (pc/ipc/packini.h) and the check of a chosen pack before the game starts (textpack.c).
+add_executable(host_textpack_test tests/textpack_test.c textpack.c hostfs.c)
+target_include_directories(host_textpack_test PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${MH2_ROOT}/pc")
+target_compile_options(host_textpack_test PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(host_textpack_test PRIVATE SDL3::SDL3)
+host_add_exe_test(host_textpack host_textpack_test)
 
 # When mh2 adds --local-date to the core's arguments (core_args.c): play only.
 add_executable(host_core_args_test tests/core_args_test.c core_args.c)
@@ -210,13 +261,12 @@ target_link_libraries(host_hostfs_test PRIVATE SDL3::SDL3)
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/hostfs-work")
 host_add_exe_test(host_hostfs host_hostfs_test "${CMAKE_CURRENT_BINARY_DIR}/hostfs-work" "テスト")
 
-# The disc archive maker (arcmake.c, sha1.c, movietable.c) on fake discs made by the test itself, with nothing of the game in them; the
-# same program makes the launcher test's fake discs (tests/launcher_test.cmake runs it with --fixtures).
+# The disc archive maker (arcmake.c, sha1.c, movietable.c) on fake discs made by the test itself, with nothing of the game in them.
 
 # The settings table's writer (settings.c, the launcher's save): the file's other lines stay, a CRLF file stays CRLF, a value
 # the command line gave is not saved over. settings.c is compiled into the test with stubs for the rest of the host.
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/settings-writer")
-add_executable(host_settings_writer_test tests/settings_writer_test.c settings.c hostfs.c launcher_text.c)
+add_executable(host_settings_writer_test tests/settings_writer_test.c settings.c hostfs.c packs.c launcher_text.c)
 target_compile_definitions(host_settings_writer_test PRIVATE MH2_SETTINGS_TEST=1)
   target_compile_definitions(host_settings_writer_test PRIVATE MH2_RELEASE=1)
 target_include_directories(host_settings_writer_test PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${MH2_ROOT}/pc")
@@ -230,7 +280,7 @@ host_add_exe_test(host_settings_writer host_settings_writer_test "${CMAKE_CURREN
 # When the launcher appears (launcher.c): never in an automated run, never with --no-launcher, only with an archive. launcher.c
 # and settings.c are compiled into the test with stubs for the window.
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/launcher-wanted")
-add_executable(host_launcher_wanted_test tests/launcher_wanted_test.c launcher.c launcher_make.c arcmake.c sha1.c movietable.c movielib.c settings.c hostfs.c launcher_text.c)
+add_executable(host_launcher_wanted_test tests/launcher_wanted_test.c launcher.c launcher_make.c launcher_build.c arcmake.c sha1.c movietable.c movielib.c settings.c hostfs.c packs.c launcher_text.c)
 target_compile_definitions(host_launcher_wanted_test PRIVATE MH2_SETTINGS_TEST=1)
   target_compile_definitions(host_launcher_wanted_test PRIVATE MH2_RELEASE=1)
 target_include_directories(host_launcher_wanted_test PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${CMAKE_CURRENT_BINARY_DIR}" "${MH2_ROOT}/pc")

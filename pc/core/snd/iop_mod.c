@@ -150,7 +150,7 @@ int IopKern_LoadModule(u32 image, u32 max, const char *name, const u8 *args, u32
     return g_nmods;
 }
 
-/* The modules that have native code (the original's iop_misc.c, is_lle_module: the sound modules), by the name in
+/* The modules that have native code (the original's is_lle_module: the sound modules), by the name in
  * their IRX header. */
 int IopKern_HasNativeModule(const char *name)
 {
@@ -159,7 +159,7 @@ int IopKern_HasNativeModule(const char *name)
 }
 
 /* The module name of an IRX image (the .iopmod program header; the
- * original's iop_misc.c, irx_name): "?" when there is none. */
+ * original's irx_name): "?" when there is none. */
 void IopKern_IrxName(u32 image, u32 max, char *out, u32 cap)
 {
     const u8 *img = IopMem_Ptr(image);

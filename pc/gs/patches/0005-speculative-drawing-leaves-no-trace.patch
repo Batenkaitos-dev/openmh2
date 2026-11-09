@@ -1,0 +1,457 @@
+Speculative drawing leaves no trace: begin_speculation and end_speculation
+
+The port draws a step's in-between picture on the one renderer, before the
+real chain, and the real chain must then start from exactly the state it
+would have had without it (the port draws exactly what the game draws). Local
+memory, as the shaders keep it, is more than the guest's VRAM: with
+super-sampling it holds a copy of the single-rate values and one copy per sample.
+
+GSInterface::begin_speculation() flushes, copies the whole of it aside on
+the GPU (GSRenderer::save_vram_state) and starts a log of the pages that
+rendering, HOST -> LOCAL transfers, LOCAL -> LOCAL copies and host writes
+write (PageTracker::begin_write_log). end_speculation() flushes, copies
+back from the aside copy exactly the pages in the log, in every slice
+(GSRenderer::restore_vram_pages), marks them written so that the textures
+cached from them are dropped, and puts the CLUT cache back: the instance
+of the start is copied to a fresh one (the instances only move forward)
+and the cache is rewound to it. Nothing is waited for on the CPU. The
+registers, the GIF paths and what the caller keeps about them are the
+caller's to put back.
+
+GSInterface::rewind_speculation() does the copying back of end_speculation() and goes on with the speculation: the copy
+made aside equals local memory again, so it is kept (not made again) and the log of pages starts afresh. A step
+with several pictures begins once, rewinds between the pictures and ends once.
+
+While a speculation is on (GSRenderer::set_speculation_sync), the command
+buffer of each submission signals a semaphore that the next async transfer
+submission waits for, and the generic queue waits for the async transfers at
+the transfer stage too. The library orders the two queues only where shaders
+read what the async queue wrote (host-to-local copies of single pages); a
+restore that the generic queue ran late could overwrite what the async queue
+had meanwhile copied for the real chain (seen as a wrong picture at one
+step in 250,000, when the GPU was shared). The test knobs set_test_knobs
+(a stall before the restore, and the ordering switched off) make that
+race show at once.
+
+Applied by tools/setup.sh and tools/setup.ps1 after patch 0004 to the
+pinned paraLLEl-GS commit (tools/versions.txt). paraLLEl-GS is
+LGPL-3.0-or-later; this patch is published with the port under the same
+license.
+
+diff --git a/gs/gs_interface.cpp b/gs/gs_interface.cpp
+--- a/gs/gs_interface.cpp
++++ b/gs/gs_interface.cpp
+@@ -350,6 +350,68 @@
+ 	render_pass.prim = renderer.get_reserved_primitive_attributes();
+ }
+ 
++void GSInterface::begin_speculation()
++{
++	renderer.set_speculation_sync(true);
++	flush();
++	speculation_clut_instance = render_pass.clut_instance;
++	renderer.save_vram_state();
++	tracker.begin_write_log();
++}
++
++void GSInterface::rewind_speculation()
++{
++	flush();
++	tracker.end_write_log();
++	const std::vector<uint32_t> bits = tracker.get_write_log();
++
++	// What was cached from the pages written is not what they will hold.
++	PageRect rect = {};
++	rect.page_height = 1;
++	rect.block_mask = UINT32_MAX;
++	rect.write_mask = UINT32_MAX;
++	for (size_t i = 0, n = bits.size(); i < n; i++)
++	{
++		for (uint32_t bit = 0; bit < 32; bit++)
++		{
++			if (!(bits[i] & (1u << bit)))
++				continue;
++			rect.base_page = uint32_t(i * 32 + bit);
++			rect.page_width = 1;
++			while (bit + rect.page_width < 32 && (bits[i] & (1u << (bit + rect.page_width))))
++				rect.page_width++;
++			tracker.mark_external_write(rect);
++			bit += rect.page_width - 1;
++		}
++	}
++	flush();
++	renderer.restore_vram_pages(bits);
++
++	// The CLUT cache: the instance of the start, copied to a fresh one (the instances only move forward).
++	if (render_pass.clut_instance != speculation_clut_instance)
++	{
++		uint32_t instance = (render_pass.clut_instance + 1) % CLUTInstances;
++		renderer.copy_clut_instance(speculation_clut_instance, instance);
++		flush();
++		renderer.rewind_clut_instance(instance);
++		render_pass.clut_instance = instance;
++		render_pass.latest_clut_instance = instance;
++		render_pass.num_memoized_palettes = 0;
++	}
++	mark_texture_state_dirty();
++
++	// The aside copy is whole again: it equals local memory now, so it stays, and the log starts afresh.
++	speculation_clut_instance = render_pass.clut_instance;
++	tracker.begin_write_log();
++}
++
++void GSInterface::end_speculation()
++{
++	rewind_speculation();
++	tracker.end_write_log();
++	renderer.set_speculation_sync(false);
++}
++
+ void GSInterface::flush(PageTrackerFlushFlags flags, FlushReason reason)
+ {
+ 	if ((flags & PAGE_TRACKER_FLUSH_HOST_VRAM_SYNC_BIT) != 0)
+diff --git a/gs/gs_interface.hpp b/gs/gs_interface.hpp
+--- a/gs/gs_interface.hpp
++++ b/gs/gs_interface.hpp
+@@ -308,6 +308,22 @@
+ 
+ 	void flush();
+ 
++	// The port's in-between pictures: drawing that leaves no trace. begin_speculation() flushes and copies local
++	// memory aside (every super-sampling slice) and starts a log of the pages written; end_speculation() flushes,
++	// copies back the pages that were written, forgets the cached textures made from them, and puts the CLUT cache
++	// back. Nothing is waited for on the CPU. The registers, the GIF paths and what the caller keeps about them are
++	// the caller's to put back.
++	void begin_speculation();
++	void set_test_knobs(uint32_t stall, bool nosync)
++	{
++		renderer.set_test_knobs(stall, nosync);
++	}
++	void end_speculation();
++	// The pages written since begin_speculation() (or the last rewind) are copied back like end_speculation() does, the
++	// CLUT cache is put back, and the speculation goes on: the copy made aside is still whole, so nothing is copied
++	// aside again. For the pictures of a step after the first.
++	void rewind_speculation();
++
+ 	void clobber_register_state();
+ 
+ 	RegisterState &get_register_state();
+@@ -353,6 +369,7 @@
+ 
+ 	PageTracker tracker;
+ 	GSRenderer renderer;
++	uint32_t speculation_clut_instance = 0;
+ 	uint32_t vram_size = 0;
+ 	DebugMode debug_mode;
+ 	Hacks hacks;
+diff --git a/gs/gs_renderer.cpp b/gs/gs_renderer.cpp
+--- a/gs/gs_renderer.cpp
++++ b/gs/gs_renderer.cpp
+@@ -1171,8 +1171,10 @@
+ 		Vulkan::Semaphore sem;
+ 		async_transfer_cmd->end_region();
+ 		device->submit(async_transfer_cmd, nullptr, 1, &sem);
+-		device->add_wait_semaphore(Vulkan::CommandBuffer::Type::Generic, std::move(sem),
+-		                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, true);
++		VkPipelineStageFlags2 wait_stages = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
++		if (speculation_sync)
++			wait_stages |= VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
++		device->add_wait_semaphore(Vulkan::CommandBuffer::Type::Generic, std::move(sem), wait_stages, true);
+ 	}
+ 
+ 	if (clear_cmd)
+@@ -1211,7 +1213,16 @@
+ 		device->submit(binning_cmd);
+ 	}
+ 
+-	if (direct_cmd)
++	if (direct_cmd && speculation_sync)
++	{
++		// What the async transfer queue copies next waits for the commands so far, which include the copies of
++		// the speculation's saves and restores of local memory.
++		Vulkan::Semaphore sem;
++		device->submit(direct_cmd, nullptr, 1, &sem);
++		device->add_wait_semaphore(Vulkan::CommandBuffer::Type::AsyncTransfer, std::move(sem),
++		                           VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, true);
++	}
++	else if (direct_cmd)
+ 		device->submit(direct_cmd);
+ 
+ 	if (value)
+@@ -1578,7 +1589,6 @@
+ 		cmd.begin_region("AsyncTransfer");
+ 
+ 	cmd.begin_region("flush-host-vram-copy");
+-
+ 	Vulkan::QueryPoolHandle start_ts, end_ts;
+ 
+ 	VkPipelineStageFlags2 stages = VK_PIPELINE_STAGE_2_COPY_BIT;
+@@ -1639,6 +1649,116 @@
+ 	check_flush_stats();
+ }
+ 
++void GSRenderer::save_vram_state()
++{
++	if (!device || !buffers.gpu)
++		return;
++
++	const VkDeviceSize bytes = buffers.gpu->get_create_info().size / 2;
++	if (!vram_backup || vram_backup->get_create_info().size != bytes)
++	{
++		Vulkan::BufferCreateInfo info = {};
++		info.size = bytes;
++		info.domain = Vulkan::BufferDomain::Device;
++		info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
++		vram_backup = device->create_buffer(info);
++		device->set_name(*vram_backup, "vram-backup");
++	}
++
++	ensure_command_buffer(direct_cmd, Vulkan::CommandBuffer::Type::Generic);
++	auto &cmd = *direct_cmd;
++	cmd.begin_region("vram-save");
++	cmd.barrier(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_WRITE_BIT,
++	            VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
++	Vulkan::QueryPoolHandle start_ts, end_ts;
++	if (enable_timestamps)
++		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_2_COPY_BIT);
++	cmd.copy_buffer(*vram_backup, 0, *buffers.gpu, 0, bytes);
++	if (enable_timestamps)
++	{
++		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_2_COPY_BIT);
++		device->register_time_interval("GPU", start_ts, end_ts, "vram-save");
++		timestamps.push_back({ TimestampType::Speculation, std::move(start_ts), std::move(end_ts) });
++	}
++	cmd.barrier(VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
++	            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT);
++	cmd.end_region();
++	flush_submit(0);
++}
++
++void GSRenderer::restore_vram_pages(const std::vector<uint32_t> &page_bits)
++{
++	if (!device || !buffers.gpu || !vram_backup)
++		return;
++
++	const VkDeviceSize slices = vram_backup->get_create_info().size / vram_size;
++	ensure_command_buffer(direct_cmd, Vulkan::CommandBuffer::Type::Generic);
++	auto &cmd = *direct_cmd;
++	cmd.begin_region("vram-restore");
++	cmd.barrier(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_WRITE_BIT,
++	            VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
++
++	if (test_stall)
++	{
++		if (!stall_a)
++		{
++			Vulkan::BufferCreateInfo info = {};
++			info.size = 128u << 20;
++			info.domain = Vulkan::BufferDomain::Device;
++			info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
++			stall_a = device->create_buffer(info);
++			stall_b = device->create_buffer(info);
++		}
++		for (uint32_t i = 0; i < test_stall; i++)
++		{
++			cmd.copy_buffer(*stall_a, 0, *stall_b, 0, 128u << 20);
++			cmd.barrier(VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
++			            VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT);
++		}
++	}
++	Vulkan::QueryPoolHandle start_ts, end_ts;
++	if (enable_timestamps)
++		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_2_COPY_BIT);
++	RangeMerger merger;
++	const auto copy_back = [&](VkDeviceSize offset, VkDeviceSize range) {
++		for (VkDeviceSize slice = 0; slice < slices; slice++)
++			cmd.copy_buffer(*buffers.gpu, vram_size * slice + offset, *vram_backup, vram_size * slice + offset, range);
++	};
++	for (size_t i = 0, n = page_bits.size(); i < n; i++)
++	{
++		Util::for_each_bit(page_bits[i], [&](uint32_t bit) {
++			merger.push(VkDeviceSize(i * 32 + bit) * PageSize, PageSize, copy_back);
++		});
++	}
++	merger.flush(copy_back);
++	if (enable_timestamps)
++	{
++		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_2_COPY_BIT);
++		device->register_time_interval("GPU", start_ts, end_ts, "vram-restore");
++		timestamps.push_back({ TimestampType::Speculation, std::move(start_ts), std::move(end_ts) });
++	}
++
++	cmd.barrier(VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
++	            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT);
++	cmd.end_region();
++	flush_submit(0);
++}
++
++void GSRenderer::copy_clut_instance(uint32_t src, uint32_t dst)
++{
++	if (!device)
++		return;
++
++	ensure_command_buffer(direct_cmd, Vulkan::CommandBuffer::Type::Generic);
++	auto &cmd = *direct_cmd;
++	cmd.barrier(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_WRITE_BIT,
++	            VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT);
++	cmd.copy_buffer(*buffers.clut, VkDeviceSize(dst % CLUTInstances) * CLUTSize,
++	                *buffers.clut, VkDeviceSize(src % CLUTInstances) * CLUTSize, CLUTSize);
++	cmd.barrier(VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
++	            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT);
++}
++
+ void GSRenderer::ensure_command_buffer(Vulkan::CommandBufferHandle &cmd, Vulkan::CommandBuffer::Type type)
+ {
+ 	if (!cmd)
+diff --git a/gs/gs_renderer.hpp b/gs/gs_renderer.hpp
+--- a/gs/gs_renderer.hpp
++++ b/gs/gs_renderer.hpp
+@@ -75,6 +75,7 @@
+ 	Shading,
+ 	Readback,
+ 	VSync,
++	Speculation,
+ 	Count
+ };
+ 
+@@ -297,6 +298,25 @@
+ 	// Readback stage.
+ 	void flush_readback(const uint32_t *page_indices, uint32_t num_indices);
+ 
++	// The port's speculative drawing (GSInterface::begin_speculation): local memory as the shaders keep it, every
++	// super-sampling slice, is copied aside; the pages named (a bit each) are copied back from that copy. The caller
++	// has flushed. Both are submitted at once, as a command buffer of their own.
++	void save_vram_state();
++	void restore_vram_pages(const std::vector<uint32_t> &page_bits);
++	// One CLUT instance copied over another, on the GPU.
++	void copy_clut_instance(uint32_t src, uint32_t dst);
++	// While on, the commands that copy local memory and the host-to-local copies on the async transfer queue are
++	// ordered both ways (the queues otherwise meet only where shaders read what the async queue wrote).
++	void set_speculation_sync(bool on)
++	{
++		speculation_sync = on && !test_nosync;
++	}
++	void set_test_knobs(uint32_t stall, bool nosync)
++	{
++		test_stall = stall;
++		test_nosync = nosync;
++	}
++
+ 	// Submit to GPU and signal when done.
+ 	void flush_submit(uint64_t timeline);
+ 
+@@ -571,6 +591,11 @@
+ 	VkDeviceSize image_slab_high_water_mark = 0;
+ 	void flush_slab_cache();
+ 
++	Vulkan::BufferHandle vram_backup;
++	bool speculation_sync = false;
++	uint32_t test_stall = 0;
++	bool test_nosync = false;
++	Vulkan::BufferHandle stall_a, stall_b;
+ 	std::vector<uint32_t> vram_copy_write_pages;
+ 	std::vector<uint32_t> sync_vram_shadow_pages;
+ 
+diff --git a/gs/page_tracker.cpp b/gs/page_tracker.cpp
+--- a/gs/page_tracker.cpp
++++ b/gs/page_tracker.cpp
+@@ -25,6 +25,7 @@
+ {
+ 	page_state_mask = num_pages - 1;
+ 	page_state.resize(num_pages);
++	write_log.assign((num_pages + 31) / 32, 0);
+ 
+ 	potential_invalidated_indices.reserve(num_pages);
+ 	accessed_fb_pages.reserve(num_pages);
+@@ -33,6 +34,17 @@
+ 	accessed_readback_pages.reserve(num_pages);
+ }
+ 
++void PageTracker::begin_write_log()
++{
++	std::fill(write_log.begin(), write_log.end(), 0u);
++	write_logging = true;
++}
++
++void PageTracker::end_write_log()
++{
++	write_logging = false;
++}
++
+ bool PageTracker::page_has_host_write_timeline_update(const PageRect &rect) const
+ {
+ 	for (unsigned y = 0; y < rect.page_height; y++)
+@@ -128,6 +140,7 @@
+ 			unsigned page = rect.base_page + y * rect.page_stride + x;
+ 
+ 			page &= page_state_mask;
++			note_write(page);
+ 			auto &state = page_state[page];
+ 
+ 			register_accessed_readback_page(page);
+@@ -164,6 +177,7 @@
+ 			unsigned page = rect.base_page + y * rect.page_stride + x;
+ 
+ 			page &= page_state_mask;
++			note_write(page);
+ 			auto &state = page_state[page];
+ 
+ 			register_accessed_fb_pages(page);
+@@ -250,6 +264,7 @@
+ 		{
+ 			unsigned page = dst_rect.base_page + y * dst_rect.page_stride + x;
+ 			page &= page_state_mask;
++			note_write(page);
+ 			auto &state = page_state[page];
+ 
+ 			register_accessed_readback_page(page);
+@@ -645,6 +660,7 @@
+ 		{
+ 			unsigned page = rect.base_page + y * rect.page_stride + x;
+ 			page &= page_state_mask;
++			note_write(page);
+ 			auto &state = page_state[page];
+ 
+ 			register_accessed_readback_page(page);
+@@ -706,6 +722,7 @@
+ 		{
+ 			unsigned page = rect.base_page + y * rect.page_stride + x;
+ 			page &= page_state_mask;
++			note_write(page);
+ 			cb.sync_host_vram_page(page, rect.block_mask);
+ 			auto &state = page_state[page];
+ 			state.flags &= ~PAGE_STATE_MAY_SUPER_SAMPLE_BIT;
+diff --git a/gs/page_tracker.hpp b/gs/page_tracker.hpp
+--- a/gs/page_tracker.hpp
++++ b/gs/page_tracker.hpp
+@@ -201,6 +201,15 @@
+ 
+ 	bool texture_may_super_sample(const PageRect &rect) const;
+ 
++	// A log of the pages that rendering, transfers, LOCAL -> LOCAL copies and host writes write between
++	// begin_write_log() and end_write_log(): one bit per page, for a caller that puts the memory back.
++	void begin_write_log();
++	void end_write_log();
++	const std::vector<uint32_t> &get_write_log() const
++	{
++		return write_log;
++	}
++
+ 	bool page_has_fb_read_write(const PageRect &rect) const;
+ 	bool page_has_fb_write(const PageRect &rect) const;
+ 	bool page_is_copy_cached_sensitive(const PageRect &rect) const;
+@@ -248,6 +257,14 @@
+ 	void garbage_collect_texture_masked_handles(std::vector<CachedTextureMasked> &textures);
+ 	std::vector<uint32_t> potential_invalidated_indices;
+ 
++	bool write_logging = false;
++	std::vector<uint32_t> write_log;
++	void note_write(uint32_t page)
++	{
++		if (write_logging)
++			write_log[page >> 5] |= 1u << (page & 31);
++	}
++
+ 	void register_potential_invalidated_indices(uint32_t page);
+ 	void register_accessed_readback_page(uint32_t page);
+ 	void register_accessed_copy_pages(uint32_t page);

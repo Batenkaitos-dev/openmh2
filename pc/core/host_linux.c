@@ -3,7 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "host.h"
@@ -44,6 +46,22 @@ HOST void Host_Fatal(const char *msg)
     fflush(stderr);
     FatalHook(msg);
     abort();
+}
+
+static int sRefused;
+
+HOST int Host_Refused(void)
+{
+    return sRefused;
+}
+
+HOST void Host_Refuse(const char *msg)
+{
+    fprintf(stderr, "mh2-core: %s\n", msg);
+    fflush(stderr);
+    sRefused = 1;
+    FatalHook(msg);
+    exit(HOST_EXIT_REFUSED);
 }
 
 HOST void Host_StubFatal(const char *name)
@@ -94,6 +112,30 @@ HOST void Host_Args(int *argc, char ***argv)
 HOST FILE *HostFile_Open(const char *path, const char *mode)
 {
     return fopen(path, mode);
+}
+
+HOST int HostFile_List(const char *dir, void (*fn)(const char *name, int is_folder, void *arg), void *arg)
+{
+    DIR *d = opendir(dir);
+    struct dirent *e;
+    if (!d) {
+        return -1;
+    }
+    while ((e = readdir(d)) != NULL) {
+        char path[4096 + 300];
+        struct stat st;
+        if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) {
+            continue;
+        }
+        snprintf(path, sizeof(path), "%s/%s", dir, e->d_name);
+        if (stat(path, &st) != 0) {   /* a link to nothing: listed as a file, so that opening it fails where the caller can say so */
+            fn(e->d_name, 0, arg);
+            continue;
+        }
+        fn(e->d_name, S_ISDIR(st.st_mode) ? 1 : 0, arg);
+    }
+    closedir(d);
+    return 0;
 }
 
 HOST int HostFile_Remove(const char *path)

@@ -5,7 +5,7 @@
  * deletes its semaphore, and the game's keyboard input is the pad's software keyboard.
  *
  * With one connected, the
- * service answers as the original's model of a PS2 with a USB keyboard (iop_usbkb.c, the same
+ * service answers as the original's model of a PS2 with a USB keyboard (the same
  * protocol; libusbkb):
  *   fno 1  GetInfo     answer (0x90 bytes): byte 0 the slots (the connected flags that follow), byte 1 the
  *                      connected keyboards, bytes 2.. a flag a slot: 1, 1, 1.

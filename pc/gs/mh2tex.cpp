@@ -27,6 +27,10 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#ifndef PSAPI_VERSION
+#define PSAPI_VERSION 2
+#endif
+#include <psapi.h>
 #else
 #include <dirent.h>
 #include <sys/stat.h>
@@ -119,6 +123,84 @@ void remove_file(const std::string &p)
 #endif
 }
 
+/* The whole file (UTF-8 path); false if it cannot be read. `limit` > 0 reads at most that many bytes (a header). */
+bool read_file(const std::string &p, std::vector<uint8_t> &out, size_t limit = 0)
+{
+#ifdef _WIN32
+    FILE *f = _wfopen(wide(p).c_str(), L"rb");
+#else
+    FILE *f = fopen(p.c_str(), "rb");
+#endif
+    if (!f)
+        return false;
+    size_t size = limit;
+    if (!limit)
+    {
+        fseek(f, 0, SEEK_END);
+        long n = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        size = n > 0 ? size_t(n) : 0;
+    }
+    out.resize(size);
+    size_t got = size ? fread(out.data(), 1, size, f) : 0;
+    fclose(f);
+    out.resize(got);
+    return limit ? got > 0 : got == size;
+}
+
+/* The physical memory the machine has free right now, in bytes; 0 if it cannot tell. */
+uint64_t available_memory()
+{
+#ifdef _WIN32
+    MEMORYSTATUSEX ms;
+    ms.dwLength = sizeof(ms);
+    return GlobalMemoryStatusEx(&ms) ? uint64_t(ms.ullAvailPhys) : 0;
+#else
+    if (FILE *f = fopen("/proc/meminfo", "r"))   /* MemAvailable counts the cache the system gives back */
+    {
+        char line[256];
+        unsigned long long kb = 0;
+        while (fgets(line, sizeof(line), f))
+            if (sscanf(line, "MemAvailable: %llu kB", &kb) == 1)
+                break;
+        fclose(f);
+        if (kb)
+            return uint64_t(kb) << 10;
+    }
+    long pages = sysconf(_SC_AVPHYS_PAGES), size = sysconf(_SC_PAGESIZE);
+    return pages > 0 && size > 0 ? uint64_t(pages) * uint64_t(size) : 0;
+#endif
+}
+
+/* This process's memory now and at its peak, in bytes (0 if unknown). */
+void process_memory(uint64_t &now, uint64_t &peak)
+{
+    now = peak = 0;
+#ifdef _WIN32
+    PROCESS_MEMORY_COUNTERS pmc;
+    pmc.cb = sizeof(pmc);
+    if (K32GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+    {
+        now = pmc.WorkingSetSize;
+        peak = pmc.PeakWorkingSetSize;
+    }
+#else
+    if (FILE *f = fopen("/proc/self/status", "r"))
+    {
+        char line[256];
+        unsigned long long kb = 0;
+        while (fgets(line, sizeof(line), f))
+        {
+            if (sscanf(line, "VmRSS: %llu kB", &kb) == 1)
+                now = kb << 10;
+            else if (sscanf(line, "VmHWM: %llu kB", &kb) == 1)
+                peak = kb << 10;
+        }
+        fclose(f);
+    }
+#endif
+}
+
 /* All files below dir, as full paths. */
 void list_files(const std::string &dir, std::vector<std::string> &out)
 {
@@ -160,6 +242,9 @@ void list_files(const std::string &dir, std::vector<std::string> &out)
     closedir(d);
 #endif
 }
+
+using Clock = std::chrono::steady_clock;
+inline uint64_t ns_since(Clock::time_point t) { return uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - t).count()); }
 
 /* ---------------------------------------------------------------- hashing */
 
@@ -327,10 +412,72 @@ struct DumpJob
 
 enum FileState { UNLOADED = 0, LOADING = 1, READY = 2, FAILED = 3 };
 
+/* A DDS file's top level, as it is uploaded. Only BC7 (DXGI_FORMAT_BC7_UNORM or _SRGB, in a DX10 header), one 4 x 4 block
+ * to 16 bytes, the sizes a multiple of 4. The data after the header(s) is used as it is: no decoding. */
+struct DdsInfo
+{
+    uint32_t w = 0, h = 0;
+    size_t offset = 0, bytes = 0;
+};
+
+bool parse_dds(const uint8_t *d, size_t n, DdsInfo &out, std::string &why)
+{
+    auto u32 = [&](size_t o) { return uint32_t(d[o]) | uint32_t(d[o + 1]) << 8 | uint32_t(d[o + 2]) << 16 | uint32_t(d[o + 3]) << 24; };
+    if (n < 128 || memcmp(d, "DDS ", 4) != 0 || u32(4) != 124 || u32(76) != 32)
+    {
+        why = "not a DDS file";
+        return false;
+    }
+    if (memcmp(d + 84, "DX10", 4) != 0 || n < 148)
+    {
+        why = "only BC7 is read (a DDS file with a DX10 header)";
+        return false;
+    }
+    uint32_t dxgi = u32(128);
+    if (dxgi != 98 && dxgi != 99)
+    {
+        why = "only BC7 is read (DXGI format 98 or 99)";
+        return false;
+    }
+    if (u32(128 + 4) != 3)
+    {
+        why = "not a 2D texture";
+        return false;
+    }
+    out.h = u32(12);
+    out.w = u32(16);
+    if (!out.w || !out.h || out.w % 4 || out.h % 4 || out.w > 16384 || out.h > 16384)
+    {
+        why = "the size must be a multiple of 4 (and at most 16384)";
+        return false;
+    }
+    out.offset = 148;
+    out.bytes = size_t(out.w / 4) * (out.h / 4) * 16;
+    if (n < out.offset + out.bytes)
+    {
+        why = "the file is shorter than its top level";
+        return false;
+    }
+    return true;
+}
+
+bool has_ext(const std::string &p, const char *ext)
+{
+    size_t n = strlen(ext);
+    if (p.size() < n)
+        return false;
+    for (size_t i = 0; i < n; i++)
+        if (char(tolower((unsigned char)p[p.size() - n + i])) != ext[i])
+            return false;
+    return true;
+}
+
 struct PackFile
 {
     std::string path;
+    size_t pack = 0;               /* the pack it is from (the list's index) */
     std::atomic<int> state{UNLOADED};
+    bool bc7 = false;              /* a .dds file: `rgba` holds the BC7 blocks (w x h texels, 16 bytes to 4 x 4) */
     std::vector<uint8_t> rgba;     /* READY: w x h, alpha in the GS's scale */
     uint32_t w = 0, h = 0;
     std::string error;             /* FAILED */
@@ -367,6 +514,25 @@ struct Textures::Impl
     uint16_t clut[512] = {};
     uint8_t clut_ok[512] = {};
 
+    /* the state put aside by speculation_begin */
+    bool speculating = false;
+    std::vector<uint8_t> spec_page_state;
+    std::vector<uint32_t> spec_page_gen;
+    uint16_t spec_clut[512] = {};
+    uint8_t spec_clut_ok[512] = {};
+    std::unordered_map<uint32_t, std::vector<uint8_t>> spec_shadow;   /* page -> what it held before the first write */
+
+    void spec_save_pages(const PageRect &r)
+    {
+        for_pages(r, [this](uint32_t page) {
+            if (spec_shadow.find(page) == spec_shadow.end())
+            {
+                const uint8_t *p = shadow.data() + size_t(page) * 8192;
+                spec_shadow.emplace(page, std::vector<uint8_t>(p, p + 8192));
+            }
+        });
+    }
+
     struct SigEntry { uint64_t gens, texels; };
     std::unordered_map<uint64_t, SigEntry> sigcache;
     std::vector<uint32_t> scratch;
@@ -396,8 +562,11 @@ struct Textures::Impl
     std::condition_variable load_cv;
     std::deque<PackFile *> load_queue;
     bool load_stop = false;
-    std::thread load_thread;
+    std::vector<std::thread> load_threads;
+    std::vector<PackFile *> order;          /* the files in the list: pack by pack, in path order */
     std::atomic<uint64_t> loaded_bytes{0};
+    uint64_t budget_bytes = 0;              /* the decoded files kept in memory (opt.cache_mb, held to the memory the machine has) */
+    int bc7_ok = -1;                        /* the device samples BC7 images: -1 not asked yet */
     uint64_t use_clock = 0;
     /* The images made from the pack's files, kept by file and cut-out: the GS makes a texture's cached image again
      * every time the game uploads it again (many times a frame for some), and a replacement is not uploaded again. */
@@ -483,6 +652,8 @@ struct Textures::Impl
             return;
         }
 
+        if (speculating)
+            spec_save_pages(pr);
         bool known = true;
         switch (psm)
         {
@@ -791,42 +962,133 @@ struct Textures::Impl
 
     /* ----- the pack */
 
-    void index_pack()
+    /* The packs in load order: a key (a texture's file name without ".png", lower case) is served by the first pack
+     * that has a file for it. Inside one pack the files are taken in path order (bytes of the UTF-8 path), so a name
+     * found twice (in two sub-folders) is decided the same way on every system. */
+    void index_packs()
     {
-        std::vector<std::string> all;
-        list_files(opt.pack_dir, all);
-        size_t dup = 0, misnamed = 0;
-        for (auto &p : all)
+        size_t misnamed = 0, misnamed_logged = 0;
+        for (size_t pi = 0; pi < opt.pack_dirs.size(); pi++)
         {
-            size_t slash = p.find_last_of("/\\");
-            std::string name = p.substr(slash == std::string::npos ? 0 : slash + 1);
-            if (name.size() < 5)
+            const std::string &dir = opt.pack_dirs[pi];
+            if (dir.empty())
                 continue;
-            std::string ext = name.substr(name.size() - 4);
-            for (auto &ch : ext)
-                ch = char(tolower((unsigned char)ch));
-            if (ext != ".png")
-                continue;
-            std::string stem = name.substr(0, name.size() - 4);
-            for (auto &ch : stem)
-                ch = char(tolower((unsigned char)ch));
-            if (!valid_key_name(stem))
+            if (!file_exists(dir))
             {
-                if (misnamed++ < 5)
-                    log("texture pack: %s is not named like a texture's key (FMT_WxH_texels[_palette]); skipped", p.c_str());
+                log("texture pack: the folder %s does not exist; skipped", dir.c_str());
                 continue;
             }
-            std::unique_ptr<PackFile> f(new PackFile);
-            f->path = p;
-            if (!files.emplace(stem, std::move(f)).second)
-                dup++;
+            std::vector<std::string> all;
+            list_files(dir, all);
+            std::sort(all.begin(), all.end());
+            size_t added = 0, shadowed = 0, dup = 0;
+            for (auto &p : all)
+            {
+                size_t slash = p.find_last_of("/\\");
+                std::string name = p.substr(slash == std::string::npos ? 0 : slash + 1);
+                if (name.size() < 5)
+                    continue;
+                std::string ext = name.substr(name.size() - 4);
+                for (auto &ch : ext)
+                    ch = char(tolower((unsigned char)ch));
+                if (ext != ".png" && ext != ".dds")
+                    continue;
+                std::string stem = name.substr(0, name.size() - 4);
+                for (auto &ch : stem)
+                    ch = char(tolower((unsigned char)ch));
+                if (!valid_key_name(stem))
+                {
+                    misnamed++;
+                    if (misnamed_logged++ < 5)
+                        log("texture pack: %s is not named like a texture's key (FMT_WxH_texels[_palette]); skipped", p.c_str());
+                    continue;
+                }
+                auto found = files.find(stem);
+                if (found != files.end())
+                {
+                    if (found->second->pack == pi)
+                        dup++;
+                    else
+                        shadowed++;
+                    continue;
+                }
+                std::unique_ptr<PackFile> f(new PackFile);
+                f->path = p;
+                f->pack = pi;
+                f->bc7 = ext == ".dds";
+                order.push_back(f.get());
+                files.emplace(stem, std::move(f));
+                added++;
+            }
+            log("texture pack %zu: %zu files in %s%s%s", pi + 1, added, dir.c_str(),
+                shadowed ? " (some are served by an earlier pack)" : "", dup ? " (a name found twice uses the first path)" : "");
         }
         c.pack_files = files.size();
         c.pack_misnamed = misnamed;
         if (misnamed > 5)
             log("texture pack: %zu more files are not named like a texture's key; skipped", misnamed - 5);
-        log("texture pack: %zu files in %s%s", files.size(), opt.pack_dir.c_str(),
-            dup ? " (a name found twice uses the first file found)" : "");
+        log("texture pack: %zu files from %zu packs", files.size(), opt.pack_dirs.size());
+    }
+
+    /* Decodes (a PNG) or reads (a DDS) the file into memory. Called on any thread: it touches the file alone and the
+     * byte count. READY or FAILED when it returns. */
+    void load_file(PackFile *f)
+    {
+        if (f->bc7)
+        {
+            std::vector<uint8_t> raw;
+            DdsInfo info;
+            std::string why;
+            if (!read_file(f->path, raw))
+                why = "unreadable";
+            else if (parse_dds(raw.data(), raw.size(), info, why))
+            {
+                f->rgba.assign(raw.begin() + info.offset, raw.begin() + info.offset + info.bytes);
+                f->w = info.w;
+                f->h = info.h;
+                loaded_bytes += f->rgba.size();
+                f->state.store(READY, std::memory_order_release);
+                return;
+            }
+            f->error = why;
+            f->state.store(FAILED, std::memory_order_release);
+            return;
+        }
+        int w = 0, h = 0, n = 0;
+        uint8_t *px = stbi_load(f->path.c_str(), &w, &h, &n, 4);
+        if (!px)
+        {
+            const char *why = stbi_failure_reason();
+            f->error = why ? why : "unreadable";
+            f->state.store(FAILED, std::memory_order_release);
+            return;
+        }
+        f->rgba.assign(px, px + size_t(w) * h * 4);
+        stbi_image_free(px);
+        for (size_t i = 3; i < f->rgba.size(); i += 4)
+            f->rgba[i] = alpha_from_png(f->rgba[i]);
+        f->w = uint32_t(w);
+        f->h = uint32_t(h);
+        loaded_bytes += f->rgba.size();
+        f->state.store(READY, std::memory_order_release);
+    }
+
+    /* The memory the file will take once loaded, from its header; 0 if it cannot be read (load_file will say why). */
+    uint64_t decoded_size(const PackFile *f)
+    {
+        if (f->bc7)
+        {
+            std::vector<uint8_t> head;
+            if (!read_file(f->path, head, 20) || head.size() < 20 || memcmp(head.data(), "DDS ", 4) != 0)
+                return 0;
+            uint32_t h = uint32_t(head[12]) | uint32_t(head[13]) << 8 | uint32_t(head[14]) << 16 | uint32_t(head[15]) << 24;
+            uint32_t w = uint32_t(head[16]) | uint32_t(head[17]) << 8 | uint32_t(head[18]) << 16 | uint32_t(head[19]) << 24;
+            return uint64_t(w) * h;
+        }
+        int w = 0, h = 0, n = 0;
+        if (!stbi_info(f->path.c_str(), &w, &h, &n))
+            return 0;
+        return uint64_t(w) * uint64_t(h) * 4;
     }
 
     void load_worker()
@@ -842,24 +1104,90 @@ struct Textures::Impl
                 f = load_queue.front();
                 load_queue.pop_front();
             }
-            int w = 0, h = 0, n = 0;
-            uint8_t *px = stbi_load(f->path.c_str(), &w, &h, &n, 4);
-            if (!px)
-            {
-                const char *why = stbi_failure_reason();
-                f->error = why ? why : "unreadable";
-                f->state.store(FAILED, std::memory_order_release);
-                continue;
-            }
-            f->rgba.assign(px, px + size_t(w) * h * 4);
-            stbi_image_free(px);
-            for (size_t i = 3; i < f->rgba.size(); i += 4)
-                f->rgba[i] = alpha_from_png(f->rgba[i]);
-            f->w = uint32_t(w);
-            f->h = uint32_t(h);
-            loaded_bytes += f->rgba.size();
-            f->state.store(READY, std::memory_order_release);
+            load_file(f);
         }
+    }
+
+    size_t thread_count() const
+    {
+        unsigned n = opt.threads ? opt.threads : std::thread::hardware_concurrency();
+        if (!opt.threads)
+            n = n > 1 ? n - 1 : 1;   /* the game and the renderer keep a core */
+        return n < 1 ? 1 : (n > 16 ? 16 : n);
+    }
+
+    /* Decodes the enabled packs before the game starts, in the list's order, as far as the budget goes (the files
+     * that do not fit are left, and load when first drawn). Several threads; a line of progress each second. */
+    void preload()
+    {
+        size_t total = order.size();
+        auto t0 = Clock::now();
+        std::atomic<size_t> next{0}, done{0}, loaded{0}, left_out{0}, failed{0};
+        std::atomic<uint64_t> reserved{0};
+        size_t nthreads = std::min(total, thread_count());
+        if (opt.threads == 0 && nthreads < total)
+            nthreads = std::min(total, size_t(std::thread::hardware_concurrency() ? std::thread::hardware_concurrency() : 1));
+        if (nthreads > 16)
+            nthreads = 16;
+        log("texture pack: preloading %zu files (budget %llu MB, %zu threads)", total, (unsigned long long)(budget_bytes >> 20), nthreads);
+        auto work = [&] {
+            for (;;)
+            {
+                size_t i = next.fetch_add(1);
+                if (i >= total)
+                    return;
+                PackFile *f = order[i];
+                uint64_t sz = decoded_size(f);
+                if (sz && reserved.load() + sz > budget_bytes)
+                {
+                    left_out++;
+                }
+                else
+                {
+                    reserved += sz;
+                    f->state.store(LOADING, std::memory_order_relaxed);
+                    load_file(f);
+                    if (f->state.load(std::memory_order_acquire) == READY)
+                        loaded++;
+                    else
+                        failed++;
+                }
+                done++;
+            }
+        };
+        std::vector<std::thread> th;
+        for (size_t t = 0; t < nthreads; t++)
+            th.emplace_back(work);
+        auto last = Clock::now();
+        while (done.load() < total)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            if (Clock::now() - last >= std::chrono::seconds(1) && done.load() < total)
+            {
+                last = Clock::now();
+                log("texture pack: preloaded %zu of %zu files (%llu MB)", done.load(), total, (unsigned long long)(loaded_bytes.load() >> 20));
+                if (opt.progress)
+                    opt.progress(uint32_t(done.load()), uint32_t(total), opt.progress_user);
+            }
+        }
+        for (auto &t : th)
+            t.join();
+        for (PackFile *f : order)   /* the files that did not fit are as they were before */
+            if (f->state.load(std::memory_order_relaxed) == LOADING)
+                f->state.store(UNLOADED, std::memory_order_relaxed);
+        c.preloaded = loaded;
+        c.preload_left_out = left_out;
+        c.preload_failed = failed;
+        c.preload_bytes = loaded_bytes.load();
+        c.preload_ns = ns_since(t0);
+        uint64_t mem_now, mem_peak;
+        process_memory(mem_now, mem_peak);
+        log("texture pack: preloaded %zu files (%llu MB) in %.2f s; %zu left for when they are drawn%s%s; the process holds %llu MB (peak %llu MB)",
+            loaded.load(), (unsigned long long)(loaded_bytes.load() >> 20), c.preload_ns / 1e9, left_out.load(), failed ? ", " : "",
+            failed ? (std::to_string(failed.load()) + " could not be read").c_str() : "", (unsigned long long)(mem_now >> 20),
+            (unsigned long long)(mem_peak >> 20));
+        if (opt.progress)
+            opt.progress(uint32_t(total), uint32_t(total), opt.progress_user);
     }
 
     void queue_load(PackFile *f)
@@ -874,7 +1202,7 @@ struct Textures::Impl
 
     void evict()
     {
-        uint64_t budget = uint64_t(opt.cache_mb) << 20;
+        uint64_t budget = budget_bytes;
         while (loaded_bytes.load() > budget)
         {
             PackFile *oldest = nullptr;
@@ -934,9 +1262,33 @@ struct Textures::Impl
             found->second.last_use = use_clock;
             return found->second.image;
         }
-        Vulkan::ImageCreateInfo info = Vulkan::ImageCreateInfo::immutable_2d_image(a.rw * k, a.rh * k, VK_FORMAT_R8G8B8A8_UNORM);
         Vulkan::ImageInitialData init = {};
-        init.data = f->rgba.data() + (size_t(a.ry * k) * f->w + size_t(a.rx * k)) * 4;
+        VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
+        if (f->bc7)
+        {
+            if (bc7_ok < 0)
+                bc7_ok = device->image_format_is_supported(VK_FORMAT_BC7_UNORM_BLOCK, VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) ? 1 : 0;
+            const char *why = !bc7_ok ? "this graphics card does not sample BC7"
+                              : ((a.rx * k) % 4 || (a.ry * k) % 4 || (a.rw * k) % 4 || (a.rh * k) % 4)
+                                  ? "the texture is cut at a place that is not on a 4 x 4 block of the file"
+                                  : nullptr;
+            if (why)
+            {
+                a.bad = true;
+                if (!f->failure_logged)
+                {
+                    f->failure_logged = true;
+                    c.pack_bad++;
+                    log("texture pack: %s cannot be used: %s; the original is drawn", f->path.c_str(), why);
+                }
+                return {};
+            }
+            format = VK_FORMAT_BC7_UNORM_BLOCK;
+            init.data = f->rgba.data() + (size_t(a.ry * k / 4) * (f->w / 4) + size_t(a.rx * k / 4)) * 16;
+        }
+        else
+            init.data = f->rgba.data() + (size_t(a.ry * k) * f->w + size_t(a.rx * k)) * 4;
+        Vulkan::ImageCreateInfo info = Vulkan::ImageCreateInfo::immutable_2d_image(a.rw * k, a.rh * k, format);
         init.row_length = f->w;
         init.image_height = a.rh * k;
         Vulkan::ImageHandle img = device->create_image(info, &init);
@@ -949,7 +1301,7 @@ struct Textures::Impl
         c.replaced_images++;
         ImageEntry &e = images[ikey];
         e.image = img;
-        e.bytes = uint64_t(info.width) * info.height * 4;
+        e.bytes = f->bc7 ? uint64_t(info.width) * info.height : uint64_t(info.width) * info.height * 4;
         e.last_use = use_clock;
         image_bytes += e.bytes;
         uint64_t budget = uint64_t(opt.cache_mb) << 20;
@@ -970,11 +1322,6 @@ struct Textures::Impl
 
 /* ---------------------------------------------------------------- Textures */
 
-namespace
-{
-using Clock = std::chrono::steady_clock;
-inline uint64_t ns_since(Clock::time_point t) { return uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - t).count()); }
-}
 
 Textures::Textures(Vulkan::Device *device, uint32_t vram_size, const Options &options)
     : impl(new Impl(device, vram_size, options))
@@ -991,17 +1338,25 @@ Textures::Textures(Vulkan::Device *device, uint32_t vram_size, const Options &op
         else
             m.log("texture dump: cannot make the folder %s; no dump", m.opt.dump_dir.c_str());
     }
-    if (!m.opt.pack_dir.empty())
+    if (!m.opt.pack_dirs.empty())
     {
-        if (file_exists(m.opt.pack_dir))
+        m.index_packs();
+        m.packing = !m.files.empty();
+        if (m.packing)
         {
-            m.index_pack();
-            m.packing = !m.files.empty();
-            if (m.packing)
-                m.load_thread = std::thread([&m] { m.load_worker(); });
+            m.budget_bytes = uint64_t(m.opt.cache_mb) << 20;
+            uint64_t avail = available_memory();
+            if (avail && m.budget_bytes > avail / 2)
+            {
+                m.log("texture pack: the memory budget %llu MB is held to %llu MB, half of what the machine has free",
+                      (unsigned long long)(m.budget_bytes >> 20), (unsigned long long)(avail / 2 >> 20));
+                m.budget_bytes = avail / 2;
+            }
+            if (m.opt.preload)
+                m.preload();
+            for (size_t t = 0, n = m.thread_count(); t < n; t++)
+                m.load_threads.emplace_back([&m] { m.load_worker(); });
         }
-        else
-            m.log("texture pack: the folder %s does not exist; nothing is replaced", m.opt.pack_dir.c_str());
     }
 }
 
@@ -1017,14 +1372,15 @@ Textures::~Textures()
         m.dump_cv.notify_all();
         m.dump_thread.join();   /* it writes what is queued first */
     }
-    if (m.load_thread.joinable())
+    if (!m.load_threads.empty())
     {
         {
             std::lock_guard<std::mutex> l(m.load_mutex);
             m.load_stop = true;
         }
         m.load_cv.notify_all();
-        m.load_thread.join();
+        for (auto &t : m.load_threads)
+            t.join();
     }
     m.drain_messages();
     Counters c = counters();
@@ -1044,8 +1400,10 @@ Textures::~Textures()
               (unsigned long long)c.dumped, (unsigned long long)c.dump_existing, (unsigned long long)c.dump_dropped,
               (unsigned long long)c.dump_errors);
     if (m.packing)
-        m.log("texture pack: a pack file was used %llu times, %llu images made, %llu files could not be used",
-              (unsigned long long)c.pack_hits, (unsigned long long)c.replaced_images, (unsigned long long)c.pack_bad);
+        m.log("texture pack: a pack file was used %llu times, %llu images made, %llu files could not be used; "
+              "the original was drawn %llu times while a file was not read yet",
+              (unsigned long long)c.pack_hits, (unsigned long long)c.replaced_images, (unsigned long long)c.pack_bad,
+              (unsigned long long)c.pack_pending);
     m.active.clear();
     m.images.clear();
     delete impl;
@@ -1093,6 +1451,32 @@ void Textures::state_set(const uint8_t *state, const uint8_t *vram)
     m.uploads_seen.clear();
 }
 
+void Textures::speculation_begin()
+{
+    Impl &m = *impl;
+    m.speculating = true;
+    m.spec_page_state = m.page_state;
+    m.spec_page_gen = m.page_gen;
+    memcpy(m.spec_clut, m.clut, sizeof(m.clut));
+    memcpy(m.spec_clut_ok, m.clut_ok, sizeof(m.clut_ok));
+    m.spec_shadow.clear();
+}
+
+void Textures::speculation_end()
+{
+    Impl &m = *impl;
+    if (!m.speculating)
+        return;
+    m.speculating = false;
+    for (auto &kv : m.spec_shadow)
+        memcpy(m.shadow.data() + size_t(kv.first) * 8192, kv.second.data(), 8192);
+    m.spec_shadow.clear();
+    m.page_state = m.spec_page_state;
+    m.page_gen = m.spec_page_gen;
+    memcpy(m.clut, m.spec_clut, sizeof(m.clut));
+    memcpy(m.clut_ok, m.spec_clut_ok, sizeof(m.clut_ok));
+}
+
 void Textures::on_host_upload(const CopyDescriptor &copy)
 {
     if (copy.host_data_size < copy.host_data_size_required)
@@ -1135,9 +1519,14 @@ void Textures::on_new_texture(const TextureDescriptor &desc)
         m.dump(desc, k);
     if (m.packing)
     {
+        /* The earlier pack serves the texture; inside one pack the palette's own file beats the texels-only one */
         PackFile *f = m.find_file(k.exact);
-        if (!f && k.palettised)
-            f = m.find_file(k.base);
+        if (k.palettised)
+        {
+            PackFile *g = m.find_file(k.base);
+            if (g && (!f || g->pack < f->pack))
+                f = g;
+        }
         /* a region-repeat texture is built by the GS from the region (masked and or-ed coordinates), not cut from the
          * texture: its image is not a crop of the original's, so a replacement is not made for it */
         if (f && !desc.clamp.desc.has_region_repeat())
@@ -1209,6 +1598,8 @@ Vulkan::ImageHandle Textures::replacement_for(Util::Hash hash)
             }
             else if (st == UNLOADED)
                 m.queue_load(f);
+            if (!result && !a.bad)
+                m.c.pack_pending++;
         }
     }
     uint64_t ns = ns_since(t0);
@@ -1222,6 +1613,18 @@ void Textures::flush_dumps()
     Impl &m = *impl;
     std::unique_lock<std::mutex> l(m.dump_mutex);
     m.dump_idle_cv.wait(l, [&m] { return m.dump_queue.empty() && !m.dump_busy; });
+}
+
+std::string Textures::pack_path_for(const std::string &key) const
+{
+    PackFile *f = impl->find_file(key);
+    return f ? f->path : std::string();
+}
+
+std::string Textures::pack_active_path(Util::Hash hash) const
+{
+    auto it = impl->active.find(hash);
+    return it == impl->active.end() || !it->second.file ? std::string() : it->second.file->path;
 }
 
 Counters Textures::counters() const

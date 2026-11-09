@@ -216,7 +216,7 @@ static s32 sceVibSetActParamWork(s32 socket, s32 profileSize, u8 *profile, s32 d
 }
 
 /* ------------------------------------------------------------ the taps
- * verify's trace tap for each function the game calls (pc/core/verify/verify.h). */
+ * verify's trace tap for each function the game calls. */
 
 s32 scePad2Init(s32 mode)
 {

@@ -3,8 +3,7 @@
 
 /*
  * The pads: the IOP's side of libdbc and libpad2 (Dbc_Manager with the
- * DualShock 2 driver; io_pad.c, adapted from the original's iop_pad.c,
- * whose comment has the protocol) and the EE's clients (pc/core/api/libdbc.c,
+ * DualShock 2 driver; io_pad.c, adapted from the original's) and the EE's clients (pc/core/api/libdbc.c,
  * libpad2.c, libvib.c). The request area is the original's 0x90 bytes, with
  * the same offsets; its addresses are the core's pointers.
  */

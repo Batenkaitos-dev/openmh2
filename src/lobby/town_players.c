@@ -844,6 +844,11 @@ s32 ActSpot_IsUsable(Player *pl, ActionSpot *spot)
         return Actor_IsFacingWithin(pl, &spot->x, 90);
     case 17:
         if (gLobby->questTaken == 0) {
+#if PLATFORM_PC
+            if (gScene.area == AREA_HUB_0x89 && Game_HubOffered() == 1) {
+                break;   /* the offline hub: the village's gate leads to the town */
+            }
+#endif
             return 0;
         }
         break;

@@ -221,7 +221,8 @@ void Pal_MoviePlay(int entry, int mode, int volume)
     LoadTable();
     if (sTable.lba != lba || sTable.fileSize != fsize || (u32)entry >= sTable.count ||
         sTable.m[entry].offset != off || sTable.m[entry].size != len)
-        Host_Fatal("movie: " MOVIE_TABLE " is from another disc (python3 tools/pc/movie_table.py --force)");
+        Host_Fatal("movie: " MOVIE_TABLE " is from another disc: make it again in the launcher (Disc and "
+                   "archive, Make the movie table)");
     sMv.t = sTable.m[entry];
     if (sMv.t.frames < 0) {
         Log("movie: the movie library can't play this movie (" MOVIE_TABLE ")");

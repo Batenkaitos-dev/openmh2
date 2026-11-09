@@ -1,6 +1,6 @@
 /* IOP memory map and the hardware the sound modules touch: the original's
  * iop_hw.c, adapted to the core, with the IOP's RAM and heap (the
- * original's rt.h and sif.c parts of them).
+ * original's runtime and SIF parts of them).
  *
  * RAM, the SPU2 register window (spu2.c), the DMA channels 4 and 7 that
  * feed the SPU2's two cores, the other I/O registers (plain storage), and

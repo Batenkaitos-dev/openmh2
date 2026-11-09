@@ -1,5 +1,5 @@
 /* Names the code uses inside C-owned data objects, each defined relative to
- * the object that contains it. tools/ld_aliases.py writes this file. */
+ * the object that contains it. The matching build's ld_aliases tool writes this file. */
 D_00897022 = Gunlance_ShellMotions + 0x2;
 KushalaBreath_SkimHeight = KushalaBreath_Offsets + 0x4;
 KushalaBreath_SprayJitter = KushalaBreath_SprayOfs + 0xC;

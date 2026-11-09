@@ -7,7 +7,7 @@
  * AddIntcHandler id. sceGsSyncV reads the interlace and the callback;
  * sceGsSyncVCallback and sceGsResetGraph the callback and the id.
  *
- * The busy waits (polls.txt `wait`: sceGsSyncPath, sceGsExecLoadImage and the
+ * The busy waits (the polled-wait table's `wait`: sceGsSyncPath, sceGsExecLoadImage and the
  * kernel library's VBlank waits under sceGsSyncV) are library waits
  * (the frame clock's): reaching a loop is an arrival, each turn a
  * step, and sceGsSyncPath's entry is an arrival whenever it is called.
@@ -86,7 +86,7 @@ static void NoteMode(s16 interlace, s16 omode, s16 ffmode)
     sGs.rev = (u8)(Pal_GsRegRead64(GS_CSR) >> 16);
 }
 
-/* The kernel library's VBlank-start wait (0x113FB0, polls.txt's `wait` with
+/* The kernel library's VBlank-start wait (0x113FB0, the polled-wait table's `wait` with
  * its loop at 0x113FF0): with
  * the context's interrupts off (the library's DIntr), INTC's VBLANK_START bit
  * cleared, then polled until the VBlank start posts it, and the interrupts
@@ -160,7 +160,7 @@ void sceGsResetGraph(s16 mode, s16 interlace, s16 omode, s16 ffmode)
 }
 
 /* Resets VIF1 (FBRST.RST, ERR.ME0) and VU1 (COP2's FBRST: the original's VU0
- * takes the write as nothing, vu0.c CTC2), sends VIF1 its initial settings
+ * takes the write as nothing, CTC2), sends VIF1 its initial settings
  * (STCYCL 4/4, STMASK 0, STMOD 0, MSKPATH3 0, BASE 0, OFFSET 0, ITOP 0) and
  * resets the GIF. Returns what the original game left in v0. */
 static s32 sceGsResetPathWork(void)

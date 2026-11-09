@@ -133,8 +133,9 @@ void Callbacks_Run(void)
             (*slot)();
         }
     }
-    PC_FREECAM_HIDE(PAL_STAGE_FADE_A) FadeA_Draw();
-    PC_FREECAM_HIDE(PAL_STAGE_LOADING) Loading_DrawLetters();
+    PC_FREECAM_STAGE(PAL_STAGE_FADE_A) FadeA_Draw();
+    PC_FREECAM_STAGE(PAL_STAGE_LOADING) Loading_DrawLetters();
+    PC_FREECAM_STAGE(PAL_STAGE_COUNT)
 }
 
 /* LoadOverlay for the scenes. */
@@ -319,39 +320,39 @@ void Frame_Draw(void)
     }
     Pause_CaptureScreen();
     Gs_SetState(RS_ZTEST, RS_CMP_ALWAYS);
-    PC_FREECAM_HIDE(PAL_STAGE_PRIM) Prim_DrawAll();
+    PC_FREECAM_STAGE(PAL_STAGE_PRIM) Prim_DrawAll();
     Gs_SetState(RS_ZTEST, RS_CMP_LEQUAL);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT6) Task_RunList(gDrawListText6);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT6) Task_RunList(gDrawListText6);
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT6) Text_DrawPage(6);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT6) Text_DrawIcons(6);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT0) Task_RunList(gDrawListText0a);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT0) Task_RunList(gDrawListText0b);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT6) Text_DrawPage(6);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT6) Text_DrawIcons(6);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT0) Task_RunList(gDrawListText0a);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT0) Task_RunList(gDrawListText0b);
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT0) Text_DrawPage(0);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT0) Text_DrawIcons(0);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT1) Task_RunList(gDrawListText1);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT0) Text_DrawPage(0);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT0) Text_DrawIcons(0);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT1) Task_RunList(gDrawListText1);
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT1) Text_DrawPage(1);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT1) Text_DrawIcons(1);
-    PC_FREECAM_HIDE(PAL_STAGE_EQUIP) EquipPreview_Draw();
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT2) Task_RunList(gDrawListText2);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT1) Text_DrawPage(1);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT1) Text_DrawIcons(1);
+    PC_FREECAM_STAGE(PAL_STAGE_EQUIP) EquipPreview_Draw();
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT2) Task_RunList(gDrawListText2);
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT2) Text_DrawPage(2);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT2) Text_DrawIcons(2);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT4) Task_RunList(gDrawListText4);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT2) Text_DrawPage(2);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT2) Text_DrawIcons(2);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT4) Task_RunList(gDrawListText4);
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT4) Text_DrawPage(4);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT4) Text_DrawIcons(4);
-    PC_FREECAM_HIDE(PAL_STAGE_OT3) Task_RunList(gDrawOtText3);
-    PC_FREECAM_HIDE(PAL_STAGE_FADE_B) FadeB_Draw();
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT4) Text_DrawPage(4);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT4) Text_DrawIcons(4);
+    PC_FREECAM_STAGE(PAL_STAGE_OT3) Task_RunList(gDrawOtText3);
+    PC_FREECAM_STAGE(PAL_STAGE_FADE_B) FadeB_Draw();
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT3) Text_DrawPage(3);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT3) Text_DrawIcons(3);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT5) Task_RunList(gDrawListText5);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT3) Text_DrawPage(3);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT3) Text_DrawIcons(3);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT5) Task_RunList(gDrawListText5);
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT5) Text_DrawPage(5);
-    PC_FREECAM_HIDE(PAL_STAGE_TEXT5) Text_DrawIcons(5);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT5) Text_DrawPage(5);
+    PC_FREECAM_STAGE(PAL_STAGE_TEXT5) Text_DrawIcons(5);
     Text_Disable();
     Gfx_ResetRenderStates(1);
     gFrameDrawing = 0;

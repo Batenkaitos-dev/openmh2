@@ -18,6 +18,11 @@
 #include "gs_tex_regs.h"
 #include "packet_tim2.h"
 #include "vu1_packets.h"
+#include "pal.h"
+#if PLATFORM_PC
+extern f32 gMtxView[16];
+extern f32 gMtxProjClip[16];
+#endif
 
 #pragma optimization_level 4
 
@@ -1145,6 +1150,7 @@ s32 Model_Draw(u32 handle, s32 flags)
     if (gSysWork.noDraw != 0) {
         return 1;
     }
+    PC_GS_CAMERA(gMtxView, gMtxProjClip);
     if (!(entry->flags & MODEL_NO_COPY)) {
         if (entry->renderFlags != gRenderFlags2) {
             Dma_FlushQueue();

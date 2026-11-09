@@ -12,6 +12,7 @@
 #define UI_W 640
 #define UI_H 448
 #define UI_LOG_LINES 17   /* the lines of a scrolling text that fit above the help */
+#define UI_MAXROWS 64     /* the most rows of a page */
 
 /* A row: a label at the left and, for a setting, its value between two arrows. */
 enum {
@@ -23,6 +24,7 @@ enum {
     UR_NORIGHT = 32, /* the right arrow is not drawn (the last choice) */
     UR_WARN = 64,    /* a warning shade (the banner of a missing archive) */
     UR_EDIT = 128,   /* the value is being typed: drawn from the left, with a caret, and no arrows */
+    UR_SUMMARY = 256, /* the value is a page's summary (Home): it shrinks, then takes two lines, then ends with "..." */
 };
 typedef struct UiRow {
     const char *label;
@@ -68,8 +70,16 @@ void ui_begin(void);
 void ui_header(const char *title);
 /* The Home page: the title, and after it in smaller type what the project runs. */
 void ui_header_sub(const char *title, const char *sub);
+void ui_header_warn(const char *title, const char *warn);   /* the subtitle's place, in the warning shade */
+float ui_header_warn_room(const char *title, const char *warn);   /* the width left between the warning's end and the header rule */
 /* The rows from y = 70, 30 apart; SEL is drawn larger, in azure. Returns the first row to draw at (always 0). */
 void ui_rows(const UiRow *rows, int n, int sel);
+/* A page whose rows pass the help shows the ones that fit: from row FIRST (ui_rows_from, before ui_rows). ui_rows_fit: how many
+ * rows fit from FIRST; ui_rows_scroll: the first row to show so that SEL is in view, moving from FIRST as little as it can. Both
+ * count from the same top as the next ui_rows (ui_rows_top). The events' ROW is always the index in ROWS. */
+int ui_rows_fit(const UiRow *rows, int n, int first);
+int ui_rows_scroll(const UiRow *rows, int n, int sel, int first);
+void ui_rows_from(int first);
 void ui_rows_top(float y);   /* the next ui_rows starts at Y instead of 70 (a page with text above its rows) */
 void ui_help(const char *text);   /* the help area: two lines at the bottom */
 /* Free text at x = 60, centred on Y: SHADE 0 plain, 1 dim, 2 warning. */
@@ -83,6 +93,8 @@ int ui_lines(const char *const *lines, int n, int first);
 /* A box over the page: TEXT and a row of BUTTONS, SEL highlighted. */
 void ui_message(const char *text, const char *const *buttons, int nb, int sel);
 void ui_end(void);
+/* How many texts of the last picture ended with "..." because they did not fit (the test's check that a summary fits). */
+int ui_cuts(void);
 /* The last picture's pixels as an FNV-1a hash (and a PNG when PATH is given): the headless test's. 0, or -1. */
 int ui_readback(uint64_t *hash, const char *png_path);
 /* A logical point as the window's coordinates, for synthesized mouse events (the test). */

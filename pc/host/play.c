@@ -52,6 +52,20 @@ static struct {
 /* NULL in an automated run (the guard, main.c): SDL_GetPrefPath would make the folder. */
 const char *play_data_dir(void)
 {
+#if !defined(MH2_RELEASE) || defined(MH2_FREECAM_TEST)
+    const char *dd = hfs_getenv("MH2_DATA_DIR");   /* the release test build (set by hand, never shipped): a start with no option, in a folder of its own */
+    if (dd && dd[0]) {
+        if (!pl.have_data) {
+            snprintf(pl.data, sizeof(pl.data), "%s", dd);
+            size_t n = strlen(pl.data);
+            if (n && pl.data[n - 1] != '/' && pl.data[n - 1] != '\\' && n + 2 < sizeof(pl.data))
+                snprintf(pl.data + n, sizeof(pl.data) - n, "%s", SEP);
+            SDL_CreateDirectory(pl.data);
+            pl.have_data = 1;
+        }
+        return pl.data;
+    }
+#endif
     if (g_cfg.automated)
         return NULL;
     if (!pl.have_data) {

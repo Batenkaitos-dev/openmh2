@@ -157,10 +157,13 @@ int audio_init(void)
     return 0;
 }
 
-/* The pause: 1 fades the game's sound out (100 ms), 0 brings it back. The core keeps the stream running. */
-void audio_set_muted(int on)
+/* The pauses (the free camera's, AUDIO_MUTE_FREEZE; the plain one's, AUDIO_MUTE_PACE): the game's sound fades out (100 ms) while
+ * either holds and comes back when neither does. */
+void audio_mute_by(int who, int on)
 {
-    SDL_SetAtomicInt(&au.muted, on != 0);
+    static int bits;   /* the main thread's */
+    bits = on ? (bits | who) : (bits & ~who);
+    SDL_SetAtomicInt(&au.muted, bits != 0);
 }
 
 void audio_shutdown(void)

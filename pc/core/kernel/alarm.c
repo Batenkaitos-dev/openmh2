@@ -2,7 +2,7 @@
  * libkernl's timer and alarm module, on Timer 2: its set-up at
  * the C library's start-up, the system time, the alarms (DelayThread's) and
  * its Timer 2 interrupt handler. Written from the module's behaviour as
- * port-libraries.md records it (the project's own model, 
+ * the project's own model records it (
  * libkernl_alarm.c, written from observation) and the register writes the
  * reference shows (gdb on the original game, the frame clock, the boot
  * route; the notes, session 1):

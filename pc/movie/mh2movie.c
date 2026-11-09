@@ -258,7 +258,7 @@ static int take_video(mh2movie *m, uint8_t *rgba, double *pts)
             *pts = (double)(ts - (vs->start_time != AV_NOPTS_VALUE ? vs->start_time : 0)) * av_q2d(vs->time_base);
         } else {
             /* The last frame of several movies comes out of the decoder's
-             * flush without a time (tools/movie_check.py): one frame after
+             * flush without a time: one frame after
              * the previous. */
             double fps = vs->avg_frame_rate.num > 0 ? av_q2d(vs->avg_frame_rate) : 30000.0 / 1001.0;
             *pts = m->have_pts ? m->last_pts + 1.0 / fps : 0.0;

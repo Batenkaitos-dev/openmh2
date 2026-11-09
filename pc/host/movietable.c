@@ -14,7 +14,7 @@
 
 #define RATE 48000
 
-static const char *const k_comment = "# The movies' timing (tools/pc/movie_table.py): derived from the disc, build/ only.";
+static const char *const k_comment = "# The movies' timing, measured from your copy of the disc. The launcher makes this file.";
 
 long long movietable_shown(double pts)
 {
@@ -169,7 +169,7 @@ int movietable_make(const char *archive, const char *libdir, MovieProgress progr
     uint32_t lba, fsize;
     uint64_t foff;
     if (arc_find(archive, "/AFS02.AFS", &lba, &fsize, &foff) != 0) {
-        snprintf(text, cap, "%s is not a disc archive of this version, or has no AFS02.AFS", archive);
+        snprintf(text, cap, "%s is not a game archive of this version, or has no AFS02.AFS", archive);
         return MT_E_ARCHIVE;
     }
     FILE *f = hfs_fopen(archive, "rb");

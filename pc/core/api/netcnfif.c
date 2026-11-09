@@ -65,7 +65,7 @@ static SifClientData *Client(void)
 
 /* The binding (every request makes it first): 0 once bound. Else the bind,
  * sent without waiting (-1 if that fails), then its answer waited for
- * (polls.txt's wait record for yn_entry, head 0x00AC80F0); while the answer
+ * (the polled-wait table's wait record for yn_entry, head 0x00AC80F0); while the answer
  * names no server, a busy-wait of 65,537 going-rounds (head 0x00AC80B0) and
  * the bind again (not seen: the core's SIF names the server, as the
  * original's IOP does). Then the binding is noted; 0. */
@@ -270,7 +270,7 @@ static void DataInit(NetcnfData *data)
 }
 
 /* ------------------------------------------------------------ the taps
- * (config/pc/seam_calls.txt's prototypes: the game's declarations) */
+ * (the seam table's prototypes: the game's declarations) */
 
 s32 yn_entry(void)
 {

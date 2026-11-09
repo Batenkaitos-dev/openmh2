@@ -189,6 +189,53 @@ extern LobbyState *gLobby;
 extern LobbyMenu *gLobbyMenu;
 extern u8 D_6ADB30[];
 
+#if PLATFORM_PC
+/* The offline hub's gate (the town's areas, rules on, no network): the quest taken sets out by the village's own departure branch
+ * (the time of day and the season, the fade, TOWN_MODE_DEPARTED); the order's terms failing give the game's refusal texts as the
+ * online gate has them (the wrong time: the gate is closed; the terms: the order's terms), and no quest taken the closed gate. */
+static void TownPc_HubGate(void)
+{
+    s32 result;
+    u8 *questLists = (u8 *)&gTownQuestLists;
+
+    if (gLobby->questTaken != 0) {
+        result = Quest_CheckOrder(gLobbyQuestId);
+        if (result == QUEST_ORDER_OK) {
+            gTownMode = TOWN_MODE_DEPART;
+            if (LobbyTime_IsAm() == 0) {
+                Daytime_Set(DAYTIME_SET_NIGHT);
+            } else {
+                Daytime_Set(DAYTIME_SET_DAY);
+            }
+            Season_Set(LobbyWorld_GetSeason());
+            LobbyWorld_HoldClock();
+            if (gQuestOfferId != 0) {
+                memset(gNextQuest.huntGoals, 0, sizeof(gNextQuest.huntGoals));
+            } else {
+                NextQuest_SetHuntGoals(questLists + LobbyWorld_GetSeason() * 24 + 4);
+            }
+            NextQuest_SetFlyer(Lobby_EnterRollRare());
+            PspLink_ClearFlags();
+            FadeA_Start(1);
+            if (gLobbyQuestId == 6001 && Save_TestEventFlag(48) == 0) {
+                Save_SetEventFlag(48);
+            }
+            return;
+        }
+        if (result == QUEST_ORDER_WRONG_TIME) {
+            LobbyText_Open(LOBBY_TEXT_GATE_CLOSED);
+        } else {
+            LobbyText_Open(LOBBY_TEXT_GATE_ORDER_TERMS);
+        }
+    } else {
+        LobbyText_Open(LOBBY_TEXT_GATE_CLOSED);
+    }
+    gFieldControl = 0;
+    gTownMode = TOWN_MODE_GATE_MESSAGE_WAIT;
+    gTownMenuOpen = 1;
+}
+#endif
+
 /*
  * A town player's input, once a frame. From the stick (TownPc_MoveKind; the
  * other members' players by their sent move) it starts the walk, the dash,
@@ -465,6 +512,12 @@ void TownPc_HandleInput(Player *pl)
             HouseAccess_Open();
             break;
         case TOWN_SPOT_GATE:
+#if PLATFORM_PC
+            if (Game_HubRules() == 1 && Game_IsOnline() == 0 && Game_HubTownArea(gScene.area) == 1) {
+                TownPc_HubGate();
+                return;
+            }
+#endif
             switch (gScene.area) {
             case AREA_TAVERN:
             case AREA_TOWN_ARENA:
@@ -572,6 +625,11 @@ void TownPc_HandleInput(Player *pl)
                         gTownMenuOpen = 1;
                     }
                 }
+#if PLATFORM_PC
+                else if (gScene.area == AREA_HUB_0x89 && Game_HubOffered() == 1) {
+                    AreaMenu_Open(AREA_HUB_0x84);   /* the offline hub: no quest taken, the gate leads to the town */
+                }
+#endif
                 break;
             }
             return;
@@ -583,6 +641,12 @@ void TownPc_HandleInput(Player *pl)
             }
             return;
         case TOWN_SPOT_EXIT:
+#if PLATFORM_PC
+            if (Game_HubRules() == 1 && Game_IsOnline() == 0) {
+                AreaMenu_Open(AREA_HUB_0x89);   /* the offline hub: the exit leads back to the village, with nothing to disconnect */
+                break;
+            }
+#endif
             gTownMode = TOWN_MODE_EXIT_ASK;
             LobbyText_Open(LOBBY_TEXT_EXIT_ASK);
             Menu_SetYesNo(1);

@@ -162,7 +162,7 @@ def main() -> int:
             print(f"movie_table: {out} is up to date")
             return 0
     lib = load_lib(a.lib)
-    lines = ["# The movies' timing (tools/pc/movie_table.py): derived from the disc, build/ only.", head]
+    lines = ["# The movies' timing, measured from your copy of the disc. The launcher makes this file.", head]
     t0 = time.monotonic()
     for i, (off, size) in enumerate(entries):
         if a.progress:

@@ -47,10 +47,10 @@
 /* The constants: newlib's decimal literals as the game's toolchain
  * converted them, rounding toward zero (atanf matches
  * on all 2^32 inputs so, and differs on 11,812,078 with the nearest floats,
- * 9.8279368877e-01 among them). tools/port/rz_float.py prints them; they
+ * 9.8279368877e-01 among them). a test program prints them; they
  * are spelled here as hex floats, exact in any compiler, with newlib's
  * literal beside each (newlib's own comments give the nearest float's
- * bits, which differ where rz_float.py marks it). */
+ * bits, which differ where that program marks it). */
 static const float huge = 0x1.93e592p+99f; /* 1.0e30 */
 
 /* floorf (sf_floor.c): x rounded toward -inf to an integral value. */
@@ -61,7 +61,7 @@ static u32 m_floorf(u32 x)
     s32 j0 = (s32)(ix >> 23) - 0x7f;
     if (j0 < 23) {
         if (j0 < 0) {   /* raise inexact if x != 0 */
-            if (nf_gt(nf_add(huge, nf_val(x)), 0.0f)) {   /* return 0*sign(x) if |x|<1 */
+            if (nf_gt(nf_add(nf_val(x), huge), 0.0f)) {   /* return 0*sign(x) if |x|<1 */
                 if (i0 >= 0)
                     i0 = 0;
                 else if (!FLT_UWORD_IS_ZERO(ix))
@@ -71,7 +71,7 @@ static u32 m_floorf(u32 x)
             i = 0x007fffffu >> j0;
             if ((i0 & i) == 0)
                 return x;   /* x is integral */
-            if (nf_gt(nf_add(huge, nf_val(x)), 0.0f)) {   /* raise inexact flag */
+            if (nf_gt(nf_add(nf_val(x), huge), 0.0f)) {   /* raise inexact flag */
                 if (i0 < 0)
                     i0 += 0x00800000 >> j0;
                 i0 &= (s32)~i;
@@ -93,7 +93,7 @@ static u32 m_ceilf(u32 x)
     s32 j0 = (s32)(ix >> 23) - 0x7f;
     if (j0 < 23) {
         if (j0 < 0) {   /* raise inexact if x != 0 */
-            if (nf_gt(nf_add(huge, nf_val(x)), 0.0f)) {   /* return 0*sign(x) if |x|<1 */
+            if (nf_gt(nf_add(nf_val(x), huge), 0.0f)) {   /* return 0*sign(x) if |x|<1 */
                 if (i0 < 0)
                     i0 = (s32)0x80000000u;
                 else if (!FLT_UWORD_IS_ZERO(ix))
@@ -103,7 +103,7 @@ static u32 m_ceilf(u32 x)
             i = 0x007fffffu >> j0;
             if ((i0 & i) == 0)
                 return x;   /* x is integral */
-            if (nf_gt(nf_add(huge, nf_val(x)), 0.0f)) {   /* raise inexact flag */
+            if (nf_gt(nf_add(nf_val(x), huge), 0.0f)) {   /* raise inexact flag */
                 if (i0 > 0)
                     i0 += 0x00800000 >> j0;
                 i0 &= (s32)~i;
@@ -158,7 +158,7 @@ static u32 m_atanf(u32 xb)
     }
     if (ix < 0x3ee00000) {   /* |x| < 0.4375 */
         if (ix < 0x31000000) {   /* |x| < 2^-29 */
-            if (nf_gt(nf_add(huge, x), one))
+            if (nf_gt(nf_add(x, huge), one))
                 return xb;   /* raise inexact */
         }
         id = -1;
@@ -167,7 +167,7 @@ static u32 m_atanf(u32 xb)
         if (ix < 0x3f980000) {   /* |x| < 1.1875 */
             if (ix < 0x3f300000) {   /* 7/16 <=|x|<11/16 */
                 id = 0;
-                x = nf_div(nf_sub(nf_mul(2.0f, x), one), nf_add(2.0f, x));
+                x = nf_div(nf_sub(nf_mul(x, 2.0f), one), nf_add(x, 2.0f));
             } else {   /* 11/16<=|x|< 19/16 */
                 id = 1;
                 x = nf_div(nf_sub(x, one), nf_add(x, one));
@@ -175,7 +175,7 @@ static u32 m_atanf(u32 xb)
         } else {
             if (ix < 0x401c0000) {   /* |x| < 2.4375 */
                 id = 2;
-                x = nf_div(nf_sub(x, 1.5f), nf_add(one, nf_mul(1.5f, x)));
+                x = nf_div(nf_sub(x, 1.5f), nf_add(nf_mul(x, 1.5f), one));
             } else {   /* 2.4375 <= |x| < 2^66 */
                 id = 3;
                 x = nf_div(-1.0f, x);
@@ -188,16 +188,16 @@ static u32 m_atanf(u32 xb)
     /* break sum from i=0 to 10 aT[i]z**(i+1) into odd and even poly */
     /* s1 = z*(aT[0]+w*(aT[2]+w*(aT[4]+w*(aT[6]+w*(aT[8]+w*aT[10]))))),
      * from the inside out */
-    s1 = nf_add(aT[8], nf_mul(w, aT[10]));
-    s1 = nf_add(aT[6], nf_mul(w, s1));
-    s1 = nf_add(aT[4], nf_mul(w, s1));
-    s1 = nf_add(aT[2], nf_mul(w, s1));
-    s1 = nf_mul(z, nf_add(aT[0], nf_mul(w, s1)));
+    s1 = nf_add(nf_mul(w, aT[10]), aT[8]);
+    s1 = nf_add(nf_mul(w, s1), aT[6]);
+    s1 = nf_add(nf_mul(w, s1), aT[4]);
+    s1 = nf_add(nf_mul(w, s1), aT[2]);
+    s1 = nf_mul(z, nf_add(nf_mul(w, s1), aT[0]));
     /* s2 = w*(aT[1]+w*(aT[3]+w*(aT[5]+w*(aT[7]+w*aT[9])))) */
-    s2 = nf_add(aT[7], nf_mul(w, aT[9]));
-    s2 = nf_add(aT[5], nf_mul(w, s2));
-    s2 = nf_add(aT[3], nf_mul(w, s2));
-    s2 = nf_mul(w, nf_add(aT[1], nf_mul(w, s2)));
+    s2 = nf_add(nf_mul(w, aT[9]), aT[7]);
+    s2 = nf_add(nf_mul(w, s2), aT[5]);
+    s2 = nf_add(nf_mul(w, s2), aT[3]);
+    s2 = nf_mul(w, nf_add(nf_mul(w, s2), aT[1]));
     if (id < 0)
         return nf_bits(nf_sub(x, nf_mul(x, nf_add(s1, s2))));
     z = nf_sub(atanhi[id], nf_sub(nf_sub(nf_mul(x, nf_add(s1, s2)), atanlo[id]), x));
@@ -241,7 +241,7 @@ static u32 m_expf(u32 xb)
     hx = (u32)sx & 0x7fffffff;   /* high word of |x| */
     /* filter out non-finite argument (none: no NaN, no infinity) */
     if (sx > FLT_UWORD_LOG_MAX)
-        return nf_bits(nf_mul(0x1p97f, 0x1p97f));   /* overflow */
+        return PS2FP_FMAX;   /* overflow: the largest finite float, whatever the model (the library returns the constant) */
     if (sx < 0 && hx > FLT_UWORD_LOG_MIN)
         return nf_bits(nf_mul(0x1p-95f, 0x1p-95f));   /* underflow */
     /* argument reduction */
@@ -251,23 +251,23 @@ static u32 m_expf(u32 xb)
             lo = ln2LO[xsb];
             k = 1 - xsb - xsb;
         } else {
-            k = nf_f2i(nf_add(nf_mul(invln2, x), halF[xsb]));
+            k = nf_f2i(nf_add(nf_mul(x, invln2), halF[xsb]));
             t = nf_i2f(k);
             hi = nf_sub(x, nf_mul(t, ln2HI[0]));   /* t*ln2HI is exact here */
             lo = nf_mul(t, ln2LO[0]);
         }
         x = nf_sub(hi, lo);
     } else if (hx < 0x31800000) {   /* when |x|<2**-28 */
-        if (nf_gt(nf_add(huge, x), one))
-            return nf_bits(nf_add(one, x));   /* trigger inexact */
+        if (nf_gt(nf_add(x, huge), one))
+            return nf_bits(nf_add(x, one));   /* trigger inexact */
     }
     /* x is now in primary range */
     t = nf_mul(x, x);
     /* c = x - t*(P1+t*(P2+t*(P3+t*(P4+t*P5)))) */
-    c = nf_add(P4, nf_mul(t, P5));
-    c = nf_add(P3, nf_mul(t, c));
-    c = nf_add(P2, nf_mul(t, c));
-    c = nf_sub(x, nf_mul(t, nf_add(P1, nf_mul(t, c))));
+    c = nf_add(nf_mul(t, P5), P4);
+    c = nf_add(nf_mul(t, c), P3);
+    c = nf_add(nf_mul(t, c), P2);
+    c = nf_sub(x, nf_mul(t, nf_add(nf_mul(t, c), P1)));
     if (k == 0)   /* one-((x*c)/(c-(float)2.0)-x) */
         return nf_bits(nf_sub(one, nf_sub(nf_div(nf_mul(x, c), nf_sub(c, 2.0f)), x)));
     /* one-((lo-(x*c)/((float)2.0-c))-hi) */
@@ -352,14 +352,14 @@ static const float qS4 = 0x1.3b8c5ap-4f;      /* 7.7038154006e-02 */
 /* p = z*(pS0+z*(pS1+z*(pS2+z*(pS3+z*(pS4+z*pS5))))), q = one+z*(qS1+z*(qS2+z*(qS3+z*qS4))): r = p/q */
 static float acos_r(float z)
 {
-    float p = nf_add(pS4, nf_mul(z, pS5));
-    p = nf_add(pS3, nf_mul(z, p));
-    p = nf_add(pS2, nf_mul(z, p));
-    p = nf_add(pS1, nf_mul(z, p));
-    p = nf_mul(z, nf_add(pS0, nf_mul(z, p)));
-    float q = nf_add(qS3, nf_mul(z, qS4));
-    q = nf_add(qS2, nf_mul(z, q));
-    q = nf_add(one, nf_mul(z, nf_add(qS1, nf_mul(z, q))));
+    float p = nf_add(nf_mul(z, pS5), pS4);
+    p = nf_add(nf_mul(z, p), pS3);
+    p = nf_add(nf_mul(z, p), pS2);
+    p = nf_add(nf_mul(z, p), pS1);
+    p = nf_mul(z, nf_add(nf_mul(z, p), pS0));
+    float q = nf_add(nf_mul(z, qS4), qS3);
+    q = nf_add(nf_mul(z, q), qS2);
+    q = nf_add(nf_mul(z, nf_add(nf_mul(z, q), qS1)), one);
     return nf_div(p, q);
 }
 
@@ -370,7 +370,7 @@ static u32 m_acosf(u32 xb)
     if (ix == 0x3f800000) {   /* |x|==1 */
         if (hx > 0)
             return 0;   /* acos(1) = 0  */
-        return nf_bits(nf_add(pi, nf_mul(2.0f, pio2_lo)));   /* acos(-1)= pi */
+        return nf_bits(nf_add(nf_mul(2.0f, pio2_lo), pi));   /* acos(-1)= pi */
     } else if (ix > 0x3f800000) {   /* |x| >= 1 */
         return nf_bits(nf_div(nf_sub(x, x), nf_sub(x, x)));   /* acos(|x|>1) is NaN */
     }
@@ -381,11 +381,11 @@ static u32 m_acosf(u32 xb)
         r = acos_r(z);
         return nf_bits(nf_sub(pio2_hi, nf_sub(x, nf_sub(pio2_lo, nf_mul(x, r)))));
     } else if (hx < 0) {   /* x < -0.5 */
-        z = nf_mul(nf_add(one, x), 0.5f);
+        z = nf_mul(nf_add(x, one), 0.5f);
         s = nf_val(m_sqrtf(nf_bits(z)));
         r = acos_r(z);
         w = nf_sub(nf_mul(r, s), pio2_lo);
-        return nf_bits(nf_sub(pi, nf_mul(2.0f, nf_add(s, w))));
+        return nf_bits(nf_sub(pi, nf_mul(nf_add(s, w), 2.0f)));
     }
     /* x > 0.5 */
     z = nf_mul(nf_sub(one, x), 0.5f);
@@ -394,7 +394,7 @@ static u32 m_acosf(u32 xb)
     c = nf_div(nf_sub(z, nf_mul(df, df)), nf_add(s, df));
     r = acos_r(z);
     w = nf_add(nf_mul(r, s), c);
-    return nf_bits(nf_mul(2.0f, nf_add(df, w)));
+    return nf_bits(nf_mul(nf_add(df, w), 2.0f));
 }
 
 static float CrtImpl_acosf(float x)
@@ -441,7 +441,7 @@ static u32 m_atan2f(u32 yb, u32 xb)
     /* compute y/x (no infinities) */
     k = (iy - ix) >> 23;
     if (k > 60)
-        z = nf_add(pi_o_2, nf_mul(0.5f, pi_lo));   /* |y/x| >  2**60 */
+        z = nf_add(nf_mul(0.5f, pi_lo), pi_o_2);   /* |y/x| >  2**60 */
     else if (hx < 0 && k < -60)
         z = 0.0f;   /* |y|/x < -2**60 */
     else
@@ -478,13 +478,13 @@ static u32 m_scalbnf(u32 xb, int n)
     if (FLT_UWORD_IS_ZERO(hx))
         return xb;
     if (n > 50000)   /* in case integer overflow in n+k */
-        return nf_bits(nf_mul(huge, nf_val(sign | nf_bits(huge))));   /*overflow*/
+        return nf_bits(nf_mul(nf_val(sign | nf_bits(huge)), huge));   /*overflow*/
     k = k + n;
     if (k > 255)
-        return nf_bits(nf_mul(huge, nf_val(sign | nf_bits(huge))));   /* overflow  */
+        return nf_bits(nf_mul(nf_val(sign | nf_bits(huge)), huge));   /* overflow  */
     if (k > 0)   /* normal result */
         return (u32)((ix & (s32)0x807fffff) | (k << 23));
-    return nf_bits(nf_mul(tiny, nf_val(sign | nf_bits(tiny))));   /*underflow*/
+    return nf_bits(nf_mul(nf_val(sign | nf_bits(tiny)), tiny));   /*underflow*/
 }
 
 /* powf (ef_pow.c; the wrapper returns __ieee754_powf's result). The tests
@@ -572,14 +572,14 @@ static u32 m_powf(u32 xb, u32 yb)
     if (iy > 0x4d000000) {   /* if |y| > 2**27 */
         /* over/underflow if x is not close to one */
         if (ix < 0x3f7ffff8)
-            return nf_bits(hy < 0 ? nf_mul(huge, huge) : nf_mul(tiny, tiny));
+            return hy < 0 ? PS2FP_FMAX : nf_bits(nf_mul(tiny, tiny));   /* huge*huge is the library's constant */
         if (ix > 0x3f800007)
-            return nf_bits(hy > 0 ? nf_mul(huge, huge) : nf_mul(tiny, tiny));
+            return hy > 0 ? PS2FP_FMAX : nf_bits(nf_mul(tiny, tiny));
         /* now |1-x| is tiny <= 2**-20, suffice to compute
            log(x) by x-x^2/2+x^3/3-x^4/4 */
         t = nf_sub(x, one);   /* t has 20 trailing zeros */
         w = nf_mul(nf_mul(t, t), nf_sub(0.5f, nf_mul(t, nf_sub(third, nf_mul(t, 0.25f)))));
-        u = nf_mul(ivln2_h, t);   /* ivln2_h has 16 sig. bits */
+        u = nf_mul(t, ivln2_h);   /* ivln2_h has 16 sig. bits */
         v = nf_sub(nf_mul(t, ivln2_l), nf_mul(w, ivln2));
         t1 = nf_add(u, v);
         t1 = nf_val(nf_bits(t1) & 0xfffff000);
@@ -614,14 +614,14 @@ static u32 m_powf(u32 xb, u32 yb)
         /* compute log(ax) */
         s2 = nf_mul(s, s);
         /* r = s2*s2*(L1+s2*(L2+s2*(L3+s2*(L4+s2*(L5+s2*L6))))) */
-        r = nf_add(L5, nf_mul(s2, L6));
-        r = nf_add(L4, nf_mul(s2, r));
-        r = nf_add(L3, nf_mul(s2, r));
-        r = nf_add(L2, nf_mul(s2, r));
-        r = nf_mul(nf_mul(s2, s2), nf_add(L1, nf_mul(s2, r)));
+        r = nf_add(nf_mul(s2, L6), L5);
+        r = nf_add(nf_mul(s2, r), L4);
+        r = nf_add(nf_mul(s2, r), L3);
+        r = nf_add(nf_mul(s2, r), L2);
+        r = nf_mul(nf_mul(s2, s2), nf_add(nf_mul(s2, r), L1));
         r = nf_add(r, nf_mul(s_l, nf_add(s_h, s)));
         s2 = nf_mul(s_h, s_h);
-        t_h = nf_add(nf_add(3.0f, s2), r);
+        t_h = nf_add(nf_add(s2, 3.0f), r);
         t_h = nf_val(nf_bits(t_h) & 0xfffff000);
         t_l = nf_sub(r, nf_sub(nf_sub(t_h, 3.0f), s2));
         /* u+v = s*(1+...) */
@@ -631,8 +631,8 @@ static u32 m_powf(u32 xb, u32 yb)
         p_h = nf_add(u, v);
         p_h = nf_val(nf_bits(p_h) & 0xfffff000);
         p_l = nf_sub(v, nf_sub(p_h, u));
-        z_h = nf_mul(cp_h, p_h);   /* cp_h+cp_l = 2/(3*log2) */
-        z_l = nf_add(nf_add(nf_mul(cp_l, p_h), nf_mul(p_l, cp)), dp_l[k]);
+        z_h = nf_mul(p_h, cp_h);   /* cp_h+cp_l = 2/(3*log2) */
+        z_l = nf_add(nf_add(nf_mul(p_h, cp_l), nf_mul(p_l, cp)), dp_l[k]);
         /* log2(ax) = (s+..)*2/(3*log2) = n + dp_h + z_h + z_l */
         t = nf_i2f(n);
         t1 = nf_add(nf_add(nf_add(z_h, z_l), dp_h[k]), t);
@@ -680,10 +680,10 @@ static u32 m_powf(u32 xb, u32 yb)
     w = nf_sub(v, nf_sub(z, u));
     t = nf_mul(z, z);
     /* t1 = z - t*(P1+t*(P2+t*(P3+t*(P4+t*P5)))) */
-    t1 = nf_add(P4, nf_mul(t, P5));
-    t1 = nf_add(P3, nf_mul(t, t1));
-    t1 = nf_add(P2, nf_mul(t, t1));
-    t1 = nf_sub(z, nf_mul(t, nf_add(P1, nf_mul(t, t1))));
+    t1 = nf_add(nf_mul(t, P5), P4);
+    t1 = nf_add(nf_mul(t, t1), P3);
+    t1 = nf_add(nf_mul(t, t1), P2);
+    t1 = nf_sub(z, nf_mul(t, nf_add(nf_mul(t, t1), P1)));
     r = nf_sub(nf_div(nf_mul(z, t1), nf_sub(t1, 2.0f)), nf_add(w, nf_mul(z, w)));
     z = nf_sub(one, nf_sub(r, z));
     j = (s32)nf_bits(z);
@@ -730,14 +730,14 @@ static u32 k_sinf(u32 xb, float y, int iy)
     z = nf_mul(x, x);
     v = nf_mul(z, x);
     /* r = S2+z*(S3+z*(S4+z*(S5+z*S6))) */
-    r = nf_add(S5, nf_mul(z, S6));
-    r = nf_add(S4, nf_mul(z, r));
-    r = nf_add(S3, nf_mul(z, r));
-    r = nf_add(S2, nf_mul(z, r));
+    r = nf_add(nf_mul(z, S6), S5);
+    r = nf_add(nf_mul(z, r), S4);
+    r = nf_add(nf_mul(z, r), S3);
+    r = nf_add(nf_mul(z, r), S2);
     if (iy == 0)
-        return nf_bits(nf_add(x, nf_mul(v, nf_add(S1, nf_mul(z, r)))));
+        return nf_bits(nf_add(x, nf_mul(v, nf_add(nf_mul(z, r), S1))));
     /* x-((z*(half*y-v*r)-y)-v*S1) */
-    return nf_bits(nf_sub(x, nf_sub(nf_sub(nf_mul(z, nf_sub(nf_mul(0.5f, y), nf_mul(v, r))), y), nf_mul(v, S1))));
+    return nf_bits(nf_sub(x, nf_sub(nf_sub(nf_mul(z, nf_sub(nf_mul(y, 0.5f), nf_mul(v, r))), y), nf_mul(v, S1))));
 }
 
 static u32 k_cosf(u32 xb, float y)
@@ -748,18 +748,18 @@ static u32 k_cosf(u32 xb, float y)
         return nf_bits(one);   /* (int)x == 0: generate inexact */
     z = nf_mul(x, x);
     /* r = z*(C1+z*(C2+z*(C3+z*(C4+z*(C5+z*C6))))) */
-    r = nf_add(C5, nf_mul(z, C6));
-    r = nf_add(C4, nf_mul(z, r));
-    r = nf_add(C3, nf_mul(z, r));
-    r = nf_add(C2, nf_mul(z, r));
-    r = nf_mul(z, nf_add(C1, nf_mul(z, r)));
+    r = nf_add(nf_mul(z, C6), C5);
+    r = nf_add(nf_mul(z, r), C4);
+    r = nf_add(nf_mul(z, r), C3);
+    r = nf_add(nf_mul(z, r), C2);
+    r = nf_mul(z, nf_add(nf_mul(z, r), C1));
     if (ix < 0x3e99999a)   /* if |x| < 0.3 */
-        return nf_bits(nf_sub(one, nf_sub(nf_mul(0.5f, z), nf_sub(nf_mul(z, r), nf_mul(x, y)))));
+        return nf_bits(nf_sub(one, nf_sub(nf_mul(z, 0.5f), nf_sub(nf_mul(z, r), nf_mul(x, y)))));
     if (ix > 0x3f480000)   /* x > 0.78125 */
         qx = 0.28125f;
     else
         qx = nf_val(ix - 0x01000000);   /* x/4 */
-    hz = nf_sub(nf_mul(0.5f, z), qx);
+    hz = nf_sub(nf_mul(z, 0.5f), qx);
     a = nf_sub(one, qx);
     return nf_bits(nf_sub(a, nf_sub(hz, nf_sub(nf_mul(z, r), nf_mul(x, y)))));
 }
@@ -833,13 +833,13 @@ static int k_rem_pio2f(const float *x, float *y, int e0, int nx)
 recompute:
     /* distill q[] into iq[] reversingly */
     for (i = 0, j = jz, z = q[jz]; j > 0; i++, j--) {
-        fw = nf_i2f(nf_f2i(nf_mul(twon8, z)));
-        iq[i] = nf_f2i(nf_sub(z, nf_mul(two8, fw)));
+        fw = nf_i2f(nf_f2i(nf_mul(z, twon8)));
+        iq[i] = nf_f2i(nf_sub(z, nf_mul(fw, two8)));
         z = nf_add(q[j - 1], fw);
     }
     /* compute n */
     z = nf_val(m_scalbnf(nf_bits(z), (int)q0));   /* actual value of z */
-    z = nf_sub(z, nf_mul(8.0f, nf_val(m_floorf(nf_bits(nf_mul(z, 0.125f))))));   /* trim off integer >= 8 */
+    z = nf_sub(z, nf_mul(nf_val(m_floorf(nf_bits(nf_mul(z, 0.125f)))), 8.0f));   /* trim off integer >= 8 */
     n = nf_f2i(z);
     z = nf_sub(z, nf_i2f(n));
     ih = 0;
@@ -910,8 +910,8 @@ recompute:
     } else {   /* break z into 8-bit if necessary */
         z = nf_val(m_scalbnf(nf_bits(z), -(int)q0));
         if (nf_ge(z, two8)) {
-            fw = nf_i2f(nf_f2i(nf_mul(twon8, z)));
-            iq[jz] = nf_f2i(nf_sub(z, nf_mul(two8, fw)));
+            fw = nf_i2f(nf_f2i(nf_mul(z, twon8)));
+            iq[jz] = nf_f2i(nf_sub(z, nf_mul(fw, two8)));
             jz += 1;
             q0 += 8;
             iq[jz] = nf_f2i(fw);

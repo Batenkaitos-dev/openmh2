@@ -41,6 +41,7 @@
 #include "vibration.h"
 #include "engine_util.h"
 #include "image.h"
+#include "pal.h"
 
 /* Key repeat state of a pad (Pad_KeyRepeat). */
 typedef struct KeyRepeat {
@@ -262,6 +263,7 @@ void Text_PrintfColored(const char *fmt, ...)
     char buf[TEXT_BUF_SIZE];
     va_list args;
 
+    PC_TEXT(fmt);
     if (gTextOff == 0) {
         va_start(args, fmt);
         vsnprintf(buf, TEXT_BUF_SIZE - 1, fmt, args);
@@ -276,6 +278,7 @@ void Text_PrintfAt(s16 x, s16 y, s16 color, const char *fmt, ...)
     char buf[TEXT_BUF_SIZE];
     va_list args;
 
+    PC_TEXT(fmt);
     if (gTextOff == 0) {
         Font_SetPos(x, y);
         Text_SetColor(color);
@@ -485,6 +488,7 @@ void Text_Printf(const char *fmt, ...)
     char buf[TEXT_BUF_SIZE];
     va_list args;
 
+    PC_TEXT(fmt);
     if (gTextOff == 0) {
         va_start(args, fmt);
         vsnprintf(buf, TEXT_BUF_SIZE, fmt, args);
@@ -498,6 +502,7 @@ void Text_PrintfStyled(s32 lineGap, const char *fmt, ...)
     char buf[TEXT_BUF_SIZE];
     va_list args;
 
+    PC_TEXT(fmt);
     if (gTextOff == 0) {
         va_start(args, fmt);
         vsnprintf(buf, TEXT_BUF_SIZE, fmt, args);
@@ -540,6 +545,7 @@ void Text_PrintCodes(s16 max, const char *fmt, ...)
     u8 firstBuf[TEXT_BUF_SIZE];
     u8 secondBuf[TEXT_BUF_SIZE];
 
+    PC_TEXT(fmt);
     src = firstBuf;
     bufs[1] = secondBuf;
     bufIndex = 0;
@@ -684,6 +690,7 @@ void Text_DrawShadow(s16 x, s16 y, s16 shadowColor, s16 color, char *text)
     s32 width;
     s32 height;
 
+    PC_TEXT(text);
     if (gTextOff == 0) {
         shadowX = 3;
         shadowY = 2;
@@ -716,6 +723,7 @@ void Text_DrawShadow2(s16 x, s16 y, s32 shadowColor, s32 color, char *text)
     s32 width;
     s32 height;
 
+    PC_TEXT(text);
     if (gTextOff == 0) {
         shadowY = shadowX = 2;
         width = Font_GetAdvance();
@@ -745,6 +753,7 @@ void Text_DrawShadow2(s16 x, s16 y, s32 shadowColor, s32 color, char *text)
 /* Text with a drop shadow 2 below and right, both colours RGBA. */
 void Text_DrawShadowRgb(s16 x, s16 y, u32 shadowColor, u32 color, char *text)
 {
+    PC_TEXT(text);
     if (gTextOff == 0) {
         Font_SetPos(x + 2, y + 2);
         Font_SetColor(shadowColor);
@@ -758,6 +767,7 @@ void Text_DrawShadowRgb(s16 x, s16 y, u32 shadowColor, u32 color, char *text)
 /* Draws a string at the font's position, unless text drawing is off. */
 void Text_Draw(char *text)
 {
+    PC_TEXT(text);
     if (gTextOff == 0) {
         Font_Printf("%s", text);
     }
@@ -997,6 +1007,7 @@ void Text_DrawColored(char *text)
     u32 color;
     s32 colorIndex;
 
+    PC_TEXT(text);
     strcpy(buf, text);
     tilde = strchr(buf, '~');
     if (tilde == NULL) {

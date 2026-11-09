@@ -6,12 +6,25 @@
  * add, subtract, multiply, square root and the integer-to-float
  * conversions round toward zero; division rounds to nearest, and x / 0 is
  * signed Fmax. Float to integer truncates and saturates. The semantics
- * are those of the original game (fpu.c and the FPU part of
- * the original's runtime header, which tools/pc/ps2fp/tests/oracle.c compiles
+ * are those of the original game (its FPU code and the FPU part of
+ * the original's runtime header, which the ps2fp tests' oracle compiles
  * natively and these functions are compared with, bit for bit).
  *
- * Everything here is integer arithmetic (square root excepted, see
- * ps2fp_sqrt): the results do not depend on the host's rounding mode or its
+ * Two float models, chosen at run time by ps2fp_model (a saved session names it,
+ * "fpu_model" in its header). The model above is the "legacy" one: ps2fp0_*
+ * below, which VU0's operations (include/vu0ops.h) use whatever the model.
+ * The "ps2" model (ps2fp2_*, further down) has the console's results where
+ * known: exponent 255 is an ordinary number (1.m x 2^128) and the largest
+ * value is 0x7FFFFFFF, x / 0 is signed 0x7FFFFFFF, abs and neg are bit
+ * operations, the square root and the quotient round to nearest, sqrt(-0) is
+ * +0, the product is the Booth multiplier's (ps2float_mul) and the sum and
+ * difference are the guard-bit adder's (ps2float_add); both are derived works
+ * of PCSX2, GPL-3.0-or-later, and a core built with this header is
+ * GPL-3.0-or-later as a whole. The ps2fp_*
+ * functions, which the rewriter and the library call, dispatch on the model.
+ *
+ * Everything here is integer arithmetic (the legacy square root excepted, see
+ * ps2fp0_sqrt): the results do not depend on the host's rounding mode or its
  * denormal modes, and no float operation of this file can be folded or
  * contracted by the compiler into something else.
  *
@@ -33,6 +46,12 @@
 typedef unsigned int ps2fp_u32;
 typedef int ps2fp_s32;
 typedef unsigned long long ps2fp_u64;
+
+/* The float model: 0 legacy, 1 ps2. Set before the game's first instruction runs (pc/core/pal_fpmodel.c); the strong
+ * definition is crt_fpmodel.c's. The weak one here keeps every program that includes this header linkable (the tests
+ * of the layers that compile game code), in the legacy model. */
+extern int ps2fp_model;
+__attribute__((weak)) int ps2fp_model;
 
 #define PS2FP_INL static inline __attribute__((always_inline))
 /* The functions the rewriter calls are kept in the IR (the rewriter
@@ -59,7 +78,7 @@ PS2FP_INL float ps2fp_val(ps2fp_u32 u)
 
 /* An operand as the EE sees it, and a result as it gives it: the same
  * function (exponent 255 is +/-Fmax, a zero exponent is +/-0). */
-PS2FP_INL ps2fp_u32 ps2fp_clean(ps2fp_u32 u)
+PS2FP_INL ps2fp_u32 ps2fp0_clean(ps2fp_u32 u)
 {
     ps2fp_u32 e = u & PS2FP_EXP;
     if (e == PS2FP_EXP)
@@ -71,7 +90,7 @@ PS2FP_INL ps2fp_u32 ps2fp_clean(ps2fp_u32 u)
 
 /* Packs sign, a biased exponent and a 24-bit significand (hidden bit set)
  * as the EE's results: overflow is Fmax, underflow is zero. */
-PS2FP_INL ps2fp_u32 ps2fp_pack(ps2fp_u32 sign, ps2fp_s32 e, ps2fp_u32 m)
+PS2FP_INL ps2fp_u32 ps2fp0_pack(ps2fp_u32 sign, ps2fp_s32 e, ps2fp_u32 m)
 {
     if (e >= 255)
         return sign | PS2FP_FMAX;
@@ -80,16 +99,16 @@ PS2FP_INL ps2fp_u32 ps2fp_pack(ps2fp_u32 sign, ps2fp_s32 e, ps2fp_u32 m)
     return sign | ((ps2fp_u32)e << 23) | (m & 0x7FFFFFu);
 }
 
-/* ------------------------------------------------- add, subtract, multiply */
+/* ------------------------------------- the legacy model: add, subtract, multiply */
 
 /* Toward zero. The significands carry three guard bits; the bits of the
  * smaller operand shifted out below them only matter as "something was
  * lost", which makes a difference one unit less (the truncation of the
  * exact difference). */
-PS2FP_INL ps2fp_u32 ps2fp_add(ps2fp_u32 a, ps2fp_u32 b)
+PS2FP_INL ps2fp_u32 ps2fp0_add(ps2fp_u32 a, ps2fp_u32 b)
 {
-    a = ps2fp_clean(a);
-    b = ps2fp_clean(b);
+    a = ps2fp0_clean(a);
+    b = ps2fp0_clean(b);
     ps2fp_u32 sa = a & PS2FP_SIGN, sb = b & PS2FP_SIGN;
     ps2fp_u32 ma = a & ~PS2FP_SIGN, mb = b & ~PS2FP_SIGN;
     if (ma < mb) {
@@ -129,18 +148,18 @@ PS2FP_INL ps2fp_u32 ps2fp_add(ps2fp_u32 a, ps2fp_u32 b)
         m <<= sh;
         e -= sh;
     }
-    return ps2fp_pack(sa, e, m >> 3);
+    return ps2fp0_pack(sa, e, m >> 3);
 }
 
-PS2FP_INL ps2fp_u32 ps2fp_sub(ps2fp_u32 a, ps2fp_u32 b)
+PS2FP_INL ps2fp_u32 ps2fp0_sub(ps2fp_u32 a, ps2fp_u32 b)
 {
-    return ps2fp_add(a, b ^ PS2FP_SIGN);
+    return ps2fp0_add(a, b ^ PS2FP_SIGN);
 }
 
-PS2FP_INL ps2fp_u32 ps2fp_mul(ps2fp_u32 a, ps2fp_u32 b)
+PS2FP_INL ps2fp_u32 ps2fp0_mul(ps2fp_u32 a, ps2fp_u32 b)
 {
-    a = ps2fp_clean(a);
-    b = ps2fp_clean(b);
+    a = ps2fp0_clean(a);
+    b = ps2fp0_clean(b);
     ps2fp_u32 sign = (a ^ b) & PS2FP_SIGN;
     ps2fp_u32 ea = (a >> 23) & 0xFF, eb = (b >> 23) & 0xFF;
     if (ea == 0 || eb == 0)
@@ -154,18 +173,18 @@ PS2FP_INL ps2fp_u32 ps2fp_mul(ps2fp_u32 a, ps2fp_u32 b)
     } else {
         m = (ps2fp_u32)(p >> 23);
     }
-    return ps2fp_pack(sign, e, m);
+    return ps2fp0_pack(sign, e, m);
 }
 
 /* -------------------------------------------------------- divide and sqrt */
 
 /* To nearest even; x / 0 (a zero or denormal divisor) is signed Fmax. */
-PS2FP_INL ps2fp_u32 ps2fp_div(ps2fp_u32 a, ps2fp_u32 b)
+PS2FP_INL ps2fp_u32 ps2fp0_div(ps2fp_u32 a, ps2fp_u32 b)
 {
     if ((b & PS2FP_EXP) == 0)
         return ((a ^ b) & PS2FP_SIGN) | PS2FP_FMAX;
-    a = ps2fp_clean(a);
-    b = ps2fp_clean(b);
+    a = ps2fp0_clean(a);
+    b = ps2fp0_clean(b);
     ps2fp_u32 sign = (a ^ b) & PS2FP_SIGN;
     ps2fp_u32 ea = (a >> 23) & 0xFF, eb = (b >> 23) & 0xFF;
     if (ea == 0)
@@ -193,7 +212,7 @@ PS2FP_INL ps2fp_u32 ps2fp_div(ps2fp_u32 a, ps2fp_u32 b)
         m >>= 1;
         e++;
     }
-    return ps2fp_pack(sign, e, m);
+    return ps2fp0_pack(sign, e, m);
 }
 
 /* Toward zero; the sign of the operand does not count (sqrt(-x) is
@@ -203,11 +222,11 @@ PS2FP_INL ps2fp_u32 ps2fp_div(ps2fp_u32 a, ps2fp_u32 b)
  * (the roots of 24-bit significands are at least 2^-48 away, relative,
  * from the squares of 24-bit numbers), so the truncation is the exact
  * root's. This holds in every rounding mode of the host's SSE unit. */
-PS2FP_INL ps2fp_u32 ps2fp_sqrt(ps2fp_u32 a)
+PS2FP_INL ps2fp_u32 ps2fp0_sqrt(ps2fp_u32 a)
 {
     if ((a & PS2FP_EXP) == 0)
         return a & PS2FP_SIGN;
-    float f = ps2fp_val(ps2fp_clean(a) & ~PS2FP_SIGN);
+    float f = ps2fp_val(ps2fp0_clean(a) & ~PS2FP_SIGN);
     __m128d v = _mm_set_sd((double)f);
     v = _mm_sqrt_sd(v, v);
     ps2fp_u64 d;
@@ -217,28 +236,173 @@ PS2FP_INL ps2fp_u32 ps2fp_sqrt(ps2fp_u32 a)
 }
 
 /* rsqrt.s: fs / sqrt(|ft|) (the root toward zero, the division to nearest) */
-PS2FP_INL ps2fp_u32 ps2fp_rsqrt(ps2fp_u32 a, ps2fp_u32 b)
+PS2FP_INL ps2fp_u32 ps2fp0_rsqrt(ps2fp_u32 a, ps2fp_u32 b)
 {
     if ((b & PS2FP_EXP) == 0)
         return ((a ^ b) & PS2FP_SIGN) | PS2FP_FMAX;
-    return ps2fp_div(a, ps2fp_sqrt(b));
+    return ps2fp0_div(a, ps2fp0_sqrt(b));
 }
 
-PS2FP_INL ps2fp_u32 ps2fp_neg(ps2fp_u32 a) { return ps2fp_clean(a) ^ PS2FP_SIGN; }
-PS2FP_INL ps2fp_u32 ps2fp_abs(ps2fp_u32 a) { return ps2fp_clean(a) & ~PS2FP_SIGN; }
+PS2FP_INL ps2fp_u32 ps2fp0_neg(ps2fp_u32 a) { return ps2fp0_clean(a) ^ PS2FP_SIGN; }
+PS2FP_INL ps2fp_u32 ps2fp0_abs(ps2fp_u32 a) { return ps2fp0_clean(a) & ~PS2FP_SIGN; }
 
 /* ----------------------------------------------------------- comparisons */
 
 /* No NaNs after cleaning: the exact order of the cleaned values, zeros equal. */
-PS2FP_INL ps2fp_s32 ps2fp_key(ps2fp_u32 u)
+PS2FP_INL ps2fp_s32 ps2fp0_key(ps2fp_u32 u)
 {
-    u = ps2fp_clean(u);
+    u = ps2fp0_clean(u);
     ps2fp_s32 m = (ps2fp_s32)(u & ~PS2FP_SIGN);
     return (u & PS2FP_SIGN) ? -m : m;
 }
-PS2FP_INL int ps2fp_eq(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp_key(a) == ps2fp_key(b); }
-PS2FP_INL int ps2fp_lt(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp_key(a) < ps2fp_key(b); }
-PS2FP_INL int ps2fp_le(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp_key(a) <= ps2fp_key(b); }
+PS2FP_INL int ps2fp0_eq(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp0_key(a) == ps2fp0_key(b); }
+PS2FP_INL int ps2fp0_lt(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp0_key(a) < ps2fp0_key(b); }
+PS2FP_INL int ps2fp0_le(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp0_key(a) <= ps2fp0_key(b); }
+
+/* ------------------------------------------------------------ the ps2 model */
+
+/* The Booth multiplier (GPL-3.0-or-later; SOURCE.txt next to it). Its entry point stays a call: it runs for every
+ * product under the ps2 model, and the game has thousands of them. */
+#define PS2FLOAT_U32 ps2fp_u32
+#define PS2FLOAT_S32 ps2fp_s32
+#define PS2FLOAT_U64 ps2fp_u64
+#define PS2FLOAT_MUL_ATTR __attribute__((noinline))
+#include "../third_party/pcsx2_ps2float/ps2float_mul.h"
+#define PS2FLOAT_ADD_ATTR __attribute__((noinline))
+#include "../third_party/pcsx2_ps2float/ps2float_add.h"
+
+#define PS2FP2 static inline __attribute__((noinline))   /* the ps2 model's bigger functions: one copy per file, called */
+#define PS2FP2_MAX 0x7FFFFFFFu
+
+/* Exponent 255 is a number; a zero exponent field is a zero. */
+PS2FP_INL ps2fp_u32 ps2fp2_clean(ps2fp_u32 u) { return (u & PS2FP_EXP) == 0 ? u & PS2FP_SIGN : u; }
+
+/* Overflow (past exponent 255) is the largest value, 0x7FFFFFFF; underflow is zero. */
+PS2FP_INL ps2fp_u32 ps2fp2_pack(ps2fp_u32 sign, ps2fp_s32 e, ps2fp_u32 m)
+{
+    if (e >= 256)
+        return sign | PS2FP2_MAX;
+    if (e <= 0)
+        return sign;
+    return sign | ((ps2fp_u32)e << 23) | (m & 0x7FFFFFu);
+}
+
+/* The adder: the guard-bit adder (ps2float_add.h, GPL-3.0-or-later; SOURCE.txt). Exponent 255 is a number. */
+PS2FP_INL ps2fp_u32 ps2fp2_add(ps2fp_u32 a, ps2fp_u32 b) { return ps2float_add(a, b); }
+PS2FP_INL ps2fp_u32 ps2fp2_sub(ps2fp_u32 a, ps2fp_u32 b) { return ps2float_sub(a, b); }
+
+/* The product: the Booth multiplier's (a zero exponent field gives a signed zero). */
+PS2FP_INL ps2fp_u32 ps2fp2_mul(ps2fp_u32 a, ps2fp_u32 b) { return ps2float_mul(a, b); }
+
+/* To nearest even; x / 0 (a zero or denormal divisor) is signed 0x7FFFFFFF. */
+PS2FP2 ps2fp_u32 ps2fp2_div(ps2fp_u32 a, ps2fp_u32 b)
+{
+    if ((b & PS2FP_EXP) == 0)
+        return ((a ^ b) & PS2FP_SIGN) | PS2FP2_MAX;
+    a = ps2fp2_clean(a);
+    b = ps2fp2_clean(b);
+    ps2fp_u32 sign = (a ^ b) & PS2FP_SIGN;
+    ps2fp_u32 ea = (a >> 23) & 0xFF, eb = (b >> 23) & 0xFF;
+    if (ea == 0)
+        return sign;
+    ps2fp_u32 ma = (a & 0x7FFFFFu) | 0x800000u, mb = (b & 0x7FFFFFu) | 0x800000u;
+    ps2fp_s32 e = (ps2fp_s32)ea - (ps2fp_s32)eb + 127;
+    if (ma < mb) {
+        ma <<= 1;
+        e--;
+    }
+    ps2fp_u32 r = ma - mb;
+    ps2fp_u32 q = 0;
+    for (int i = 0; i < 3; i++) {
+        r <<= 8;
+        q = (q << 8) | (r / mb);
+        r %= mb;
+    }
+    q |= 1u << 24;
+    ps2fp_u32 m = q >> 1;
+    if ((q & 1) && (r != 0 || (m & 1)))
+        m++;
+    if (m >> 24) {
+        m >>= 1;
+        e++;
+    }
+    return ps2fp2_pack(sign, e, m);
+}
+
+/* To nearest even, from the exact integer root (24 bits of significand from a 31 or 32-bit root, and its
+ * remainder). A zero exponent field is +0, even for -0; the sign of the operand does not count. */
+PS2FP2 ps2fp_u32 ps2fp2_sqrt(ps2fp_u32 a)
+{
+    if ((a & PS2FP_EXP) == 0)
+        return 0;
+    ps2fp_s32 k = (ps2fp_s32)((a >> 23) & 0xFF) - 127 - 23; /* the value is m * 2^k, m 24 bits */
+    ps2fp_u64 x = (a & 0x7FFFFFu) | 0x800000u;
+    if (k & 1) {
+        x <<= 1;
+        k--;
+    }
+    x <<= 38; /* x in [2^61, 2^63), k - 38 even; the root is x^(1/2) * 2^((k - 38) / 2) */
+    ps2fp_u64 r = 0, bit = 1ull << 62, n = x;
+    while (bit > n)
+        bit >>= 2;
+    while (bit) {
+        if (n >= r + bit) {
+            n -= r + bit;
+            r = (r >> 1) + bit;
+        } else {
+            r >>= 1;
+        }
+        bit >>= 2;
+    }
+    /* r = floor(sqrt(x)), n = x - r * r */
+    int sh = (r >> 31) ? 8 : 7;
+    ps2fp_u32 q = (ps2fp_u32)(r >> sh);
+    ps2fp_u32 frac = (ps2fp_u32)r & ((1u << sh) - 1), half = 1u << (sh - 1);
+    if (frac > half || (frac == half && (n != 0 || (q & 1))))
+        q++;
+    ps2fp_s32 e = 23 + sh + (k - 38) / 2 + 127; /* q in [2^23, 2^24] */
+    if (q >> 24) {
+        q >>= 1;
+        e++;
+    }
+    return ps2fp2_pack(0, e, q);
+}
+
+/* rsqrt.s: fs / sqrt(|ft|), composed of this model's root and quotient (the game has no rsqrt.s) */
+PS2FP2 ps2fp_u32 ps2fp2_rsqrt(ps2fp_u32 a, ps2fp_u32 b)
+{
+    if ((b & PS2FP_EXP) == 0)
+        return (a & PS2FP_SIGN) | PS2FP2_MAX;
+    return ps2fp2_div(a, ps2fp2_sqrt(b));
+}
+
+PS2FP_INL ps2fp_u32 ps2fp2_neg(ps2fp_u32 a) { return a ^ PS2FP_SIGN; }
+PS2FP_INL ps2fp_u32 ps2fp2_abs(ps2fp_u32 a) { return a & ~PS2FP_SIGN; }
+
+/* No NaNs: the exact order of the values (exponent 255 included), zeros equal. */
+PS2FP_INL ps2fp_s32 ps2fp2_key(ps2fp_u32 u)
+{
+    u = ps2fp2_clean(u);
+    ps2fp_s32 m = (ps2fp_s32)(u & ~PS2FP_SIGN);
+    return (u & PS2FP_SIGN) ? -m : m;
+}
+PS2FP_INL int ps2fp2_eq(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp2_key(a) == ps2fp2_key(b); }
+PS2FP_INL int ps2fp2_lt(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp2_key(a) < ps2fp2_key(b); }
+PS2FP_INL int ps2fp2_le(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp2_key(a) <= ps2fp2_key(b); }
+
+/* ------------------------------------------------ the model in force: dispatch */
+
+PS2FP_INL ps2fp_u32 ps2fp_add(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp_model ? ps2fp2_add(a, b) : ps2fp0_add(a, b); }
+PS2FP_INL ps2fp_u32 ps2fp_sub(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp_model ? ps2fp2_sub(a, b) : ps2fp0_sub(a, b); }
+PS2FP_INL ps2fp_u32 ps2fp_mul(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp_model ? ps2fp2_mul(a, b) : ps2fp0_mul(a, b); }
+PS2FP_INL ps2fp_u32 ps2fp_div(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp_model ? ps2fp2_div(a, b) : ps2fp0_div(a, b); }
+PS2FP_INL ps2fp_u32 ps2fp_sqrt(ps2fp_u32 a) { return ps2fp_model ? ps2fp2_sqrt(a) : ps2fp0_sqrt(a); }
+PS2FP_INL ps2fp_u32 ps2fp_rsqrt(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp_model ? ps2fp2_rsqrt(a, b) : ps2fp0_rsqrt(a, b); }
+PS2FP_INL ps2fp_u32 ps2fp_neg(ps2fp_u32 a) { return ps2fp_model ? ps2fp2_neg(a) : ps2fp0_neg(a); }
+PS2FP_INL ps2fp_u32 ps2fp_abs(ps2fp_u32 a) { return ps2fp_model ? ps2fp2_abs(a) : ps2fp0_abs(a); }
+PS2FP_INL int ps2fp_eq(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp_model ? ps2fp2_eq(a, b) : ps2fp0_eq(a, b); }
+PS2FP_INL int ps2fp_lt(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp_model ? ps2fp2_lt(a, b) : ps2fp0_lt(a, b); }
+PS2FP_INL int ps2fp_le(ps2fp_u32 a, ps2fp_u32 b) { return ps2fp_model ? ps2fp2_le(a, b) : ps2fp0_le(a, b); }
 
 /* ----------------------------------------------------------- conversions */
 
@@ -314,6 +478,29 @@ PS2FP_INL ps2fp_u32 ps2fp_urem(ps2fp_u32 n, ps2fp_u32 d) { return d == 0 ? n : n
 PS2FP_API float ps2_fadd(float a, float b) { return ps2fp_val(ps2fp_add(ps2fp_bits(a), ps2fp_bits(b))); }
 PS2FP_API float ps2_fsub(float a, float b) { return ps2fp_val(ps2fp_sub(ps2fp_bits(a), ps2fp_bits(b))); }
 PS2FP_API float ps2_fmul(float a, float b) { return ps2fp_val(ps2fp_mul(ps2fp_bits(a), ps2fp_bits(b))); }
+#ifdef MH2_FPTRACE
+/* The trace build (the product trace): the pass gives every float add and multiply a site id; the
+ * tracer (pal_fptrace.c) logs the products whose result depends on the order of the operands. */
+__attribute__((cdecl)) void mh2_fptrace(int op, ps2fp_u32 a, ps2fp_u32 b, ps2fp_u32 r, unsigned site);
+#ifndef MH2_FPTRACE_IMPL   /* a program that links the game's objects without the tracer (the tests): no trace */
+__attribute__((cdecl, weak)) void mh2_fptrace(int op, ps2fp_u32 a, ps2fp_u32 b, ps2fp_u32 r, unsigned site)
+{
+    (void)op; (void)a; (void)b; (void)r; (void)site;
+}
+#endif
+PS2FP_API float ps2_fadd_t(float a, float b, int site)
+{
+    ps2fp_u32 r = ps2fp_add(ps2fp_bits(a), ps2fp_bits(b));
+    mh2_fptrace(0, ps2fp_bits(a), ps2fp_bits(b), r, (unsigned)site);
+    return ps2fp_val(r);
+}
+PS2FP_API float ps2_fmul_t(float a, float b, int site)
+{
+    ps2fp_u32 r = ps2fp_mul(ps2fp_bits(a), ps2fp_bits(b));
+    mh2_fptrace(2, ps2fp_bits(a), ps2fp_bits(b), r, (unsigned)site);
+    return ps2fp_val(r);
+}
+#endif
 PS2FP_API float ps2_fdiv(float a, float b) { return ps2fp_val(ps2fp_div(ps2fp_bits(a), ps2fp_bits(b))); }
 PS2FP_API float ps2_fneg(float a) { return ps2fp_val(ps2fp_neg(ps2fp_bits(a))); }
 PS2FP_API float ps2_fabs(float a) { return ps2fp_val(ps2fp_abs(ps2fp_bits(a))); }

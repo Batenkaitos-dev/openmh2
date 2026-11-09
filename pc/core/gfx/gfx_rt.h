@@ -4,9 +4,9 @@
 /*
  * The graphics front's own header:
  * the names its files share, and the original game runtime's names
- * that the files adapted from the original game's code (vif.c, gif.c, vu1.c, vu1_core.h) still
+ * that the files adapted from the original game's code (the VIF, GIF and VU1 code, vu1_core.h) still
  * use. Platform-layer code: the game's calling convention, no system headers
- * (pc/README.md, "Calling convention"); the SSE intrinsics are the compiler's
+ * (pc/game_flags.txt); the SSE intrinsics are the compiler's
  * own headers.
  */
 

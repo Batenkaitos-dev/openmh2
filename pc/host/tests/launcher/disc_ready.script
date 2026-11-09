@@ -1,9 +1,0 @@
-# the disc page with an archive that is there: its rows, then back
-shot home
-key Down
-key Return
-shot disc_ready
-key Escape
-key Escape
-shot home_again
-end

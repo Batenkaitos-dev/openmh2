@@ -36,6 +36,7 @@
 #include "libc.h"
 #include "libgraph.h"
 #include "libkernl.h"
+#include "pal.h"
 #pragma optimization_level 4
 
 #define LOADING_IMAGES 4        /* the images of the screen's file */
@@ -333,6 +334,7 @@ void Loading_Open(u32 unusedBuf, s32 arg)
     u8 alpha;
 
     gLoadingScreenOn = 1;
+    PC_LOADING_SCREEN(1);
     base = (u8 *)gMemAreas - 6144;
     if (gLoadingScreen != NULL && gLoadingScreen->state == 1) {
         return;
@@ -446,6 +448,7 @@ void Loading_Close(void)
 {
     if (gLoadingScreen != NULL) {
         gLoadingScreenOn = 0;
+        PC_LOADING_SCREEN(0);
         gFlipCountdown = 2;
         Dma_WaitIdle();
         Sys_FlipFrame(0);

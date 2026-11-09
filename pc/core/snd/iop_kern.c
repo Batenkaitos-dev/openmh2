@@ -1,5 +1,5 @@
 /* The IOP's kernel services for the sound modules (the interpreter is not in the core).
- * The original's iop_lle.c, adapted to the core, without its R3000A interpreter: the
+ * The original's IOP kernel, adapted to the core, without its R3000A interpreter: the
  * game's sound modules (Sony's libsd, the Capcom Sound Engine and CRI's ADX driver) are native code (pc/core/api/libsd.c,
  * pc/core/cse), and the kernel functions they import are native handlers here, called by name
  * (IopNative_Call, IopKern_Call). Timing:.
@@ -905,8 +905,8 @@ static void h_StartHardTimer(IopCpu *c)
         return;
     }
     t->running = 1;
-    SND_LOGI("iopk", "hard timer %u: compare %u, source %u, prescale %u (period %llu ns)", arg(c, 0), t->compare, t->source,
-         t->prescale, (unsigned long long)clocks_to_ns(t->compare ? t->compare : 1, t->source, t->prescale));
+    SND_LOGI("iopk", "hard timer %u: compare %u, source %u, prescale %u (period %u ns)", arg(c, 0), t->compare, t->source,
+         t->prescale, (unsigned)clocks_to_ns(t->compare ? t->compare : 1, t->source, t->prescale));
     timer_fire(0, arg(c, 0) - 1);
     ret(c, 0);
 }

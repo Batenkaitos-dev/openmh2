@@ -28,7 +28,7 @@ the shortest form that gives the same bits. Objects not in TYPES come out
 as gen_data.py writes them (u32 arrays).
 
 It needs a split in which the range is still assembly: run it before
-`data_split.py --data --write` (or in a base checkout, with --root).
+the matching build's data split (its --data --write, or in a base checkout, with --root).
 The struct layouts must match the C file's (the tool doesn't read headers).
 """
 

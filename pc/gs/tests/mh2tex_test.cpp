@@ -72,6 +72,42 @@ static void remove_tree(const std::string &dir)
 #endif
 }
 
+/* Folders and files with UTF-8 names (the Japanese-named pack): the wide calls on Windows */
+#ifdef _WIN32
+static std::wstring widen(const std::string &s)
+{
+    int n = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, nullptr, 0);
+    std::wstring w(n > 0 ? n - 1 : 0, L'\0');
+    if (n > 1)
+        MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, &w[0], n);
+    return w;
+}
+#endif
+static void make_dir_utf8(const std::string &p)
+{
+#ifdef _WIN32
+    CreateDirectoryW(widen(p).c_str(), nullptr);
+#else
+    mkdir(p.c_str(), 0777);
+#endif
+}
+static void remove_file_utf8(const std::string &p)
+{
+#ifdef _WIN32
+    DeleteFileW(widen(p).c_str());
+#else
+    remove(p.c_str());
+#endif
+}
+static void remove_dir_utf8(const std::string &p)
+{
+#ifdef _WIN32
+    RemoveDirectoryW(widen(p).c_str());
+#else
+    rmdir(p.c_str());
+#endif
+}
+
 static std::vector<uint8_t> g_idx;   /* the first texture, for the pack part */
 static uint32_t rng_state = 12345;
 static uint32_t rnd() { rng_state = rng_state * 1664525u + 1013904223u; return rng_state >> 8; }
@@ -396,7 +432,7 @@ int main(int argc, char **argv)
             stbi_write_png((pack + "/T8_64x32_0123456789abcdeg.png").c_str(), 4, 4, 4, blank.data(), 16);
             stbi_write_png((pack + "/T8_64x32_0123456789abcdef_0123456789abcdef.png").c_str(), 4, 4, 4, blank.data(), 16);
             Mh2Tex::Options o;
-            o.pack_dir = pack;
+            o.pack_dirs = {pack};
             o.log = [](const char *l, void *) { printf("  log: %s\n", l); };
             Mh2Tex::Textures t(nullptr, 4 << 20, o);
             Gs gs{&t};
@@ -414,6 +450,217 @@ int main(int argc, char **argv)
             gs.new_texture(PSMT8, 96, 2, 6, 5, PSMCT32, 0, 2);
             CHECK(t.counters().pack_hits == 1);   /* other texels: no file */
         }
+    }
+
+    /* ---- two packs: the earlier pack in the list serves a texture both have a file for, in both orders; the palette's
+     *      own file beats the texels-only one inside a pack, but not over an earlier pack's; a folder that is not
+     *      there is skipped; a pack in a folder with a Japanese name works; no packs, no replacement */
+    {
+        const std::string jp = "\xE3\x83\x86\xE3\x82\xB9\xE3\x83\x88";
+        std::string dumpx = root + "/dumpx", pa = root + "/packA", pb = root + "/packB", pj = root + "/" + jp;
+        make_dir_utf8(dumpx);
+        make_dir_utf8(pa);
+        make_dir_utf8(pb);
+        make_dir_utf8(pj);
+        const uint32_t W = 64, H = 32;
+        auto feed = [&](Mh2Tex::Textures &t) {
+            Gs gs{&t};
+            gs.upload(PSMT8, 0, 2, 0, 0, W, H, g_idx);
+            std::vector<uint8_t> pal(256 * 4, 0x55);
+            gs.upload(PSMCT32, 64, 1, 0, 0, 16, 16, pal);
+            gs.load_clut(PSMT8, 64, PSMCT32, 0);
+            gs.new_texture(PSMT8, 0, 2, 6, 5, PSMCT32, 0, 1);
+        };
+        std::string exact;
+        {
+            Mh2Tex::Options o;
+            o.dump_dir = dumpx;
+            Mh2Tex::Textures t(nullptr, 4 << 20, o);
+            feed(t);
+            t.flush_dumps();
+            auto f = list_dir(dumpx);
+            CHECK(f.size() == 1);
+            if (f.size() == 1)
+                exact = f[0];
+            remove_tree(dumpx);
+        }
+        CHECK(exact.size() == strlen("T8_64x32_") + 16 + 1 + 16 + 4);
+        if (exact.size() == strlen("T8_64x32_") + 16 + 1 + 16 + 4)
+        {
+            std::string texels = exact.substr(0, 9 + 16) + ".png";
+            std::vector<uint8_t> px(4 * 4 * 4, 0x80);
+            auto put = [&](const std::string &dir, const std::string &name) {
+                stbi_write_png((dir + "/" + name).c_str(), 4, 4, 4, px.data(), 16);
+            };
+            auto served = [&](std::vector<std::string> dirs) {
+                Mh2Tex::Options o;
+                o.pack_dirs = dirs;
+                Mh2Tex::Textures t(nullptr, 4 << 20, o);
+                feed(t);
+                return t.pack_active_path(1);
+            };
+            auto lead = [&](const std::string &path, const std::string &dir, const std::string &name) {
+                return path == dir + "/" + name || path == dir + "\\" + name;
+            };
+            /* both packs have the palette's file */
+            put(pa, exact);
+            put(pb, exact);
+            CHECK(lead(served({pa, pb}), pa, exact));
+            CHECK(lead(served({pb, pa}), pb, exact));
+            remove_file_utf8(pa + "/" + exact);
+            remove_file_utf8(pb + "/" + exact);
+            /* A has the texels-only file, B the palette's own: the earlier pack wins either way round */
+            put(pa, texels);
+            put(pb, exact);
+            CHECK(lead(served({pa, pb}), pa, texels));
+            CHECK(lead(served({pb, pa}), pb, exact));
+            /* one pack with both: the palette's own */
+            put(pa, exact);
+            CHECK(lead(served({pa}), pa, exact));
+            CHECK(lead(served({pa, pb}), pa, exact));
+            /* a folder that is not there, and an empty name, are skipped */
+            CHECK(lead(served({root + "/nowhere", "", pb}), pb, exact));
+            /* a pack in a folder with a Japanese name */
+            put(pj, exact);
+            CHECK(lead(served({pj}), pj, exact));
+            CHECK(lead(served({pb, pj}), pb, exact));
+            remove_file_utf8(pa + "/" + exact);
+            CHECK(lead(served({pa, pj, pb}), pa, texels));   /* A has only the texels-only file now: still the earliest pack */
+            /* no packs: nothing is chosen */
+            {
+                Mh2Tex::Options o;
+                Mh2Tex::Textures t(nullptr, 4 << 20, o);
+                feed(t);
+                CHECK(t.pack_active_path(1).empty() && t.counters().pack_hits == 0 && t.counters().pack_files == 0);
+            }
+            remove_file_utf8(pa + "/" + texels);
+            remove_file_utf8(pb + "/" + exact);
+            remove_file_utf8(pj + "/" + exact);
+        }
+        remove_dir_utf8(dumpx);
+        remove_dir_utf8(pa);
+        remove_dir_utf8(pb);
+        remove_dir_utf8(pj);
+    }
+
+    /* ---- the preload: the packs decoded before the first draw, within a budget; DDS (BC7) files beside the PNGs */
+    {
+        std::string pp = root + "/packP";
+        make_dir_utf8(pp);
+        auto key = [](const char *fmt, uint32_t w, uint32_t h, uint64_t n) {
+            char b[80];
+            snprintf(b, sizeof(b), "%s_%ux%u_%016llx", fmt, w, h, (unsigned long long)n);
+            return std::string(b);
+        };
+        auto dds = [](uint32_t w, uint32_t h, uint32_t dxgi, size_t bytes) {
+            std::vector<uint8_t> d(148 + bytes, 0x11);
+            auto put32 = [&](size_t o, uint32_t v) { for (int i = 0; i < 4; i++) d[o + i] = uint8_t(v >> (8 * i)); };
+            memcpy(d.data(), "DDS ", 4);
+            put32(4, 124);
+            put32(12, h);
+            put32(16, w);
+            put32(76, 32);
+            memcpy(d.data() + 84, "DX10", 4);
+            put32(128, dxgi);
+            put32(132, 3);
+            return d;
+        };
+        auto write_bytes = [](const std::string &path, const std::vector<uint8_t> &d) {
+            FILE *f = fopen(path.c_str(), "wb");
+            if (f)
+            {
+                fwrite(d.data(), 1, d.size(), f);
+                fclose(f);
+            }
+        };
+        std::vector<std::string> made;
+        std::vector<uint8_t> px(256 * 256 * 4, 0x40);
+        for (int i = 0; i < 8; i++)   /* eight PNGs of 256 x 256: 256 KB each once decoded */
+        {
+            made.push_back(pp + "/" + key("C32", 256, 256, 100 + i) + ".png");
+            stbi_write_png(made.back().c_str(), 256, 256, 4, px.data(), 256 * 4);
+        }
+        made.push_back(pp + "/" + key("C32", 8, 8, 200) + ".dds");   /* a BC7 file: 8 x 8 texels, 4 blocks of 16 bytes */
+        write_bytes(made.back(), dds(8, 8, 98, 64));
+        made.push_back(pp + "/" + key("C32", 8, 8, 201) + ".dds");   /* BC7 in sRGB: the same */
+        write_bytes(made.back(), dds(8, 8, 99, 64));
+        made.push_back(pp + "/" + key("C32", 8, 8, 202) + ".dds");   /* not BC7 (BC3, 77): unusable */
+        write_bytes(made.back(), dds(8, 8, 77, 64));
+        made.push_back(pp + "/" + key("C32", 6, 6, 203) + ".dds");   /* not a multiple of 4: unusable */
+        write_bytes(made.back(), dds(6, 6, 98, 64));
+        made.push_back(pp + "/" + key("C32", 8, 8, 204) + ".dds");   /* shorter than its blocks: unusable */
+        write_bytes(made.back(), dds(8, 8, 98, 32));
+        made.push_back(pp + "/" + key("C32", 4, 4, 205) + ".dds");    /* both a DDS and a PNG: the DDS (it sorts first) */
+        write_bytes(made.back(), dds(4, 4, 98, 16));
+        made.push_back(pp + "/" + key("C32", 4, 4, 205) + ".png");
+        stbi_write_png(made.back().c_str(), 4, 4, 4, px.data(), 16);
+        {
+            Mh2Tex::Options o;
+            o.pack_dirs = {pp};
+            o.threads = 3;
+            Mh2Tex::Textures t(nullptr, 4 << 20, o);
+            Mh2Tex::Counters c = t.counters();
+            CHECK(c.pack_files == 14);                         /* 8 PNGs, 6 DDS names (205 once) */
+            CHECK(c.preloaded == 11);                          /* 8 PNGs and the BC7 files 200, 201, 205 */
+            CHECK(c.preload_failed == 3);                      /* BC3, 6 x 6 and the short one */
+            CHECK(c.preload_left_out == 0);
+            CHECK(c.preload_bytes == 8 * 256 * 256 * 4 + 64 + 64 + 16);
+            std::string p = t.pack_path_for(key("C32", 4, 4, 205));
+            CHECK(p.size() > 4 && p.compare(p.size() - 4, 4, ".dds") == 0);
+        }
+        {
+            Mh2Tex::Options o;   /* a budget of 1 MB: four of the eight 256 KB files fit, the BC7 ones after them */
+            o.pack_dirs = {pp};
+            o.cache_mb = 1;
+            Mh2Tex::Textures t(nullptr, 4 << 20, o);
+            Mh2Tex::Counters c = t.counters();
+            CHECK(c.preloaded <= 8 && c.preload_bytes <= (1u << 20));
+            CHECK(c.preloaded + c.preload_left_out + c.preload_failed == 14);
+            CHECK(c.preload_left_out >= 4);
+        }
+        {
+            Mh2Tex::Options o;   /* no preload: nothing is read until a texture is drawn */
+            o.pack_dirs = {pp};
+            o.preload = false;
+            Mh2Tex::Textures t(nullptr, 4 << 20, o);
+            CHECK(t.counters().preloaded == 0 && t.counters().pack_files == 14);
+        }
+        for (auto &f : made)
+            remove_file_utf8(f);
+        remove_dir_utf8(pp);
+    }
+
+    /* ---- speculation: what an in-between pass uploads and damages leaves the copy of local memory as it was */
+    {
+        Mh2Tex::Options o;
+        Mh2Tex::Textures t(nullptr, 4 << 20, o);
+        Gs gs{&t};
+        std::vector<uint8_t> a(64 * 32 * 4), b(64 * 32 * 4);
+        for (auto &v : a)
+            v = uint8_t(rnd());
+        for (auto &v : b)
+            v = uint8_t(rnd());
+        gs.upload(PSMCT32, 0, 1, 0, 0, 64, 32, a);
+        std::vector<uint8_t> before, during, after;
+        t.state_get(before);
+        t.speculation_begin();
+        gs.upload(PSMCT32, 0, 1, 0, 0, 64, 32, b);
+        PageRect damaged = {};
+        damaged.base_page = 0;   /* the page the first upload covered */
+        damaged.page_width = 1;
+        damaged.page_height = 1;
+        t.on_vram_damage(damaged);
+        t.state_get(during);
+        CHECK(during != before);
+        t.speculation_end();
+        t.state_get(after);
+        CHECK(after == before);
+        /* the same upload again is not taken for the one before it: the copy holds a again, so b is written once more */
+        gs.upload(PSMCT32, 0, 1, 0, 0, 64, 32, b);
+        std::vector<uint8_t> again;
+        t.state_get(again);
+        CHECK(again == before);   /* (page states: uploaded) */
+        t.speculation_end();      /* without a begin: nothing */
     }
 
     remove_tree(dump);

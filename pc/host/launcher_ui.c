@@ -54,10 +54,14 @@ static struct {
     int text_mode;
     float row_top;
     int bounce_l, bounce_r;
-    /* the last page's rows, for the mouse */
-    int nrows;
-    float row_y[24];
-    unsigned row_flags[24];
+    int cuts;   /* the texts of this picture that had to end with "..." (ui_cuts) */
+    /* the last page's rows, for the mouse: the rows drawn are FIRST and the NROWS after it */
+    int first, next_first, nrows;
+    /* the buttons of the box over the page (ui_message), for the mouse */
+    int nbtn;
+    float btn_x[4], btn_y;
+    float row_y[UI_MAXROWS];
+    unsigned row_flags[UI_MAXROWS];
     float mouse_x, mouse_y;
     int mouse_in;
     char err[256];
@@ -510,6 +514,16 @@ int ui_rows_visible(void)
 
 /* ---------------------------------------------------------------- input */
 
+/* The button of the box over the page under a window point, or -1. */
+static int button_at(float wx, float wy)
+{
+    float x = (wx * ui.density - ui.ox) / ui.scale, y = (wy * ui.density - ui.oy) / ui.scale;
+    for (int i = 0; i < ui.nbtn; i++)
+        if (x >= ui.btn_x[i] - 70 && x < ui.btn_x[i] + 70 && y >= ui.btn_y - 20 && y < ui.btn_y + 20)
+            return i;
+    return -1;
+}
+
 /* The row under a window point, or -1; PART: -1 the left arrow, 1 the right arrow, 0 elsewhere. */
 static int row_at(float wx, float wy, int *part)
 {
@@ -523,7 +537,7 @@ static int row_at(float wx, float wy, int *part)
                 else if (x >= 570 && x < 620)
                     *part = 1;
             }
-            return i;
+            return ui.first + i;
         }
     return -1;
 }
@@ -559,6 +573,7 @@ static int key_event(const SDL_KeyboardEvent *k, UiEvent *out)
     out->type = t;
     return t != UE_NONE;
 }
+
 
 int ui_poll(UiEvent *out, int wait_ms)
 {
@@ -621,6 +636,15 @@ int ui_poll(UiEvent *out, int wait_ms)
             ui.mouse_x = e.motion.x;
             ui.mouse_y = e.motion.y;
             ui.mouse_in = 1;
+            if (ui.nbtn) {   /* a box is over the page: its buttons are what the mouse reaches */
+                int b = button_at(e.motion.x, e.motion.y);
+                if (b >= 0) {
+                    out->type = UE_HOVER;
+                    out->row = b;
+                    return 1;
+                }
+                break;
+            }
             int r = row_at(e.motion.x, e.motion.y, &part);
             if (r >= 0) {
                 out->type = UE_HOVER;
@@ -639,6 +663,15 @@ int ui_poll(UiEvent *out, int wait_ms)
                 break;
             ui.mouse_x = e.button.x;
             ui.mouse_y = e.button.y;
+            if (ui.nbtn) {
+                int b = button_at(e.button.x, e.button.y);
+                if (b < 0)
+                    break;
+                out->type = UE_CLICK;
+                out->row = b;
+                out->dir = 0;
+                return 1;
+            }
             int r = row_at(e.button.x, e.button.y, &part);
             if (r < 0)
                 break;
@@ -649,7 +682,7 @@ int ui_poll(UiEvent *out, int wait_ms)
         }
         case SDL_EVENT_MOUSE_WHEEL: {
             int part;
-            int r = ui.mouse_in ? row_at(ui.mouse_x, ui.mouse_y, &part) : -1;
+            int r = ui.mouse_in && !ui.nbtn ? row_at(ui.mouse_x, ui.mouse_y, &part) : -1;
             out->type = UE_WHEEL;
             out->row = r;
             out->dir = e.wheel.y > 0 ? 1 : e.wheel.y < 0 ? -1 : 0;
@@ -674,13 +707,32 @@ void ui_begin(void)
     fill(0, 0, UI_W, UI_H, 12, 15, 24, 255);
     outline(8, 8, UI_W - 16, UI_H - 16, 52, 66, 96);
     ui.nrows = 0;
+    ui.nbtn = 0;
+    ui.first = ui.next_first = 0;
     ui.row_top = 0;
+    ui.cuts = 0;
+}
+
+int ui_cuts(void)
+{
+    return ui.cuts;
 }
 
 void ui_header_sub(const char *title, const char *sub)
 {
     ui_header(title);
     text(50 + text_width(title, 28) + 16, 40, 15, 150, 165, 200, 0, sub);
+}
+
+void ui_header_warn(const char *title, const char *warn)
+{
+    ui_header(title);
+    text(50 + text_width(title, 28) + 16, 40, 15, 255, 176, 48, 0, warn);
+}
+
+float ui_header_warn_room(const char *title, const char *warn)
+{
+    return 50 + 540 - (50 + text_width(title, 28) + 16 + text_width(warn, 15));
 }
 
 void ui_header(const char *title)
@@ -700,10 +752,93 @@ static const char *fit(const char *s, float size, float maxw, char *buf, size_t 
         while ((*p & 0xC0) == 0x80)   /* not in the middle of a UTF-8 letter */
             p++;
         snprintf(buf, cap, "...%s", p);
-        if (text_width(buf, size) <= maxw)
+        if (text_width(buf, size) <= maxw) {
+            ui.cuts++;
             return buf;
+        }
     }
     return s;
+}
+
+/* S cut at the right with "..." to fit MAXW (a label: its start is what tells it). */
+static const char *fit_end(const char *s, float size, float maxw, char *buf, size_t cap)
+{
+    if (text_width(s, size) <= maxw)
+        return s;
+    size_t len = strlen(s);
+    while (len > 1) {
+        len--;
+        while (len > 1 && (s[len] & 0xC0) == 0x80)
+            len--;
+        snprintf(buf, cap, "%.*s...", (int)len, s);
+        if (text_width(buf, size) <= maxw) {
+            ui.cuts++;
+            return buf;
+        }
+    }
+    return s;
+}
+
+/* A Home page's summary (UR_SUMMARY) has the room right of the label: SUM_W wide about SUM_CX. It is drawn at the row's size, smaller
+ * (down to the unselected size) if it must be, and past that in two lines of the largest size that fits (SUM_SIZES), the lines of about
+ * the same width and the first broken after a comma where it can be (the items of a list stay whole). A text that is still too long
+ * ends with "..." at its end, never at its start. */
+#define SUM_CX 450
+#define SUM_W 280
+
+/* S in two lines at SIZE: the break (after a ", " if COMMA, else at a space) that makes the wider line the narrower. Returns the break's place, 0: none. */
+static size_t sum_break(const char *s, float size, int comma)
+{
+    size_t len = strlen(s), best = 0;
+    float bw = 0;
+    char l1[512];
+    for (size_t i = 1; i + 1 < len && i < sizeof(l1); i++) {
+        if (comma ? (s[i - 1] != ',' || s[i] != ' ') : s[i] != ' ')
+            continue;
+        memcpy(l1, s, i);
+        l1[i] = 0;
+        float w1 = text_width(l1, size), w2 = text_width(s + i + 1, size), w = w1 > w2 ? w1 : w2;
+        if (!best || w < bw) {
+            best = i;
+            bw = w;
+        }
+    }
+    return best;
+}
+
+static void summary(float cy, float size, int r, int g, int b, const char *s)
+{
+    float sz = size;
+    while (sz > 18 && text_width(s, sz) > SUM_W)
+        sz -= 1;
+    if (text_width(s, sz) <= SUM_W) {
+        text(SUM_CX, cy, sz, r, g, b, 1, s);
+        return;
+    }
+    static const float sizes[] = {15, 14};
+    char l1[512], l2[512], buf1[512], buf2[512];
+    size_t at = 0;
+    for (int k = 0; k < 2 && !at; k++) {
+        sz = sizes[k];
+        for (int comma = 1; comma >= 0 && !at; comma--) {
+            size_t i = sum_break(s, sz, comma);
+            if (!i)
+                continue;
+            snprintf(l1, sizeof(l1), "%.*s", (int)i, s);
+            if (text_width(l1, sz) <= SUM_W && text_width(s + i + 1, sz) <= SUM_W)
+                at = i;
+            else if (k == 1 && !comma)   /* the smallest size, a break at a space: the lines are cut */
+                at = i;
+        }
+    }
+    if (!at) {   /* no place to break (one long word): one line */
+        text(SUM_CX, cy, sz, r, g, b, 1, fit_end(s, sz, SUM_W, buf1, sizeof(buf1)));
+        return;
+    }
+    snprintf(l1, sizeof(l1), "%.*s", (int)at, s);
+    snprintf(l2, sizeof(l2), "%s", s + at + 1);
+    text(SUM_CX, cy - 7.25f, sz, r, g, b, 1, fit_end(l1, sz, SUM_W, buf1, sizeof(buf1)));
+    text(SUM_CX, cy + 7.25f, sz, r, g, b, 1, fit_end(l2, sz, SUM_W, buf2, sizeof(buf2)));
 }
 
 void ui_rows_top(float y)
@@ -711,15 +846,67 @@ void ui_rows_top(float y)
     ui.row_top = y;
 }
 
+/* The rows are 30 apart from ROW_TOP; a page whose rows pass the help (whose first line is at 376) shows the ones that fit, from FIRST. */
+#define ROWS_BOTTOM 366
+
+static float rows_start(void)
+{
+    return ui.row_top > 0 ? ui.row_top : 70;
+}
+
+int ui_rows_fit(const UiRow *rows, int n, int first)
+{
+    float y = rows_start();
+    int k = 0;
+    if (first < 0)
+        first = 0;
+    for (int i = first; i < n; i++) {
+        float h = 30 + (i > first && (rows[i].flags & UR_GAP) ? 15 : 0);
+        if (y + h > ROWS_BOTTOM)
+            break;
+        y += h;
+        k++;
+    }
+    return k;
+}
+
+int ui_rows_scroll(const UiRow *rows, int n, int sel, int first)
+{
+    if (n <= 0)
+        return 0;
+    if (first > n - 1)
+        first = n - 1;
+    if (first < 0)
+        first = 0;
+    if (sel < first)
+        first = sel;
+    while (first < sel && first + ui_rows_fit(rows, n, first) <= sel)
+        first++;
+    while (first > 0 && first - 1 + ui_rows_fit(rows, n, first - 1) >= n)   /* no room left empty below the last row */
+        first--;
+    return first;
+}
+
+void ui_rows_from(int first)
+{
+    ui.next_first = first;
+}
+
 void ui_rows(const UiRow *rows, int n, int sel)
 {
-    float y = ui.row_top > 0 ? ui.row_top : 70;
-    if (n > 24)
-        n = 24;
-    ui.nrows = n;
-    for (int i = 0; i < n; i++) {
+    float y = rows_start();
+    if (n > UI_MAXROWS)
+        n = UI_MAXROWS;
+    int first = ui.next_first < 0 || ui.next_first >= n ? 0 : ui.next_first;
+    ui.next_first = 0;
+    ui.first = first;
+    ui.nrows = 0;
+    for (int i = first; i < n; i++) {
         const UiRow *r = &rows[i];
-        if (r->flags & UR_GAP)
+        float h = 30 + (i > first && (r->flags & UR_GAP) ? 15 : 0);
+        if (y + h > ROWS_BOTTOM)
+            break;
+        if (i > first && (r->flags & UR_GAP))
             y += 15;
         int selected = i == sel;
         float size = selected ? 18 * 1.35f : 18;
@@ -735,15 +922,19 @@ void ui_rows(const UiRow *rows, int n, int sel)
         } else if (selected) {
             cr = 0; cg = 130; cb = 240;
         }
-        ui.row_y[i] = y;
-        ui.row_flags[i] = r->flags;
+        ui.row_y[ui.nrows] = y;
+        ui.row_flags[ui.nrows] = r->flags;
+        ui.nrows++;
         float cy = y + 15;
-        text(60, cy, size, cr, cg, cb, 0, r->label);
+        char lbuf[512];
+        text(60, cy, size, cr, cg, cb, 0, fit_end(r->label, size, (r->flags & UR_ARROWS) ? 215 : r->value ? 240 : 540, lbuf, sizeof(lbuf)));
         if (r->value && (r->flags & UR_EDIT)) {   /* typed: from the left of the value's area, a caret after it */
             char buf[512], shown[560];
             snprintf(shown, sizeof(shown), "%s_", r->value);
             const char *v = fit(shown, size, 260, buf, sizeof(buf));
             text(330, cy, size, 255, 255, 255, 0, v);
+        } else if (r->value && (r->flags & UR_SUMMARY)) {
+            summary(cy, size, cr, cg, cb, r->value);
         } else if (r->value) {
             char buf[512];
             const char *v = fit(r->value, size, 230, buf, sizeof(buf));
@@ -758,6 +949,12 @@ void ui_rows(const UiRow *rows, int n, int sel)
         }
         y += 30;
     }
+    /* what is out of sight: a small triangle in the margin, above or below the rows */
+    if (first > 0)
+        triangle(628, 80, 622, 90, 634, 90, 110, 120, 160);
+    if (first + ui.nrows < n)
+        triangle(628, 366, 622, 356, 634, 356, 110, 120, 160);
+    ui.row_top = 0;
     if (ui.bounce_l)
         ui.bounce_l--;
     if (ui.bounce_r)
@@ -886,6 +1083,10 @@ void ui_message(const char *msg, const char *const *buttons, int nb, int sel)
     for (int i = 0; i < n; i++)
         text(320, y0 + 36 + (float)i * 26, 18, 255, 255, 255, 1, lines[i]);
     float bx = 320 - (float)(nb - 1) * 70;
+    ui.nbtn = nb > 4 ? 4 : nb;
+    ui.btn_y = y0 + h - 30;
+    for (int i = 0; i < ui.nbtn; i++)
+        ui.btn_x[i] = bx + (float)i * 140;
     for (int i = 0; i < nb; i++) {
         int s = i == sel;
         if (s)

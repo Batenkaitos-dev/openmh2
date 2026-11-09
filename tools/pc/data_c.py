@@ -31,6 +31,9 @@ a tree with build/main.elf uses "mwcc" and any other tree with the layout
 directory uses "manifest" (Windows without WSL). Matching has the same
 attributes either way, and the generated files are identical
 (layout_manifest.py --check-model; diff -r of two --out directories).
+A tree that takes "mwcc" by finding build/main.elf (no MH2_LAYOUT) stops when that layout is not the source's, i.e. the
+committed manifest's (check_layout_current): the matching build is older than the source. The message names the
+remedies: tools/build.sh, or MH2_LAYOUT=manifest.
 
 What it writes into DIR:
 - sizes.txt       NAME SIZE (decimal), one line per name these files size:
@@ -207,6 +210,36 @@ def layout_mode() -> str:
     if present(ROOT / "build" / "main.elf") or not LAYOUT_DIR.is_dir():
         return "mwcc"
     return "manifest"
+
+
+def check_layout_current(m) -> None:
+    """The guard of the build: a core made from the matching build's layout (mwcc, chosen by finding build/main.elf and
+    not by MH2_LAYOUT) stops when that layout is not the source's. A matching build older than its source
+    (a tree whose sources moved on after the last tools/build.sh, or ELFs copied from another) gives the core the
+    addresses of an older layout, and it faults far from the cause (the 3D descriptors' upload words kept the PS2's
+    addresses). The source's layout is the committed manifest (config/pc/layout, which mh2-check keeps equal to a
+    fresh derivation): the matching build's, derived as layout_manifest.py --check does from the Matching in hand,
+    must equal it. A third of a second a run, on top of the generator's twenty."""
+    if os.environ.get("MH2_LAYOUT") or m.mode != "mwcc" or not LAYOUT_DIR.is_dir():
+        return          # MH2_LAYOUT=mwcc is asked for by name (layout work); the manifest is the other mode
+    import layout_manifest
+    import sources
+    fresh = {f"layout/{k}": v for k, v in layout_manifest.derive(m).items()}
+    fresh["sources.txt"] = sources.sources_text()
+    have = layout_manifest.committed()
+    bad = [f for f in sorted(set(fresh) | set(have)) if fresh.get(f) != have.get(f)]
+    if not bad:
+        return
+    more = ", ..." if len(bad) > 4 else ""
+    sys.exit("\n".join([
+        f"data_c.py: the layout of the matching build (build/*.elf, maps, objects) is not the source's: {len(bad)} of the "
+        f"committed manifest's files differ from a fresh derivation ({', '.join(bad[:4])}{more}).",
+        "The matching build is older than the source (or the manifest is). Either:",
+        "  - build the matching build again (tools/build.sh), then build here again; or",
+        "  - build from the committed manifest, the source's layout, which needs no matching build:",
+        "    MH2_LAYOUT=manifest (and build/orig, the original's boot executable and overlays).",
+        "If the matching build is the current one and its layout was meant to change:",
+        "  python3 tools/pc/layout_manifest.py --write, and commit config/pc."]))
 
 
 def word_fmt(w) -> str:
@@ -1267,7 +1300,7 @@ VARIADIC = None
 
 
 def variadic(name: str) -> bool:
-    """A function the game declares with `...`: cdecl and unmangled on the PC (pc/README.md, "Calling convention")."""
+    """A function the game declares with `...`: cdecl and unmangled on the PC (pc/game_flags.txt)."""
     global VARIADIC
     if VARIADIC is None:
         VARIADIC = set()
@@ -2395,7 +2428,9 @@ def main():
         if a.clang:
             CLANG_PROBE[0] = a.clang
         sys.exit(run_cases(a.cases, a.out, a.j))
-    plan = Plan(Matching())
+    m = Matching()
+    check_layout_current(m)
+    plan = Plan(m)
     emit(plan, a.out, "_" if a.platform == "windows" else "")
     report(plan, a.out)
     write_cases(plan, a.out)

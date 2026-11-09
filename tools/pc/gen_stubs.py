@@ -14,7 +14,7 @@ next build:
           - (what the objects define)
 
 - A function the game calls through a prototype is "__regcall3__NAME" in the
-  objects (the game's calling convention, pc/README.md). Its stub is
+  objects (the game's calling convention, pc/game_flags.txt). Its stub is
   "void NAME(void)", compiled with the same flag, so it carries that name.
 - A variadic function (a prototype with "..." in include/*.h) keeps its plain
   name in every convention; its stub takes the format and the rest.

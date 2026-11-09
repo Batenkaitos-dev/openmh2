@@ -172,18 +172,12 @@ void sub_main_entry(void)
     }
 }
 
-#if PLATFORM_PC
-extern s32 gSysFlipAt;
-#endif
 /* One frame of sub_main: the first sets everything up and starts select's Boot_Task
  * (through its address: select is not linked with sub_main) in task slot 0; then each
  * runs the tasks and the frame callbacks, or, when a reset is asked for, returns to the
  * title screen. Returns 0. */
 s32 SubMain_Step(void)
 {
-#if PLATFORM_PC
-    s32 frozen;
-#endif
     switch (gSubMainStep) {
     case 0:
         SubMain_Init();
@@ -193,21 +187,7 @@ s32 SubMain_Step(void)
         break;
     case 1:
 #if PLATFORM_PC
-        frozen = Pal_FreezeStep();
-        if (frozen == 1) {   /* a frozen frame: the last field frame's draw again, and the flip at the next VBlank */
-            gSysFlipAt = 0;
-            Sys_SetNextFlipAt(0);
-            Draw_BeginFrame();
-            PC_FREECAM_FIELD(1);
-            Frame_Draw();
-            PC_FREECAM_FIELD(0);
-            Callbacks_Run();
-            Sys_FlipFrame(0);
-            break;
-        }
-        if (frozen == 2) {   /* the first real frame after frozen ones: it flips two VBlanks on, as a game frame does */
-            gSysFlipAt = 1;
-        }
+        Pal_FreezeStep();   /* the freecam's pause: this step again from a snapshot, or the game as it was when the pause ends */
 #endif
         SubMain_BeginFrame();
         Sys_SetNextFlipAt(1);

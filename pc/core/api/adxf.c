@@ -13,6 +13,7 @@
 #include "data_c.h"
 #include "adx.h"
 #include "io/adx.h"
+#include "io/io.h"
 
 typedef struct AdxfHandle {
     u8 used;
@@ -49,6 +50,55 @@ static AdxfHandle *Handles(void)
     return t;
 }
 static u8 *g_ptab[ADXF_PARTITIONS];   /* the partition table: each id's record */
+
+/* Where each partition's archive came from, for a pack's key: the disc file's
+ * name ("DATA.BIN"), or its parent's chain and the entry's number in five digits ("DATA.BIN/00000"). Empty: none. The
+ * record is the game's; this is the library's own. */
+#define ADXF_CHAIN 64
+static char g_psrc[ADXF_PARTITIONS][ADXF_CHAIN];
+/* The partition's archive when a pack has it (the pack's name for it): its entries are read from the pack's file, while
+ * the game's record stays the disc's. Empty: the disc's. */
+static char g_ppack[ADXF_PARTITIONS][ADXF_CHAIN];
+
+/* DST (ADXF_CHAIN bytes): SRC, then "/" and the entry's number in five digits when FLID is not negative. */
+static void ChainJoin(char *dst, const char *src, s32 flid)
+{
+    u32 n = 0;
+    while (src[n] && n < ADXF_CHAIN - 8) {
+        dst[n] = src[n];
+        n++;
+    }
+    if (flid >= 0 && n && n < ADXF_CHAIN - 7) {
+        dst[n++] = '/';
+        for (u32 d = 10000; d; d /= 10)
+            dst[n++] = (char)('0' + (u32)flid / d % 10);
+    }
+    dst[n] = 0;
+}
+
+/* A file name as a pack names it: the device and the leading separators dropped, upper case, cut at the version. */
+static void ChainName(char *dst, const char *name)
+{
+    char tmp[ADXF_CHAIN];
+    u32 n = 0;
+    for (const char *c = name; *c; c++)
+        if (*c == ':')
+            name = c + 1;
+    while (*name == '\\' || *name == '/')
+        name++;
+    for (; *name && *name != ';' && n < ADXF_CHAIN - 8; name++)
+        tmp[n++] = *name == '\\' ? '/' : (*name >= 'a' && *name <= 'z') ? (char)(*name - 32) : *name;
+    tmp[n] = 0;
+    ChainJoin(dst, tmp, -1);
+}
+
+/* The pack's name for the file FLID of partition PTID ("" when its source is unknown). */
+static void PackKey(char *key, s32 ptid, s32 flid)
+{
+    key[0] = 0;
+    if ((u32)ptid < ADXF_PARTITIONS && g_psrc[ptid][0])
+        ChainJoin(key, g_psrc[ptid], flid);
+}
 
 /* The partition loader's words (one load at a time). */
 static struct {
@@ -185,6 +235,9 @@ static ADXF ADXF_OpenWork(char *fname, void *atr)
         __builtin_memset(h, 0, sizeof(*h));
         return 0;
     }
+    u32 plba, psize;
+    if (Io_DiscPackFind(fname, &plba, &psize) == 0)   /* a file the pack replaces whole */
+        return Opened(h, AdxStm_OpenKnown(fname, plba, psize, 0, -1));
     return Opened(h, AdxStm_Open(fname, 0, -1));
 }
 
@@ -201,6 +254,15 @@ static ADXF ADXF_OpenAfsWork(s32 ptid, s32 flid)
         __builtin_memset(h, 0, sizeof(*h));
         return 0;
     }
+    char key[ADXF_CHAIN];
+    u32 plba, psize;
+    PackKey(key, ptid, flid);
+    if (key[0] && Io_DiscPackFind(key, &plba, &psize) == 0)   /* the pack's file, in place of the disc's */
+        return Opened(h, AdxStm_OpenKnown(key, plba, psize, 0, -1));
+    if ((u32)ptid < ADXF_PARTITIONS && g_ppack[ptid][0] && Io_DiscPackFind(g_ppack[ptid], &plba, &psize) == 0)
+        return Opened(h, AdxStm_OpenKnown(g_ppack[ptid], plba, psize, ofs - (s32)Rd32(g_ptab[ptid] + 0x114), sct));   /* the archive is the pack's */
+    if (Io_DiscPackFind(name, &plba, &psize) == 0)   /* a file the pack replaces whole */
+        return Opened(h, AdxStm_OpenKnown(name, plba, psize, ofs, sct));
     return Opened(h, AdxStm_Open(name, ofs, sct));
 }
 
@@ -267,7 +329,7 @@ static s32 ADXF_ReadNwWork(ADXF adxf, s32 nsct, void *buf)
     if (h->state == ADXF_STAT_READING)
         return 0;
     /* The original's three lock pairs (ADXF_ReadNw's tail jump into
-     * func_0015F738, port-libraries.md; --lib-tree on the village, VBlank
+     * func_0015F738; --lib-tree on the village, VBlank
      * 2736): the SJ made on the buffer (0x1764F8), the handle's SJ, buffer
      * and size, then func_0015F590's start of the stream's read. The
      * stream itself starts at the next server pass. */
@@ -383,6 +445,8 @@ static s32 LoadStart(s32 ptid, s32 afsPtid, s32 flid, char *name, void *atr, u8 
         return -1;
     }
     g_ld.h = h;
+    g_psrc[ptid][0] = 0;
+    g_ppack[ptid][0] = 0;
     if (name) {
         u32 i = 0;
         for (; i < 0x100 && name[i]; i++)
@@ -390,12 +454,21 @@ static s32 LoadStart(s32 ptid, s32 afsPtid, s32 flid, char *name, void *atr, u8 
         for (; i < 0x100; i++)
             rec[0x10 + i] = 0;
         Wr32(rec + 0x110, (u32)atr);
+        ChainName(g_psrc[ptid], name);
     } else {
         u32 w;
         s32 ofs, sct;
+        char key[ADXF_CHAIN];
+        u32 plba, psize;
         AfsFile(afsPtid, flid, (char *)rec + 0x10, &w, &ofs, &sct);
         Wr32(rec + 0x110, w);
         Wr32(rec + 0x114, (u32)ofs);
+        PackKey(key, afsPtid, flid);
+        if (key[0]) {
+            ChainJoin(g_psrc[ptid], key, -1);
+            if (Io_DiscPackFind(key, &plba, &psize) == 0)   /* the archive is the pack's: its entries are read from there */
+                ChainJoin(g_ppack[ptid], key, -1);
+        }
     }
     rec[0xF] = (u8)kind;
     g_ld.scr = scr;
@@ -502,7 +575,7 @@ static s32 ADXF_GetPtStatWork(s32 ptid)
 }
 
 /* ------------------------------------------------------------ the taps
- * verify's trace tap for each function the game calls (pc/core/verify/verify.h). */
+ * verify's trace tap for each function the game calls. */
 
 ADXF ADXF_Open(char *fname, void *atr)
 {
@@ -543,7 +616,7 @@ s32 ADXF_LoadPartitionNw(s32 ptid, char *fname, void *dir, void *ptinfo)
 {
     s32 r = (ADXF_LoadPartitionNwWork(ptid, fname, dir, ptinfo));
     if (r < 0)
-        Pal_Poll();   /* a "not ready" (config/pc/polls.txt, ADXF_LoadPartitionNw) */
+        Pal_Poll();   /* a "not ready" (a polled wait, ADXF_LoadPartitionNw) */
     return r;
 }
 
@@ -551,7 +624,7 @@ s32 func_0015E628(s32 ptid, char *fname, void *dir, void *ptinfo)
 {
     s32 r = (func_0015E628Work(ptid, fname, dir, ptinfo));
     if (r < 0)
-        Pal_Poll();   /* a "not ready" (config/pc/polls.txt, func_0015E628) */
+        Pal_Poll();   /* a "not ready" (a polled wait, func_0015E628) */
     return r;
 }
 
@@ -559,7 +632,7 @@ s32 ADXF_LoadPartitionFromAfsNw(s32 ptid, s32 rd_ptid, s32 rd_flid, void *ptinfo
 {
     s32 r = (ADXF_LoadPartitionFromAfsNwWork(ptid, rd_ptid, rd_flid, ptinfo));
     if (r < 0)
-        Pal_Poll();   /* a "not ready" (config/pc/polls.txt, ADXF_LoadPartitionFromAfsNw) */
+        Pal_Poll();   /* a "not ready" (a polled wait, ADXF_LoadPartitionFromAfsNw) */
     return r;
 }
 
@@ -567,6 +640,6 @@ s32 ADXF_GetPtStat(s32 ptid)
 {
     s32 r = (ADXF_GetPtStatWork(ptid));
     if (r != 3)
-        Pal_Poll();   /* a "not ready" (config/pc/polls.txt, ADXF_GetPtStat) */
+        Pal_Poll();   /* a "not ready" (a polled wait, ADXF_GetPtStat) */
     return r;
 }

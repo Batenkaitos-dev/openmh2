@@ -35,9 +35,14 @@ namespace Mh2Tex
 struct Options
 {
     std::string dump_dir;          /* empty: no dumping */
-    std::string pack_dir;          /* empty: no replacement */
+    std::vector<std::string> pack_dirs;   /* the packs, in load order; a texture two packs replace is drawn from the earlier one. Empty: no replacement */
     uint32_t dump_limit = 20000;   /* files per session */
-    uint32_t cache_mb = 1024;      /* decoded pack files kept in memory, and again for pack images kept on the graphics card */
+    uint32_t cache_mb = 1024;      /* decoded pack files kept in memory, and again for pack images kept on the graphics card.
+                                    * The memory side is also held to half of what the machine has free when the packs are read */
+    bool preload = true;           /* decode the packs (as far as cache_mb goes) before the game starts, not when first drawn */
+    uint32_t threads = 0;          /* decoding threads (0: the machine's cores, less one on demand) */
+    void (*progress)(uint32_t done, uint32_t total, void *user) = nullptr;   /* called by the preload about once a second, and at its end */
+    void *progress_user = nullptr;
     void (*log)(const char *line, void *user) = nullptr;
     void *log_user = nullptr;
 };
@@ -53,6 +58,8 @@ struct Counters
     uint64_t pack_files = 0, pack_misnamed = 0;   /* files indexed, files not named like a key */
     uint64_t pack_hits = 0, pack_loaded = 0, pack_bad = 0, replaced_images = 0;   /* pack_bad: files that could not be used */
     uint64_t lookups = 0, lookup_ns = 0;       /* replacement_for calls */
+    uint64_t pack_pending = 0;                 /* replacement_for calls that had a file for the texture and drew the original (the file not read yet) */
+    uint64_t preloaded = 0, preload_left_out = 0, preload_failed = 0, preload_bytes = 0, preload_ns = 0;   /* the preload: files in memory, files that did not fit, files unreadable */
     uint64_t upload_max_ns = 0, texture_max_ns = 0, lookup_max_ns = 0;   /* the longest single call of each */
 };
 
@@ -79,9 +86,19 @@ public:
     void state_get(std::vector<uint8_t> &out) const;
     void state_set(const uint8_t *state, const uint8_t *vram);   /* state: null, or state_bytes() of them */
 
+    /* In-between pictures draw a step's stream once more before the real one and then put the renderer's memory back
+     * (GSInterface::end_speculation): this copy of local memory, the page states and the CLUT copy go back with it.
+     * What was keyed and dumped meanwhile stays. speculation_begin and _end do not nest. */
+    void speculation_begin();
+    void speculation_end();
+
     /* Waits until the dump worker has written what it was given (the tests). */
     void flush_dumps();
     Counters counters() const;
+    /* The file that serves a key (a texture's name without ".png"), or "" (the tests). */
+    std::string pack_path_for(const std::string &key) const;
+    /* The file chosen for the texture with this hash by on_new_texture, or "" (the tests). */
+    std::string pack_active_path(Util::Hash hash) const;
 
 private:
     struct Impl;

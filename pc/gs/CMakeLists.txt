@@ -14,7 +14,7 @@ set(GRANITE_POSITION_INDEPENDENT ON CACHE BOOL "" FORCE)
 add_subdirectory("${PARALLEL_GS_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/parallel-gs" EXCLUDE_FROM_ALL)
 
 find_package(Threads REQUIRED)
-add_library(mh2gs SHARED mh2gs.cpp mh2gs.h mh2tex.cpp mh2tex.hpp)
+add_library(mh2gs SHARED mh2gs.cpp mh2gs.h mh2tex.cpp mh2tex.hpp mh2interp.cpp mh2interp.hpp)
 target_link_libraries(mh2gs PRIVATE parallel-gs Threads::Threads)
 set_target_properties(mh2gs PROPERTIES
     CXX_STANDARD 14
@@ -22,6 +22,8 @@ set_target_properties(mh2gs PROPERTIES
     PREFIX ""
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+    # a release library does not read the development switches (the MH2GS_* environment variables: mh2gs.cpp, DEV_ENV)
+    target_compile_definitions(mh2gs PRIVATE MH2_RELEASE=1)
 if(MINGW)
     # Self-contained DLL: no libstdc++/libgcc DLLs to ship next to it.
     target_link_options(mh2gs PRIVATE -static)

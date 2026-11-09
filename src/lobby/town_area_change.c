@@ -234,7 +234,7 @@ u8 Town_EnterArea(u16 area, s32 newDrawSlots)
         }
         if (gLobby->areaLoaded == 0) {
             gLobby->areaLoaded = 1;
-            if (Game_IsOnline() == 1) {
+            if (Game_RulesOnline() == 1) {
                 Anim_LoadCommon(2);
             } else {
                 switch (area) {
@@ -395,6 +395,14 @@ void Town_FreeArea(void)
     if (Area_HasTownPcs(gScene.area) == 1) {
         Notice_ResetQueue();
     }
+#if PLATFORM_PC
+    /* The offline hub: between the village and the town the common motions are freed and loaded again (the town takes
+     * set 2, the village set 1), as the move to AREA_HUB_0x57 does. */
+    if (Game_HubBanksChange(gScene.area, gPlayers[gScene.localPlayer].nextArea) == 1) {
+        Motion_FreeCommon();
+        gLobby->areaLoaded = 0;
+    }
+#endif
     if (gScene.area == AREA_HUB_0x57) {
         switch (gPlayers[gScene.localPlayer].nextArea) {
         case AREA_HOUSE:

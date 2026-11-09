@@ -45,7 +45,7 @@ static void SetSreg0(const KSifPacket *p)
 
 /* sceSifInitRpc: once per reboot. InitCmd (the SIF's DMAC handler added and enabled, the EE command buffer
  * made known to the IOP), then the RPC layer's INIT_CMD, which the IOP answers with SET_SREG(0, 1); the call
- * waits for it in a library wait (polls.txt: `wait` sceSifInitRpc), whose arrival moves the packet. */
+ * waits for it in a library wait (the polled-wait table: `wait` sceSifInitRpc), whose arrival moves the packet. */
 static void InitRpcWork(void)
 {
     if (KSif_RpcUp()) {
@@ -96,8 +96,7 @@ static u32 *W(SifClientData *cd)
     return (u32 *)cd;
 }
 
-/* What the SIF's handler does with a bind's or a call's RPC_END (port-libraries.md, "The SIF layer
- * underneath"): the bind's server and buffer, or the call's end function; the client's semaphore signalled
+/* What the SIF's handler does with a bind's or a call's RPC_END: the bind's server and buffer, or the call's end function; the client's semaphore signalled
  * if not negative; the packet freed and the client's word 0 cleared. */
 static void RpcEnd(const KSifPacket *p)
 {

@@ -8,7 +8,7 @@
 set(MH2_CRT_SOURCES "")
 foreach(_f crt_libc.c crt_libm.c crt_libm_d.c
            crt_heap.c crt_malloc.c crt_stdout.c crt_printf.c crt_scanf.c crt_dtoa_quick.c
-           crt_diag.c crt_k_default.c crt_vu0.c crt_mem_loops.c crt_ctype.c)
+           crt_diag.c crt_k_default.c crt_vu0.c crt_mem_loops.c crt_ctype.c crt_fpmodel.c)
   list(APPEND MH2_CRT_SOURCES "${CMAKE_CURRENT_LIST_DIR}/${_f}")
 endforeach()
 # The call taps (crt_tap.h): on in the core's build, off in the tests of ps2crt.

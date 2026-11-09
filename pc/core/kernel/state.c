@@ -26,8 +26,11 @@
 #include "kernel/state.h"
 #include "pal_arena.h"
 #include "pal_camera.h"
+#include "pal_hub.h"
 #include "pal.h"
 #include "pal_core.h"
+#include "pal_fpmodel.h"
+#include "pal_freecam.h"
 #include "io/io.h"
 
 #define PAGE 4096u
@@ -341,6 +344,25 @@ static void Settings(StHeader *h)
     AddSetting(h, "audio", g_iop_native_cse ? 1u : 0u);
     AddSetting(h, "keyboard", (u32)Io_KbConnected());
     AddSetting(h, "wide", (u32)Pal_WidescreenLevel());
+    AddSetting(h, "fpu", (u32)Pal_FpuModelId());   /* the float model: a state is a point of one model's play */
+    if (Pal_OfflineHub()) {   /* only when on, so a state made without it is as it was */
+        AddSetting(h, "hub", 1u);
+    }
+    {   /* a text pack's hash, as eight words (none: no setting, so a state without a pack is as it was) */
+        char hex[65];
+        if (Io_DiscPackHash(hex) == 0) {
+            static const char tags[8][8] = {"tpack0", "tpack1", "tpack2", "tpack3", "tpack4", "tpack5", "tpack6", "tpack7"};
+            for (i = 0; i < 8; i++) {
+                u32 v = 0;
+                int k;
+                for (k = 0; k < 8; k++) {
+                    char c = hex[i * 8 + k];
+                    v = v << 4 | (u32)(c <= '9' ? c - '0' : c - 'a' + 10);
+                }
+                AddSetting(h, tags[i], v);
+            }
+        }
+    }
     for (i = 0; i < sNumOwners; i++) {
         if (sOwners[i]->setting) {
             AddSetting(h, sOwners[i]->tag, sOwners[i]->setting());
@@ -563,10 +585,27 @@ static const char *CheckHeader(const StHeader *h, u32 fileSize)
             if (!StrNCmp(cur.settings[i].tag, "wide", 8)) {
                 return "made with another widescreen setting";
             }
+            if (!StrNCmp(cur.settings[i].tag, "tpack", 5)) {
+                return "made with another translation pack";
+            }
+            if (!StrNCmp(cur.settings[i].tag, "fpu", 8)) {
+                return "made with the other float model (the console's arithmetic, or the older one)";
+            }
+            if (!StrNCmp(cur.settings[i].tag, "hub", 8)) {
+                return "made without the offline hub";
+            }
             return "made with other settings";
         }
     }
     if (h->nSettings != cur.nSettings) {
+        for (j = 0; j < h->nSettings; j++) {
+            if (!StrNCmp(h->settings[j].tag, "tpack", 5)) {
+                return "made with a translation pack";
+            }
+            if (!StrNCmp(h->settings[j].tag, "hub", 8)) {
+                return "made with the offline hub";
+            }
+        }
         return "made with other settings";
     }
     for (i = 0; i < (u32)sNumOwners; i++) {
@@ -794,9 +833,135 @@ static void AfterLoad(void)
         }
     }
     HostBuf_Free(&sFileIn);
+    Pal_FreezeCancel();   /* a pause's snapshot belongs to the game this state replaced */
     sDoneVblank = sHdr.vblank;
     KLog("state: loaded VBlank %llu (%u bytes, %u ms)", (u64)sHdr.vblank, sStats.storedBytes, sStats.ms);
     sResult = 0;
+}
+
+/* --------------------------------------------------- the pause's snapshot */
+
+/* An in-memory state for the freecam's pause (pal_freecam.c: the state loop): the pages of the
+ * file state's memory section kept on the C heap, and the renderer's block, with the context to return to. It is made
+ * and put back in the game's own thread at a step's start, not at a VBlank's start, and holds no owner's section (the
+ * card is outside the image: the pause does not begin with a card request running). Its words are the process's. */
+static HostBuf sMem KERN_HOSTBSS;          /* the records of CopyMemory */
+static HostBuf sMemGs KERN_HOSTBSS;        /* the renderer's block, when the host side gives one */
+static u32 sMemSp KERN_HOSTBSS;
+static int sMemHave KERN_HOSTBSS;
+static u32 sMemLowHi[2] KERN_HOSTBSS;
+static u32 sMemLowLo[2] KERN_HOSTBSS;
+static const char *sMemFail KERN_HOSTBSS;
+static int sMemWithGs KERN_HOSTBSS;        /* the restore in progress puts the renderer back too */
+
+static void MemSaveMain(void *arg)
+{
+    Span spans[MAX_SPANS];
+    int nSpans;
+    u32 pages = 0;
+    (void)arg;
+    sMemFail = 0;
+    sMemHave = 0;
+    HostBuf_Free(&sMem);
+    HostBuf_Free(&sMemGs);
+    BuildExclusions();
+    if (Pal_LowRegions(sMemLowLo, sMemLowHi) != 2) {
+        sMemFail = "the low pool is not mapped";
+        return;
+    }
+    nSpans = BuildSpans(spans, sMemLowLo, sMemLowHi);
+    if (CopyMemory(&sMem, spans, nSpans, &pages) != 0) {
+        sMemFail = "out of memory";
+        HostBuf_Free(&sMem);
+        return;
+    }
+    if (sHost && sHost->get) {
+        u32 n = 0;
+        const void *d = sHost->get(&n);
+        if (!d && sHost->error && sHost->error()) {
+            sMemFail = sHost->error();
+            HostBuf_Free(&sMem);
+            return;
+        }
+        if (d && HostBuf_Append(&sMemGs, d, n) != 0) {
+            sMemFail = "out of memory";
+            HostBuf_Free(&sMem);
+            return;
+        }
+    }
+    sMemSp = (u32)(unsigned long)KFiber_OutsideSp();
+    sMemHave = 1;
+}
+
+static void MemLoadMain(void *arg)
+{
+    Span spans[MAX_SPANS];
+    int nSpans, i;
+    u32 lowLo[2], lowHi[2];
+    const char *why;
+    (void)arg;
+    BuildExclusions();
+    if (!sMemHave || Pal_LowRegions(lowLo, lowHi) != 2) {
+        return;
+    }
+    for (i = 0; i < 2; i++) {      /* the pages of either moment */
+        lowHi[i] = lowHi[i] > sMemLowHi[i] ? lowHi[i] : sMemLowHi[i];
+    }
+    nSpans = BuildSpans(spans, lowLo, lowHi);
+    why = ApplyMemory(sMem.p, sMem.n, spans, nSpans);
+    if (why) {
+        Pal_Fatal("state: the pause's snapshot was damaged");
+    }
+    if (sMemWithGs && sHost && sHost->set && sMemGs.n) {
+        if (sHost->set(sMemGs.p, sMemGs.n) != 0) {
+            Pal_Fatal("state: the renderer's part could not be put back");
+        }
+    }
+    KFiber_ResumeAt((void *)(unsigned long)sMemSp);
+}
+
+/* Takes the snapshot, in the running fiber, as a state is taken at a VBlank's start: the call returns 0 when it is
+ * taken, -1 when it is not (Kern_StateMemWhy says why), and returns 1 a second time, in the restored context, after
+ * Kern_StateMemRestore. */
+int Kern_StateMemSave(void)
+{
+    if (KFiber_Current() == KFiber_Main()) {
+        sMemFail = "the kernel is not running yet";
+        return -1;
+    }
+    if (KFiber_RunOutside(MemSaveMain, 0) != 0) {
+        return 1;
+    }
+    return sMemFail ? -1 : 0;
+}
+
+const char *Kern_StateMemWhy(void)
+{
+    return sMemFail;
+}
+
+/* Puts the snapshot back and goes on in the context that took it (its Kern_StateMemSave returns 1). With gs nonzero the
+ * renderer's block is put back too (the pause ends). Returns only when there is no snapshot. */
+void Kern_StateMemRestore(int gs)
+{
+    sMemWithGs = gs;
+    KFiber_RunOutside(MemLoadMain, 0);
+}
+
+void Kern_StateMemDrop(void)
+{
+    sMemHave = 0;
+    HostBuf_Free(&sMem);
+    HostBuf_Free(&sMemGs);
+}
+
+int Kern_StateMemHave(void)
+{
+    return sMemHave;
+}
+
+__attribute__((weak)) void Pal_FreezeCancel(void)   /* pal_freecam.c's; the state's own tests run without it */
+{
 }
 
 /* ------------------------------------------------------------- requests */
@@ -864,6 +1029,8 @@ static void VBlankStartInner(u64 n)
     sReq = 0;
     if (blocked) {
         sResult = "not while a movie is open";
+    } else if (kind == 1 && Kern_StateMemHave()) {
+        sResult = "not while the pause is on";   /* the file would hold the loop's renderer, not the snapshot's */
     } else if (busy) {
         sResult = busy;
     } else if (KFiber_Current() == KFiber_Main()) {

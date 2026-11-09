@@ -1,5 +1,5 @@
 /* The IOP's file service, fileio (SIF service 0x80000001), as the original's
- * HLE service answers (iop_misc.c, "file I/O"): at the request, with
+ * HLE service answers: at the request, with
  * the disc archive's files ("cdrom0:" and "cdrom:") and rom0:ROMVER; any other
  * device's file does not exist, and every other request fails with EIO. */
 #include "io/io.h"

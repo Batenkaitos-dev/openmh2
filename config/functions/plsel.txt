@@ -1,3 +1,3 @@
-// Function starts of plsel, pinned for splat (tools/pin_functions.py).
+// Function starts of plsel, pinned for splat (the matching build's pin_functions tool).
 // 72 unnamed functions; named ones are in the module's symbol files (config/symbols/, its YAML's list).
 func_00D60240 = 0x00D60240; // type:func

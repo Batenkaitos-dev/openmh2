@@ -1,0 +1,16 @@
+# Where MWCC puts the operands of a float add or multiply in the other order than the C source (the float model notes,
+# "The operand order"). The ps2 model's multiplier is not commutative. Format, read by ps2fp.py (read_order):
+#   FILE FUNC OP N K K ...      FILE relative to the repository, OP fadd or fmul, N the number of that operation in the
+#                               function (a stale table stops the build), K the ordinals, in the function's IR order,
+#                               whose operands the pass exchanges
+# Found by fptrace_cmp.py on the routes of session 3 (85 route traces, 280 million asymmetric records; 455 in the exchanged order):
+src/plsel/plsel.c Plsel_DrawEquipPage fmul 1 0
+src/sub_main/lights.c LightSet_FadeColors fmul 3 0 1 2
+# Found statically (session 4: the product swap test and the MIPS check), reached by no route's
+# trace: a variable that is an int-to-float conversion times a literal, which MWCC writes as `mul.s fd, literal, variable`.
+src/game/em_cephadrome.c EmCephadrome_SetMoveState fmul 1 0
+src/lobby/falling_leaves.c LobbyFlock_DrawPart fmul 3 0 1 2
+src/lobby/gallery_objects.c GalleryShot_Init fmul 4 0
+src/lobby/gallery_objects.c GalleryShot_SpawnWallHit fmul 1 0
+src/sub_main/equip_save.c EquipCollect_CheckArmor fmul 1 0
+src/sub_main/equip_save.c EquipCollect_CheckWeapons fmul 1 0

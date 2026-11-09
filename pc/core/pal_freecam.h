@@ -33,6 +33,14 @@ s32 Pal_FreecamGameCamera(f32 eye[3], f32 at[3], f32 *fov);
 /* 1 when the last field frame's draw was made from the freecam's view. */
 s32 Pal_FreecamActive(void);
 
+/* The count of field scene draws made so far (a real frame's and a frozen frame's alike; with the pose or without it; wraps at
+ * 2^32). A count that does not move while frames pass says the game is not in a field scene (a menu, a movie, a result screen). */
+u32 Pal_FreecamDraws(void);
+
+/* The count of game steps begun (Pal_FreezeStep's: a real step and a frozen frame alike; wraps at 2^32). A step draws at most once, after
+ * it begins: two steps begun after a moment, with the draw count unmoved, say that the step between them drew no field scene. */
+u32 Pal_FreecamSteps(void);
+
 /*
  * The frozen frame (the pause) and the step. The host asks with Pal_FreezeSet once per VBlank: HOLD 1 asks for the freeze, and
  * GRANT is a count that only grows, the real frames the host has let run since the start; the core runs one real frame for each
@@ -47,6 +55,14 @@ enum { PAL_FREEZE_WHY_NONE = 0, PAL_FREEZE_WHY_SCENE = 1, PAL_FREEZE_WHY_MOVIE =
 void Pal_FreezeSet(s32 hold, u32 grant);
 /* The state; WHY (when waiting) and TAKEN (the grants the core has used) may be null. */
 s32 Pal_FreezeState(s32 *why, u32 *taken);
+/* The pause is a state loop (pal_freecam.c): the VBlanks its restores put back, added to every VBlank number the host is told and the
+ * pacer counts; whether the recorder's step has seen this VBlank number already (the loop passes it again); the pause's end when a state
+ * file is loaded or the run starts over. */
+u64 Pal_FreezeBias(void);
+s32 Pal_FreezeSkipVfy(u64 n);
+/* A VBlank number the loop passes again, whose development step was skipped: the pad that VBlank had the first time goes back. */
+void Pal_FreezePadAgain(u64 n);
+void Pal_FreezeCancel(void);
 
 
 #endif

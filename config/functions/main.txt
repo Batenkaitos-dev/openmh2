@@ -1,4 +1,4 @@
-// Function starts of main, pinned for splat (tools/pin_functions.py).
+// Function starts of main, pinned for splat (the matching build's pin_functions tool).
 // 2735 unnamed functions; named ones are in the module's symbol files (config/symbols/, its YAML's list).
 func_00100000 = 0x00100000; // type:func
 func_00100218 = 0x00100218; // type:func

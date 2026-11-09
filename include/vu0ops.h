@@ -5,19 +5,19 @@
  * VU0's macro-mode operations as C, for the native port: the C forms of the 42 assembly functions call these, one
  * call per VU instruction, over the global state g_vu0.
  *
- * The semantics are vu0.c's (the original game's), in ps2fp's
+ * The semantics are those of the original game's VU0 code, in ps2fp's
  * terms: add, subtract and multiply round toward zero, operands with
  * exponent 255 are +/-Fmax and denormals are zeros, results are clamped and
  * flushed, the product is clamped before a MADD adds it to ACC, and the MAC
- * and status flags are those of vu0.c: the overflow flag is never set (a
+ * and status flags are those of the original's VU0 code: the overflow flag is never set (a
  * rounded-toward-zero overflow is Fmax), and nor is the underflow flag (the
- * reference runs its host with FTZ and DAZ, so vu0.c's vout never sees a
- * denormal). VDIV and VRSQRT divide TOWARD ZERO (vu0.c's host division in round-toward-zero mode), not to
- * nearest like the FPU's div.s (ps2fp_div). The functions are written with
+ * reference runs its host with FTZ and DAZ, so its vout never sees a
+ * denormal). VDIV and VRSQRT divide TOWARD ZERO (its host division in round-toward-zero mode), not to
+ * nearest like the FPU's div.s (ps2fp0_div). The functions are written with
  * the bit-level functions of ps2fp.h only, so no host rounding mode or
  * denormal mode matters.
  *
- * The instruction forms are numbered as vu0.c decodes them (the enums below).
+ * The instruction forms are numbered as the original's VU0 code decodes them (the enums below).
  * The VU data memory (VLQI, VSQI, VILWR, VISWR) is not provided: nothing the
  * game runs on VU0 uses it. QMTC2 copies a whole 128-bit GPR on the EE; here
  * a GPR is 32 bits, so lanes y, z and w of a QMTC2 target are (sign
@@ -25,7 +25,7 @@
  * generator checks that).
  *
  * crt_vu0.c defines g_vu0 and vu0_exec_word (the decoder over a raw COP2 word, for
- * the tests against vu0.c).
+ * the tests against it).
  */
 
 #include "../pc/core/crt/ps2fp.h"
@@ -83,13 +83,13 @@ VU0_INL void vu0_set_flags(unsigned int mac)
 VU0_INL unsigned int vu0_alu(int op, unsigned int a, unsigned int b, unsigned int acc)
 {
     switch (op) {
-    case VU0_ADD: return ps2fp_add(a, b);
-    case VU0_SUB: return ps2fp_sub(a, b);
-    case VU0_MUL: return ps2fp_mul(a, b);
-    case VU0_MADD: return ps2fp_add(acc, ps2fp_mul(a, b));
-    case VU0_MSUB: return ps2fp_sub(acc, ps2fp_mul(a, b));
-    case VU0_MAX: return ps2fp_le(b, a) ? ps2fp_clean(a) : ps2fp_clean(b);
-    default: return ps2fp_le(a, b) ? ps2fp_clean(a) : ps2fp_clean(b); /* VU0_MIN */
+    case VU0_ADD: return ps2fp0_add(a, b);
+    case VU0_SUB: return ps2fp0_sub(a, b);
+    case VU0_MUL: return ps2fp0_mul(a, b);
+    case VU0_MADD: return ps2fp0_add(acc, ps2fp0_mul(a, b));
+    case VU0_MSUB: return ps2fp0_sub(acc, ps2fp0_mul(a, b));
+    case VU0_MAX: return ps2fp0_le(b, a) ? ps2fp0_clean(a) : ps2fp0_clean(b);
+    default: return ps2fp0_le(a, b) ? ps2fp0_clean(a) : ps2fp0_clean(b); /* VU0_MIN */
     }
 }
 
@@ -143,8 +143,8 @@ VU0_INL void vu0_opmula(int msub, int fd, int fs, int ft)
 /* Division toward zero (a nonzero-exponent divisor). */
 VU0_INL unsigned int vu0_div_trunc(unsigned int a, unsigned int b)
 {
-    a = ps2fp_clean(a);
-    b = ps2fp_clean(b);
+    a = ps2fp0_clean(a);
+    b = ps2fp0_clean(b);
     unsigned int sign = (a ^ b) & PS2FP_SIGN;
     unsigned int ea = (a >> 23) & 0xFF, eb = (b >> 23) & 0xFF;
     if (ea == 0)
@@ -162,7 +162,7 @@ VU0_INL unsigned int vu0_div_trunc(unsigned int a, unsigned int b)
         r %= mb;
     }
     q |= 1u << 24;
-    return ps2fp_pack(sign, e, q >> 1);
+    return ps2fp0_pack(sign, e, q >> 1);
 }
 
 /* VDIV Q, fs.fsf, ft.ftf (kind 0), VSQRT Q, ft.ftf (kind 1), VRSQRT Q, fs.fsf, ft.ftf (kind 2) */
@@ -173,7 +173,7 @@ VU0_INL void vu0_divider(int kind, int fs, int fsf, int ft, int ftf)
     if (kind == 1) {
         if (t & 0x80000000u)
             st |= 0x10 | 0x400;
-        g_vu0.vi[VU0_Q] = (t & 0x7F800000u) == 0 ? 0 : ps2fp_sqrt(t);
+        g_vu0.vi[VU0_Q] = (t & 0x7F800000u) == 0 ? 0 : ps2fp0_sqrt(t);
     } else {
         if (kind == 2 && (t & 0x80000000u))
             st |= 0x10 | 0x400;
@@ -184,7 +184,7 @@ VU0_INL void vu0_divider(int kind, int fs, int fsf, int ft, int ftf)
                 st |= 0x20 | 0x800; /* x/0: divide by zero */
             g_vu0.vi[VU0_Q] = ((s ^ (kind == 0 ? t : 0)) & 0x80000000u) | PS2FP_FMAX;
         } else {
-            g_vu0.vi[VU0_Q] = vu0_div_trunc(s, kind == 0 ? t : ps2fp_sqrt(t));
+            g_vu0.vi[VU0_Q] = vu0_div_trunc(s, kind == 0 ? t : ps2fp0_sqrt(t));
         }
     }
     g_vu0.vi[VU0_STATUS] = st;
@@ -236,7 +236,7 @@ VU0_INL void vu0_ftoi(int n, unsigned int dest, int ft, int fs)
 {
     Vu0Vec s = g_vu0.vf[fs], r;
     for (int i = 0; i < 4; i++) {
-        unsigned int c = ps2fp_clean(s.u[i]);
+        unsigned int c = ps2fp0_clean(s.u[i]);
         int e = (int)((c >> 23) & 0xFF);
         if (e == 0)
             r.u[i] = 0;
@@ -252,7 +252,7 @@ VU0_INL void vu0_abs(unsigned int dest, int ft, int fs)
 {
     Vu0Vec s = g_vu0.vf[fs], r;
     for (int i = 0; i < 4; i++)
-        r.u[i] = ps2fp_clean(s.u[i]) & 0x7FFFFFFFu;
+        r.u[i] = ps2fp0_clean(s.u[i]) & 0x7FFFFFFFu;
     vu0_write_vf(ft, &r, dest);
 }
 
@@ -260,12 +260,12 @@ VU0_INL void vu0_abs(unsigned int dest, int ft, int fs)
 VU0_INL void vu0_clip(int fs, int ft)
 {
     Vu0Vec s = g_vu0.vf[fs];
-    unsigned int w = ps2fp_clean(g_vu0.vf[ft].u[3]) & 0x7FFFFFFFu;
+    unsigned int w = ps2fp0_clean(g_vu0.vf[ft].u[3]) & 0x7FFFFFFFu;
     unsigned int c = (g_vu0.vi[VU0_CLIP] << 6) & 0xFFFFFFu;
     for (int i = 0; i < 3; i++) {
-        if (ps2fp_lt(w, s.u[i]))
+        if (ps2fp0_lt(w, s.u[i]))
             c |= 1u << (2 * i);
-        if (ps2fp_lt(s.u[i], w ^ PS2FP_SIGN))
+        if (ps2fp0_lt(s.u[i], w ^ PS2FP_SIGN))
             c |= 2u << (2 * i);
     }
     g_vu0.vi[VU0_CLIP] = c;
@@ -404,7 +404,7 @@ VU0_INL void vu0_sq(int vf, unsigned int addr)
 /* a register spilled to the stack by SQ (only its low 32 bits come back) */
 #define PC_SQ32(a, v) do { unsigned int q_[4] = {(v), (unsigned int)((int)(v) >> 31), 0, 0}; PC_SQ((a), q_); } while (0)
 
-/* One raw COP2 instruction word (vu0.c's vu0_exec_word: the tests' reference decoder). */
+/* One raw COP2 instruction word (the original's vu0_exec_word: the tests' reference decoder). */
 void vu0_exec_word(unsigned int raw);
 
 #endif /* VU0OPS_H */

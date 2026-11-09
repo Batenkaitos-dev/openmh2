@@ -36,6 +36,22 @@ void Sound_PlaySlotChange(void);
 void Sound_PlayCancel(void);
 void Jingle_CarryLost(Player *pl);
 s32 Game_IsOnline(void);
+#if PLATFORM_PC
+/* The offline hub (the enhancement; pc/core/pal_hub.c): the online town's areas 0x84 to 0x88 played by one hunter with no
+ * network, reached from the village's gate. Game_RulesOnline() is the question the online rules answer (the quest lists, the
+ * maps the hunter rank opens, the common motions and sound banks of the town): Game_IsOnline() or the hub's rules. It never
+ * touches gOnlineFlag, so no network code runs. The rules are set by the doors that lead into the hub and cleared by those
+ * that lead out and by the lobby screen's start. On the PS2 it is Game_IsOnline(). */
+s32 Game_RulesOnline(void);
+void Game_HubRulesSet(s32 on);
+s32 Game_HubRules(void);
+s32 Game_HubOffered(void);                      /* the setting is on and the game is offline */
+s32 Game_HubTownArea(u16 area);                 /* 1 for the areas 0x84 to 0x88 */
+u16 Game_HubReturnArea(void);                   /* after a quest taken in the town: the area of the desk (gQuestReturnArea), else 0 */
+s32 Game_HubBanksChange(u16 from, u16 to);      /* 1 when a move between the village and the town changes the town's sound bank */
+#else
+#define Game_RulesOnline() Game_IsOnline()
+#endif
 s32 Quest_IsDrill(void);
 s32 Scene_InField(void);
 s32 Quest_PhaseIsOver(s32 mode);

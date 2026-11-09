@@ -3,7 +3,7 @@
  * time, the event queue, the jump, the delivery point, poll events and
  * library waits. Guest time is a variable that only the jump moves; nothing
  * reads a host clock (R6). The original game's sched.c and
- * kernel.c (service_frame, recomp_service_events) are the same rules.
+ * the original's kernel (service_frame, recomp_service_events) are the same rules.
  */
 #include "kernel/kern_int.h"
 #include "kernel/khost.h"

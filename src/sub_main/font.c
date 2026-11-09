@@ -532,6 +532,7 @@ void Font_Printf(char *fmt, ...)
     s16 *src;
     s16 *dst;
 
+    PC_TEXT(fmt);
     run = Font_NewRun();
     if (run != NULL) {
         gFontCache->runCount[gFontCache->runPage]++;
@@ -842,6 +843,7 @@ static void Font_AddGlyphSprite(s32 slot, u32 clut, s16 glyphW, s16 glyphH)
     ((u64 *)out)[9] = (u32)right | ((u64)(u32)bottom << 16) | ((u64)0xFFFFFFFF << 32);
     PC_HUD_2D();
     PC_HUD_PACKET(out, gDispWidth);
+    PC_HUD_QUEUED(out);
     gFontCache->pkt += 80;
 }
 

@@ -681,7 +681,7 @@ s32 Plsel_RollArenaRecord(void)
  */
 s32 Plsel_ShouldPlayOpening(void)
 {
-    if (Game_IsOnline() == 1) {
+    if (Game_RulesOnline() == 1) {
         return 0;
     }
     if (Quest_GetOutcome(1) != 1) {
@@ -709,7 +709,7 @@ s32 Plsel_ShouldPlayOpening(void)
  */
 s32 Plsel_ShouldPlayEnding(void)
 {
-    if (Game_IsOnline() == 1) {
+    if (Game_RulesOnline() == 1) {
         return 0;
     }
     if (Quest_GetOutcome(1) != 1) {
@@ -830,7 +830,7 @@ void Plsel_ResultsUpdate(void)
         }
         if (Quest_GetOutcome(1) == 1) {
             Quest_UpdateSaveRecords(0);
-            if (Game_IsOnline() == 1) {
+            if (Game_RulesOnline() == 1) {
                 if (Quest_IsMustOrder() == 0 || gScene.questPaid != 0) {
                     Save_MarkQuestCleared(gQuest.stage);
                 }
@@ -852,7 +852,7 @@ void Plsel_ResultsUpdate(void)
             }
             QuestEm_SavePersistentHp();
             Quest_RollRewards();
-            if (Game_IsOnline() == 1 && Plsel_RollArenaRecord() == 1) {
+            if (Game_RulesOnline() == 1 && Plsel_RollArenaRecord() == 1) {
                 sceneState->step = PLRES_ARENA_MENU;
                 sceneState->subStep = 0;
                 Plsel_InitSaveRecordMenu();
@@ -878,7 +878,7 @@ void Plsel_ResultsUpdate(void)
                 gNetMenuDrawHooks[0].draw = NULL;
                 break;
             }
-            if (Game_IsOnline() == 1) {
+            if (Game_RulesOnline() == 1) {
                 if (Quest_IsVersus() == 1) {
                     Plsel_LoadResultsTextures();
                     Save_StorePouch(&gPlayers[sceneState->localPlayer]);
@@ -981,7 +981,7 @@ void Plsel_ResultsUpdate(void)
         }
         break;
     case PLRES_POINTS_START:
-        if (Game_IsOnline() != 1) {
+        if (Game_RulesOnline() != 1) {
             sceneState->step = PLRES_TITLES_START;
         } else {
             sceneState->step = PLRES_POINTS;
@@ -2762,7 +2762,7 @@ void Plsel_RewardListDrawText(SceneState *task)
 #define WLINE(w) ((w)->lines[(w)->lineCount])
 
 /* Stripped_Sub: a stand-in for a function of this file that the game's
- * linker dead-stripped (tools/mwcc_cc.py compiles it and drops its code). Its
+ * linker dead-stripped (the matching build compiles it and drops its code). Its
  * body is unknown: what shows is that the file compiled a two-argument runtime
  * call before Plsel_BuildResultText, which changes that function's code
  * (a hard match). The "%s" before
@@ -3267,7 +3267,7 @@ void Plsel_SumQuestRewards(void)
     questInfo = (u8 *)gQuest.info;
     if (Quest_GetOutcome(1) == 1) {
         if (Quest_GetOutcome(1) == 1) {
-            if (Game_IsOnline() == 1) {
+            if (Game_RulesOnline() == 1) {
                 if (gScene.questPaid != 0) {
                     w->fee = *(s32 *)(questInfo + 8);
                     w->feeRate = 2.0f;
@@ -3341,7 +3341,7 @@ void Plsel_SumQuestRewards(void)
                 w->subBMoney = 0;
             }
         }
-        if (Game_IsOnline() == 1 && w->lowRankCut != 0) {
+        if (Game_RulesOnline() == 1 && w->lowRankCut != 0) {
             w->questMoneyCut = 1;
             w->mainMoney = w->mainMoney * 60 / 100;
             w->subAMoney = w->subAMoney * 60 / 100;
@@ -3458,7 +3458,7 @@ void Plsel_ComputeReward(void)
     PlselWork *w;
 
     w = gPlselWork;
-    if (Game_IsOnline() == 0) {
+    if (Game_RulesOnline() == 0) {
         return;
     }
     Plsel_ResetPointRate(w);
@@ -3906,7 +3906,7 @@ void Plsel_ComputeAllRewards(void)
     Plsel_ComputeReward();
     Plsel_SumRecordRewards();
     Plsel_SumQuestRewards();
-    if (Game_IsOnline() == 1) {
+    if (Game_RulesOnline() == 1) {
         if (gScene.playerCount > 1) {
             w->monsterMoneyCut = 1;
         }
@@ -5322,7 +5322,7 @@ void Plsel_QueueQuestUnlocks(void)
     Plsel_QueueQuestUnlock(gPlselQuestUnlocks0, 0);
     Plsel_QueueQuestUnlock(gPlselQuestUnlocks1, 1);
     Plsel_QueueQuestUnlock(gPlselQuestUnlocks2, 2);
-    if (Game_IsOnline() != 0 && gQuest.stage == 15017 && EventFlag_Test(49) != 1) {
+    if (Game_RulesOnline() != 0 && gQuest.stage == 15017 && EventFlag_Test(49) != 1) {
         EventFlag_Set(49);
         EventFlag_Set(50);
         EventFlag_Set(51);

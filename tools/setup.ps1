@@ -16,23 +16,28 @@
 
 
 .PARAMETER NoNative
-    Skip the native PC-port toolchain (SDL3). llvm-mingw is always installed:
+    Skip the native PC-port toolchain (SDL3, FFmpeg). llvm-mingw is always installed:
     the matching build parses the C with its clang.
+
+.PARAMETER BuildFFmpeg
+    Build FFmpeg from its source tarball (in WSL: tools\pc\build_ffmpeg.sh) instead of
+    installing the prebuilt libraries, which are checked by SHA-256.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File tools\setup.ps1
 #>
 [CmdletBinding()]
 param(
-    [switch]$NoNative
+    [switch]$NoNative,
+    [switch]$BuildFFmpeg
 )
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Set-StrictMode -Version 3.0
 
-if (-not [Environment]::Is64BitOperatingSystem) { throw 'A 64-bit Windows is required.' }
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw 'git is required (https://git-scm.com/download/win).' }
+if (-not [Environment]::Is64BitOperatingSystem) { throw '64-bit Windows is required.' }
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw 'Git is required. Download it from https://git-scm.com/download/win.' }
 
 . (Join-Path $PSScriptRoot 'env.ps1')    # sets $MH2Root, $MH2Deps, PATH, UV_* variables
 
@@ -51,40 +56,46 @@ function Invoke-Native([string]$Exe, [string[]]$ArgList) {
 }
 
 # Downloads $Url into tools\deps\downloads\$FileName (cached) and checks its SHA-256. If $Url fails or the
-# file does not match, $MirrorUrl (when given and not the placeholder) is tried, with the same check.
+# file does not match, $MirrorUrl (when given) is tried, with the same check.
 function Get-Pinned([string]$Url, [string]$FileName, [string]$Sha256, [string]$MirrorUrl = '') {
     New-Item -ItemType Directory -Force $Downloads | Out-Null
     $dest = Join-Path $Downloads $FileName
     if ((Test-Path $dest) -and ((Get-FileHash -Algorithm SHA256 $dest).Hash -eq $Sha256)) { return $dest }
     $part = "$dest.part"
     foreach ($u in @($Url, $MirrorUrl)) {
-        if (-not $u -or $u -like '*OPENMH2_MIRROR_URL_TODO*') { continue }
+        if (-not $u) { continue }
         Write-Host "       downloading $u"
         & curl.exe -fsSL --retry 3 -o $part $u
         if (($LASTEXITCODE -eq 0) -and ((Get-FileHash -Algorithm SHA256 $part).Hash -eq $Sha256)) {
             Move-Item -Force $part $dest
             return $dest
         }
-        Write-Host "       failed, or SHA-256 mismatch (expected $Sha256): $u"
+        Write-Host "       download failed, or its SHA-256 does not match (expected $Sha256): $u"
         Remove-Item -Force $part -ErrorAction SilentlyContinue
     }
     throw "could not get $FileName with the expected SHA-256"
 }
 
-# Runs $Body to install into $Dir unless $Dir already holds install id $Id.
-# By default $Dir is emptied first; -KeepContents extracts over the top.
-function Install-Step([string]$Name, [string]$Dir, [string]$Id, [scriptblock]$Body, [switch]$KeepContents) {
+# Runs $Body to install into $Dir unless $Dir already holds install id $Id (or $OtherId).
+# By default $Dir is emptied first; -KeepContents extracts over the top. $Body may set
+# $script:StepId to the id to record instead of $Id.
+function Install-Step([string]$Name, [string]$Dir, [string]$Id, [scriptblock]$Body, [switch]$KeepContents, [string]$OtherId = '') {
     $full = [IO.Path]::GetFullPath($Dir)
     if (-not $full.StartsWith([IO.Path]::GetFullPath($MH2Deps) + '\')) { throw "refusing to install outside tools\deps: $full" }
     $stamp = Join-Path $full '.mh2-installed'
-    if ((Test-Path $stamp) -and ((Get-Content -Raw $stamp).Trim() -eq $Id)) {
-        Write-Host "[ok]   $Name $Id"
-        return
+    if (Test-Path $stamp) {
+        $have = (Get-Content -Raw $stamp).Trim()
+        if (($have -eq $Id) -or ($OtherId -and ($have -eq $OtherId))) {
+            Write-Host "[ok]   $Name $have"
+            return
+        }
     }
     Write-Host "[..]   $Name $Id"
     if ((Test-Path $full) -and -not $KeepContents) { Remove-Item -Recurse -Force $full }
     New-Item -ItemType Directory -Force $full | Out-Null
+    $script:StepId = ''
     & $Body $full
+    if ($script:StepId) { $Id = $script:StepId }
     Set-Content -Path $stamp -Value $Id -Encoding ascii
     Write-Host "[done] $Name $Id"
 }
@@ -145,14 +156,71 @@ if (-not $NoNative) {
         Remove-Item -Recurse -Force $work
     }
 
-    # --- FFmpeg (LGPL shared build: headers, import libraries, DLLs) ----------
-    Install-Step 'FFmpeg' (Join-Path $MH2Deps 'ffmpeg') "$($V.FFMPEG_VERSION)+$($V.FFMPEG_BUILD_TAG)" {
+    # --- FFmpeg, the project's own build (LGPL-2.1-or-later; only what the movies use) -----
+    # Installed from the prebuilt archive (a release file of openmh2: FFMPEG_MIRROR_URL and the SHA-256 in versions.txt, made by
+    # tools\pc\build_ffmpeg.sh --archive), checked like every download. With -BuildFFmpeg, or when the archive can't be had
+    # (a failed download, a wrong SHA-256), it is built from ffmpeg.org's release tarball by tools\pc\build_ffmpeg.sh, a POSIX
+    # shell script (FFmpeg's configure and make): that runs in WSL (Windows Subsystem for Linux), which needs bash, make, curl,
+    # tar, xz-utils and a C library for llvm-mingw's Linux clang (Ubuntu: sudo apt install make curl xz-utils). The libraries
+    # are the same either way.
+    $ffName = "mh2-ffmpeg-$($V.FFMPEG_VERSION)-windows-x64.zip"
+    $ffBase = if ($env:MH2_FFMPEG_MIRROR_URL) { $env:MH2_FFMPEG_MIRROR_URL } else { $V.FFMPEG_MIRROR_URL }
+    $ffUrl = "$ffBase/$ffName"
+    $ffPrebuiltId = "$($V.FFMPEG_VERSION)+prebuilt-$($V.FFMPEG_PREBUILT_SHA256_WINDOWS.Substring(0, 12))"
+    function Invoke-FFmpegScript([string[]]$ScriptArgs) {
+        $script = (& wsl.exe -e wslpath -a (Join-Path $PSScriptRoot 'pc\build_ffmpeg.sh')) -join ''
+        if ($LASTEXITCODE -ne 0 -or -not $script) { throw 'wsl.exe could not translate the path of tools\pc\build_ffmpeg.sh: is a WSL distribution installed?' }
+        return @($script.Trim()) + $ScriptArgs
+    }
+    # WSL is only asked (for the build's stamp, and whether it is there) when the prebuilt is not already installed.
+    $ffStampFile = Join-Path (Join-Path $MH2Deps 'ffmpeg') '.mh2-installed'
+    $ffHave = if (Test-Path $ffStampFile) { (Get-Content -Raw $ffStampFile).Trim() } else { '' }
+    $ffWsl = [bool](Get-Command wsl.exe -ErrorAction SilentlyContinue)
+    $ffBuildId = $null
+    if ($ffWsl -and ($BuildFFmpeg -or $ffHave -ne $ffPrebuiltId)) {
+        try {
+            $ffArgs = Invoke-FFmpegScript @('windows-x64', '--stamp')
+            $ffStamp = (& wsl.exe -e bash $ffArgs 2>$null) -join ''
+            if ($LASTEXITCODE -eq 0 -and $ffStamp) { $ffBuildId = $ffStamp.Trim() } else { $ffWsl = $false }
+        } catch { $ffWsl = $false }
+    } elseif ($ffWsl) {
+        $ffWsl = $false   # nothing to build: the prebuilt is installed
+    }
+    function Install-FFmpegBuilt([string]$Dir) {
+        $why = "download $ffUrl (SHA-256 $($V.FFMPEG_PREBUILT_SHA256_WINDOWS)) into tools\deps\downloads (or check the network) and run this setup again without -BuildFFmpeg"
+        if (-not $ffWsl) {
+            throw ("FFmpeg's libraries can be installed in two ways. (1) Use the prebuilt archive: $why. " +
+                   '(2) Build them from source, which needs WSL (Windows Subsystem for Linux) with make, curl and xz-utils: ' +
+                   'wsl.exe is not installed, or no distribution answers (wsl --install -d Ubuntu, then sudo apt install make curl xz-utils in it); ' +
+                   'then run this setup again with -BuildFFmpeg.')
+        }
+        $out = (& wsl.exe -e wslpath -a $Dir) -join ''
+        $dl = (& wsl.exe -e wslpath -a $Downloads) -join ''
+        $ffArgs = Invoke-FFmpegScript @('windows-x64', '--out', $out.Trim())
+        Invoke-Native wsl.exe (@('-e', 'env', "MH2_DOWNLOADS=$($dl.Trim())", 'bash') + $ffArgs)
+        $script:StepId = $ffBuildId
+    }
+    $ffBody = {
         param($dir)
-        $name = "ffmpeg-$($V.FFMPEG_VERSION)-win64-lgpl-shared-$($V.FFMPEG_SERIES)"
-        # BtbN's build first; openmh2's mirror of the same file (FFMPEG_MIRROR_URL) second
-        $zip = Get-Pinned "$GH/BtbN/FFmpeg-Builds/releases/download/$($V.FFMPEG_BUILD_TAG)/$name.zip" "$name.zip" `
-            $V.FFMPEG_SHA256_WINDOWS "$($V.FFMPEG_MIRROR_URL)/$name.zip"
-        Invoke-Native $Tar @('-xf', $zip, '-C', $dir, '--strip-components', '1')
+        if (-not $BuildFFmpeg) {
+            try {
+                $zip = Get-Pinned $ffUrl $ffName $V.FFMPEG_PREBUILT_SHA256_WINDOWS
+                Invoke-Native $Tar @('-xmf', $zip, '-C', $dir)
+                if (Test-Path (Join-Path $dir '.mh2-ffmpeg-stamp')) { return }
+                Write-Host '       the prebuilt FFmpeg archive holds no stamp'
+            } catch {
+                Write-Host "       the prebuilt FFmpeg could not be had: $($_.Exception.Message)"
+            }
+            Write-Host '       building FFmpeg from its source tarball instead'
+            Get-ChildItem -Force $dir | Remove-Item -Recurse -Force
+        }
+        Install-FFmpegBuilt $dir
+    }
+    if ($BuildFFmpeg) {
+        if (-not $ffWsl) { Install-FFmpegBuilt (Join-Path $MH2Deps 'ffmpeg') }   # says what to do, and stops
+        Install-Step 'FFmpeg' (Join-Path $MH2Deps 'ffmpeg') $ffBuildId $ffBody
+    } else {
+        Install-Step 'FFmpeg' (Join-Path $MH2Deps 'ffmpeg') $ffPrebuiltId $ffBody -OtherId $ffBuildId
     }
 
     # --- paraLLEl-GS source (GS renderer), pinned commit + needed submodules ---

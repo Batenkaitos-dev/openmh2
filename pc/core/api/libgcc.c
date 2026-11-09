@@ -8,14 +8,14 @@
  * floats is 0x7F800000 (dptofp), a conversion to an int saturates and a NaN gives 0 (dptoli). Each
  * function here is its ps2_* helper of pc/core/crt/ps2dp.h, the same arithmetic the ps2fp pass gives
  * the game's own double operations, tested against a model of the original's (checked
- * against the executable's with 4,000,000 inputs each) by tools/pc/ps2fp/tests/run.sh.
+ * against the executable's with 4,000,000 inputs each) by the ps2fp tests.
  *
  * A double crosses the interface as its 64 bits: a host double only carries them (no host
  * operation touches it). The prototypes are the game's (include/libgcc.h) for fptodp and dptofp, and
  * GCC's soft-float ones for the others, which no game C calls (the pass inlines their arithmetic);
  * they are defined so that no name of the library inventory stays an aborting stub.
  *
- * The seam table (config/pc/seam_calls.txt) marks all seven untraced: the original game logs no C line for
+ * The seam table (the seam table) marks all seven untraced: the original game logs no C line for
  * them, so neither does the core.
  */
 #include "common.h"

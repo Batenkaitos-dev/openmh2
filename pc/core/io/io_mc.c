@@ -1,5 +1,5 @@
 /* The IOP's memory card service (mcserv 0x80000400), as the original's HLE
- * answers it (iop_mc.c, whose comment has the protocol's rules):
+ * answers it:
  * at the request, over PCSX2-format card images (host_mcfs.c). Port 0 holds
  * the image given by --memcard1, port 1 the one given by
  * --memcard2 (Io_Option); a missing file becomes a new formatted card.

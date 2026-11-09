@@ -62,7 +62,7 @@ void Kern_Start(u64 maxFrames, int argc, char **argv)
 /*
  * main's arguments where the PS2's have them: crt0's SetupThread argument
  * block (0x1C8640, libcrt0.c's ARGS), as the original's
- * SetupThread fills it (kernel.c, syscall 0x3C): argc 1 at +0, argv[] from
+ * SetupThread fills it (the original's kernel, syscall 0x3C): argc 1 at +0, argv[] from
  * +4 (argv[0] = the block's +0x44, argv[1] 0), the string at +0x44. The
  * pointers are the core's (PAL_RAM). Returns argv, for main.
  */

@@ -374,7 +374,7 @@ static s32 sceMcSetFileInfoWork(s32 port, s32 slot, const char *name, const void
 }
 
 /* ------------------------------------------------------------ the taps
- * verify's trace tap for each function the game calls (pc/core/verify/verify.h). */
+ * verify's trace tap for each function the game calls. */
 
 s32 sceMcSync(s32 mode, s32 *cmd, s32 *result)
 {

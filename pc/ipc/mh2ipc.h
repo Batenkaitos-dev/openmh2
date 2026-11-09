@@ -70,6 +70,11 @@ enum {
     MH2IPC_STATE_FATAL = 3,      /* message in fatal_message */
 };
 
+/* The core's exit status when it was given something it refuses to run with (a text pack that can't be read, a save
+ * state made with another pack): core_state is MH2IPC_STATE_FATAL with the message to show, and nothing is wrong with the
+ * program. The core's host.h has the same number (HOST_EXIT_REFUSED). */
+#define MH2IPC_EXIT_REFUSED 2
+
 /* Mh2IpcHeader.host_flags: what the host has (logs only: never game-visible). */
 enum {
     MH2IPC_HOST_GS = 1u << 0,     /* a GS renderer (mh2gs on a Vulkan device) */
@@ -82,6 +87,26 @@ enum {
      * The keys come in Mh2IpcKeys. Unlike the others, this flag decides what the game computes: a USB keyboard is
      * a device the game itself reads, not only something the host shows. */
     MH2IPC_HOST_USB_KEYBOARD = 1u << 4,
+    /* fast loading (the setting fast_loading): the core does not wait for real time while the game's loading screen is open
+     * (Ipc_LoadingScreen). Pacing only: the VBlanks, the frame clock and everything computed are what they are paced. */
+    MH2IPC_HOST_FASTLOAD = 1u << 5,
+};
+
+/* Mh2IpcHeader.pace_flags (host -> core, changes at any time): the host's pacing of the core's VBlanks (host_ipc.c, Ipc_Pace).
+ *  - HOLD: the plain pause. The core lets no VBlank through but those the host grants (pace_grant, a count that only grows:
+ *    one VBlank for each); it keeps the last picture on the screen, nothing else is touched.
+ *  - FF: fast-forward. The core does not wait for real time (or waits for 100 / pace_cap of a VBlank's time, with a cap), and
+ *    the samples of those VBlanks are dropped. Never while a movie is open: its picture and sound are timed by the VBlanks.
+ * Pacing is all of it: the game cannot tell, and a recorded session is the same with or without. */
+enum {
+    MH2IPC_PACE_HOLD = 1u << 0,
+    MH2IPC_PACE_FF = 1u << 1,
+};
+/* Mh2IpcHeader.pace_state (core -> host) */
+enum {
+    MH2IPC_PACE_HELD = 1u << 0,      /* the core waits in the pause now */
+    MH2IPC_PACE_UNPACED = 1u << 1,   /* the VBlank in progress is not waited for (fast loading or fast-forward): its samples are dropped */
+    MH2IPC_PACE_LOADING = 1u << 2,   /* the game's loading screen is open (the host logs how long, in either mode) */
 };
 
 /* The events one side waits on (mh2ipc_os.h). */
@@ -107,6 +132,8 @@ enum {
      * that the renderer's state is that of the records before it. */
     MH2IPC_REC_STATE_GET = 7,    /* arg1 = sequence number: the renderer's block goes to the state window (gs_bytes, gs_result) */
     MH2IPC_REC_STATE_SET = 8,    /* arg0 = the block's bytes in the state window; arg1 = sequence number: the renderer takes it (gs_result) */
+    MH2IPC_REC_CAMERA = 9,       /* payload: 32 floats, the view and the projection (gMtxView, gMtxProjClip) a model is drawn with; the renderer's
+                                  * in-between pictures use it, nothing else: it is not part of the picture's stream (the ring's hash skips it) */
 };
 
 typedef struct Mh2IpcRec {
@@ -272,7 +299,9 @@ typedef struct Mh2IpcFreecam {
     /* core -> host: what the last draw was (its own sequence lock, st_seq: odd while the core writes, 0 until the first write).
      * st_active: 1 when that draw was a field scene's with the pose in force (0: a menu, a result screen, the title, ...: the
      * host gives the game its input back and the pose waits). st_echo: the sequence of the pose that was in force for that draw
-     * (the host knows its pose reached the draw once st_echo is at least the sequence it wrote). st_vblank: the VBlank whose
+     * (the host knows its pose reached the draw once st_echo is at least the sequence it wrote; after the freecam is turned on, the
+     * core leaves st_echo behind until a field draw has been made with the pose, or two game steps have begun with none: so the
+     * answer of the first draw is that draw's). st_vblank: the VBlank whose
      * start published these words (low 32 bits). st_state, st_why, st_taken: Pal_FreezeState's answer (0 running, 1 waiting,
      * 2 frozen; why a pause waits: 1 not a field scene, 2 a movie is open, 3 a memory card request is running; the steps the core has
      * taken, counted as the host counts them: a load of a save state does not move it against the host's step_grant). */
@@ -363,7 +392,10 @@ typedef struct Mh2IpcHeader {
     mh2ipc_u32 audio_queued;       /* frames queued for the sound device (pacing only) */
     mh2ipc_u32 presented_lo;       /* the VBlank of the last picture shown (logs only) */
     mh2ipc_u32 presented_hi;
-    mh2ipc_u32 reserved1[9];
+    mh2ipc_u32 pace_flags;         /* MH2IPC_PACE_* */
+    mh2ipc_u32 pace_grant;         /* the VBlanks let through while HOLD: it only grows */
+    mh2ipc_u32 pace_cap;           /* fast-forward's cap, in hundredths of the game's speed (0: none) */
+    mh2ipc_u32 reserved1[6];
     /* 0x080: the core's */
     mh2ipc_u32 core_pid;
     mh2ipc_u32 core_state;
@@ -376,7 +408,10 @@ typedef struct Mh2IpcHeader {
     mh2ipc_u32 movie_sound_id;
     mh2ipc_u32 movie_sound_begin;
     mh2ipc_u32 movie_sound_end;
-    mh2ipc_u32 reserved2[7];
+    mh2ipc_u32 pace_state;
+    mh2ipc_u32 pace_taken;
+    mh2ipc_u32 pace_vblank;
+    mh2ipc_u32 reserved2[4];
     /* 0x0C0: host -> core */
     Mh2IpcInput input;
     mh2ipc_u32 reserved3a[(0x140 - 0x0C0 - sizeof(Mh2IpcInput)) / 4];   /* where the development build has its injections */

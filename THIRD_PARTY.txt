@@ -21,7 +21,7 @@ Noto Sans Regular (pc/host/fonts, the launcher's font), unmodified
     From https://github.com/notofonts/latin-greek-cyrillic/releases/download/NotoSans-v2.015/NotoSans-v2.015.zip
     (SHA-256 0c34df072a3fa7efbb7cbf34950e1f971a4447cffe365d3a359e2d4089b958f5), the file
     NotoSans/unhinted/ttf/NotoSans-Regular.ttf (SHA-256 f3961a9cde016d41a4879aecda1474d3a36d6bf54fa0e4643de029cc2248b0e8).
-    Copyright 2022 The Noto Project Authors. SIL Open Font License 1.1; the text is pc/host/fonts/OFL.txt. The OFL asks
+    Copyright 2022 The Noto Project Authors. SIL Open Font License 1.1; the text is pc/host/fonts/OFL.txt, and licenses/OFL.txt in a release folder. The OFL asks
     that the licence text and the copyright notice go with the font, that it is not sold by itself and that a modified
     font does not keep the name: the font is embedded unmodified in mh2, and the licence text is in the repository
     and in the distribution. Embedded in mh2.
@@ -29,6 +29,12 @@ zlib 1.3.1 (pc/core/third_party/zlib, the compression of save states), unmodifie
     From https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz (SHA-256
     9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23): deflate and inflate only, built with
     Z_PREFIX. zlib licence; the notice is at the top of zlib.h. Compiled into mh2-core.
+PS2 math routines from PCSX2 (pc/core/third_party/pcsx2_ps2float: ps2float_mul.h and ps2float_add.h), adapted to C
+    The multiply and the add of PCSX2 pull request 12001 ("Soft-Float"), pcsx2/PS2Float.cpp at commit
+    0392a64e992ac3fa5445dbe484933616cb204674 (SHA-256 2fa504d2ec7fbad7c3c7a40ea0e106f67e19321d46c2b6c54328327be53f5511).
+    Copyright 2002-2024 PCSX2 Dev Team. GPL-3.0-or-later; the licence text is COPYING beside them, and SOURCE.txt
+    says what was taken and what was changed. Compiled into mh2-core, which is then GPL-3.0-or-later as a whole;
+    mh2-core is made on the user's machine and not distributed.
 stb_image 2.30 and stb_image_write 1.16 (pc/gs/third_party/stb, the renderer's texture files), unmodified
     From https://github.com/nothings/stb at commit d14d46f6b44456eb88beac58cba833a4135d4c89. Public domain
     (Unlicense) or MIT, at the user's choice; each file ends with both notices. They are compiled into mh2gs.
@@ -41,11 +47,13 @@ paraLLEl-GS (commit 3a66c1976170cbc2cb53a3593fabbc7c4b2ccfbd), with Granite and 
     LGPL-3.0-or-later (paraLLEl-GS); MIT (Granite, volk). Vulkan-Headers: Apache-2.0 or MIT.
     Built into mh2gs, a shared library that mh2 loads at run time, so that a user can replace it. The source is the
     pinned commits (tools/versions.txt) plus the patches in pc/gs/patches. mh2gs as a whole is LGPL-3.0-or-later.
-FFmpeg n8.1.3-32-g760d10603e (an LGPL build, shared libraries)
-    LGPL-2.1-or-later. mh2movie loads avcodec, avformat, avutil, swresample and swscale at run time; the user's own
-    copy of these libraries works in place. The builds are BtbN's (https://github.com/BtbN/FFmpeg-Builds), the
-    exact files are mirrored among this repository's release files together with FFmpeg's source at the same
-    commit (the source offer). No GPL or non-free configuration is used.
+FFmpeg 8.1.3 (the project's own build, shared libraries)
+    LGPL-2.1-or-later (the licence text that comes with it, licenses/ffmpeg-COPYING.LGPLv2.1.txt in a release folder, is FFmpeg's COPYING.LGPLv2.1; some files carry MIT or BSD-style
+    licences, see licenses/ffmpeg-LICENSE.md). mh2movie loads avcodec, avformat, avutil, swresample and swscale at run time; the user's own copy of these libraries works in place.
+    The source is ffmpeg.org's release tarball ffmpeg-8.1.3.tar.xz, unchanged (SHA-256 in tools/versions.txt), built by tools/pc/build_ffmpeg.sh: only the MPEG program stream
+    demuxer, the MPEG-2 video and ADX decoders and their parsers, no external library, no --enable-version3, no GPL or non-free part. The tarball, the configure line and the
+    script are also among this repository's release files (the source offer).
+    The libraries it builds are also release files (mh2-ffmpeg-8.1.3-windows-x64.zip, mh2-ffmpeg-8.1.3-linux-x64.tar.xz; SHA-256 in tools/versions.txt), which tools/setup.sh and tools/setup.ps1 install; they build from the tarball on request.
 
 Tools the build downloads
 -------------------------

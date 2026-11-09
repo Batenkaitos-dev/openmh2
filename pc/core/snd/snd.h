@@ -4,7 +4,7 @@
 /*
  * The sound module's interface.
  *
- * mh2-core's sound is the original's (iop_lle.c, iop_hw.c, spu2.c,
+ * mh2-core's sound is the original's (iop_kern.c, iop_hw.c, spu2.c,
  * adapted): the game's IOP sound modules (Sony's libsd, the Capcom Sound
  * Engine and CRI's ADX driver, from the archive's MH2DRIVE.DAT) are native
  * code (pc/core/api/libsd.c, pc/core/cse) against an IOP kernel written

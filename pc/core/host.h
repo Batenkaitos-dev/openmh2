@@ -9,12 +9,18 @@
  * host_linux.c or host_windows.c, which include the system headers. A file that
  * includes game headers includes this and not <stdio.h> and the like: the
  * game's headers declare libc names of their own (include/libc.h), in the
- * game's convention. See pc/README.md, "Calling convention".
+ * game's convention. See pc/game_flags.txt.
  */
 #define HOST __attribute__((cdecl))
 
 /* Prints "mh2-core: MSG" to stderr and aborts (a failed rule, a stub). */
 HOST void Host_Fatal(const char *msg) __attribute__((noreturn));
+/* The run cannot start with what it was given (a text pack that can't be read, a save state made with another
+ * pack): the message goes to the host to show, and the process exits with HOST_EXIT_REFUSED. It is no abort and leaves no
+ * dump. Host_Refused() is 1 once this has been called (the end hooks read it). */
+#define HOST_EXIT_REFUSED 2
+HOST void Host_Refuse(const char *msg) __attribute__((noreturn));
+HOST int Host_Refused(void);
 /* The same for a stub: "mh2-core: library function NAME was called, and is not written yet". */
 HOST void Host_StubFatal(const char *name) __attribute__((noreturn));
 /* One line to stderr. */

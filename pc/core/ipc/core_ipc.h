@@ -52,6 +52,10 @@ IPC_CALL void Ipc_GsPrivWrite(unsigned int addr, unsigned long long value);
 /* The VBlank's scanout: the host shows the picture of this field
  * (0 or 1; CSR's FIELD). `vblank` counts VBlanks from the start. */
 IPC_CALL void Ipc_GsVSync(unsigned int field, unsigned long long vblank);
+
+/* The camera a model is drawn with (MH2IPC_REC_CAMERA): view and projection, 4 x 4 floats each, in the ring's order with the GIF data.
+ * It is not part of the picture's stream: the renderer uses it only for the in-between pictures. */
+IPC_CALL void Ipc_GsCamera(const float m[32]);
 /* A local -> host transfer (TRXDIR = 1): `qwords` 128-bit words of what
  * the GS reads out, into dst, after everything sent before. Returns 1 when
  * the host's renderer gave them, 0 when they are zeros (headless, or a
@@ -116,6 +120,12 @@ IPC_CALL void Ipc_SetRumble(unsigned int port, unsigned int small, unsigned int 
  * again at this one). Otherwise, and headless, returns at once. It only
  * waits: nothing the game can observe depends on it. */
 IPC_CALL void Ipc_Pace(unsigned long long vblank);
+/* The VBlanks the pause's restores have put back: added to the numbers the pacer counts (not to the one the game has). */
+IPC_CALL void Ipc_PaceBias(unsigned long long bias);
+/* The game's loading screen is open (Pal_LoadingScreen), and a movie is open (the kernel's Kern_StateBlocked): what the pacer
+ * needs to know for fast loading, and for never speeding up a movie. */
+IPC_CALL void Ipc_LoadingScreen(int on);
+IPC_CALL void Ipc_PaceMovie(int open);
 
 /* ---- save states (the host's requests and the renderer's part; kernel/state.c, ipc_glue.c) ---- */
 

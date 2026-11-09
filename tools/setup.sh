@@ -1,33 +1,47 @@
 #!/usr/bin/env bash
 # Installs the pinned, project-local toolchain on Linux x64.
 #
-# Everything is installed under tools/deps/ (gitignored), except the
-# distribution packages needed to build SDL3 and the port, which are
-# installed with apt on Debian/Ubuntu (skip with --no-apt). Every download
-# is verified against the SHA-256 in tools/versions.txt. Safe to re-run.
+# Everything is installed under tools/deps/ (gitignored), with no administrator
+# rights and no system packages. Every download is verified against the SHA-256 in
+# tools/versions.txt and kept in tools/deps/downloads/, so a re-run
+# downloads nothing it already has. Safe to re-run.
 #
-# Usage: tools/setup.sh [--no-apt] [--no-native]
+# What it needs from the system: a downloader (curl or wget), tar and gzip.
+# It checks for them and says what is missing; it installs nothing with apt.
+# The exception is the PC port's toolchain (without --no-native): it also needs
+# distribution packages (the 32-bit libc and the libraries SDL3 is built from),
+# which are installed with apt on Debian/Ubuntu (skip with --no-apt). PCSX2 is
+# installed with no BIOS: this script never downloads one.
+#
+# Usage: tools/setup.sh [--if-needed]
+#   --if-needed  do nothing, and print nothing, when the last run finished
+#                with this script, versions.txt and the Python lock unchanged
+#   --no-native  skip the native PC-port toolchain (clang, the 32-bit libc, SDL3,
+#                FFmpeg, paraLLEl-GS)
 #   --no-apt     don't install distribution packages (install them yourself)
-#   --no-native  skip the native PC-port toolchain (the 32-bit libc, SDL3); clang
-#                (LLVM, pinned) is installed always: the matching build parses
-#                the C with it
+#   --build-ffmpeg  build FFmpeg from its source tarball (needs make) instead of
+#                installing the prebuilt libraries, which are checked by SHA-256
 set -euo pipefail
 
-usage() { sed -n '2,/^set /p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,/^set /p' "$0" | sed '$d' | grep -v '^# @' | sed 's/^# \{0,1\}//'; }
 
+IF_NEEDED=0
 NO_APT=0
 NO_NATIVE=0
+BUILD_FFMPEG=0
 for arg in "$@"; do
     case "$arg" in
+        --if-needed) IF_NEEDED=1 ;;
         --no-apt) NO_APT=1 ;;
         --no-native) NO_NATIVE=1 ;;
+        --build-ffmpeg) BUILD_FFMPEG=1 ;;
         -h | --help) usage; exit 0 ;;
         *) echo "unknown option: $arg" >&2; usage >&2; exit 2 ;;
     esac
 done
 
 if [ "$(uname -s)" != Linux ] || [ "$(uname -m)" != x86_64 ]; then
-    echo "setup.sh supports Linux x86_64 only (use tools/setup.ps1 on Windows)" >&2
+    echo "setup.sh runs on 64-bit Linux only. On Windows, the README says how to set up." >&2
     exit 1
 fi
 
@@ -37,13 +51,54 @@ source "$TOOLS/env.sh"    # sets MH2_ROOT, MH2_DEPS, PATH, UV_* variables
 DOWNLOADS="$TOOLS/deps/downloads"
 GH=https://github.com
 
+# The stamp of a finished run: a hash of what the installed tools depend on, and
+# the scope of the run: with --if-needed, a run whose stamp is current does nothing.
+STAMP="$MH2_DEPS/.setup-stamp"
+SCOPE=full
+if [ "$NO_NATIVE" = 1 ]; then SCOPE=basic; fi
+stamp_hash() { cat "${BASH_SOURCE[0]}" "$TOOLS/versions.txt" "$MH2_ROOT/pyproject.toml" "$MH2_ROOT/uv.lock" | sha256sum | cut -d' ' -f1; }
+if [ "$IF_NEEDED" = 1 ] && [ -f "$STAMP" ]; then
+    read -r s_hash s_scope <"$STAMP" || true
+    if [ "$s_hash" = "$(stamp_hash)" ] && { [ "$s_scope" = full ] || [ "$SCOPE" = basic ]; }; then
+        exit 0
+    fi
+fi
+
 # tools/versions.txt -> V_<KEY> shell variables
 while IFS='=' read -r key value; do
     value="${value%$'\r'}"
     if [[ "$key" =~ ^[A-Z0-9_]+$ ]]; then printf -v "V_$key" '%s' "$value"; fi
 done <"$TOOLS/versions.txt"
 
-# --- Distribution packages ---------------------------------------------------
+# --- What the system must provide ---------------------------------------------
+# Nothing is installed from here: a missing program is named, with the Debian
+# or Ubuntu package that has it.
+missing=()          # what is missing, and the Debian or Ubuntu package that has each
+packages=()
+have() { command -v "$1" >/dev/null 2>&1; }
+need() { missing+=("$1"); packages+=("$2"); }
+if have curl; then DOWNLOADER=curl; elif have wget; then DOWNLOADER=wget; else
+    DOWNLOADER=
+    need "a downloader: curl or wget" curl
+fi
+have tar || need tar tar
+have gzip || need gzip gzip
+have sha256sum || need sha256sum coreutils
+have git || need "git (the Python lock holds a package from a git repository)" git
+have xz || need "xz (7-Zip, LLVM and FFmpeg come as .tar.xz)" xz-utils
+if [ "${#missing[@]}" -gt 0 ]; then
+    echo "tools/setup.sh needs these programs, and can't find them:" >&2
+    printf '  - %s
+' "${missing[@]}" >&2
+    if have apt-get; then
+        echo "On Debian or Ubuntu:  sudo apt-get install ca-certificates ${packages[*]}" >&2
+    else
+        echo "Install them with your distribution's package manager, then run tools/setup.sh again." >&2
+    fi
+    exit 1
+fi
+
+# --- Distribution packages (the PC port) ---------------------------------------
 # clang is not a package: the pinned LLVM release (below, tools/deps/linux-x64/llvm).
 # It needs a GCC installation for the C library's headers and start files.
 # gcc-multilib: the 32-bit libc mh2-core links.
@@ -62,10 +117,16 @@ APT_NATIVE=(
 pkgs=("${APT_BASE[@]}")
 if [ "$NO_NATIVE" = 0 ]; then pkgs+=("${APT_NATIVE[@]}"); fi
 
-if [ "$NO_APT" = 0 ]; then
+APT_NEEDED=1
+if [ "$NO_NATIVE" = 1 ] && [ "${NO_PCSX2:-1}" = 1 ]; then
+    APT_NEEDED=0    # without the native toolchain and PCSX2 no package is needed
+fi
+if [ "$APT_NEEDED" = 0 ]; then
+    :
+elif [ "$NO_APT" = 0 ]; then
     if ! command -v apt-get >/dev/null; then
-        echo "apt-get not found. Install the equivalents of these packages for your" >&2
-        echo "distribution, then re-run with --no-apt:" >&2
+        echo "apt-get was not found. Install the equivalents of these packages for your" >&2
+        echo "distribution, then run tools/setup.sh --no-apt:" >&2
         echo "  ${pkgs[*]}" >&2
         exit 1
     fi
@@ -81,9 +142,18 @@ fi
 
 # --- Helpers ------------------------------------------------------------------
 
+# download URL FILE: curl, or wget when there is no curl
+download() {
+    if [ "$DOWNLOADER" = curl ]; then
+        curl -fsSL --retry 3 -o "$2" "$1"
+    else
+        wget -q --tries=3 -O "$2" "$1"
+    fi
+}
+
 # get_pinned URL FILENAME SHA256 [MIRROR_URL]: download into tools/deps/downloads (cached),
 # verify, and print the local path. If URL fails or the file does not match the SHA-256,
-# MIRROR_URL (when given and not the placeholder) is tried, with the same check.
+# MIRROR_URL (when given) is tried, with the same check.
 get_pinned() {
     local url=$1 name=$2 sha=$3 mirror=${4:-} u
     local dest="$DOWNLOADS/$name"
@@ -93,36 +163,39 @@ get_pinned() {
         return
     fi
     for u in "$url" "$mirror"; do
-        case "$u" in "" | *OPENMH2_MIRROR_URL_TODO*) continue ;; esac
+        [ -n "$u" ] || continue
         echo "       downloading $u" >&2
-        if curl -fsSL --retry 3 -o "$dest.part" "$u" && echo "$sha  $dest.part" | sha256sum -c --status; then
+        if download "$u" "$dest.part" && echo "$sha  $dest.part" | sha256sum -c --status; then
             mv "$dest.part" "$dest"
             echo "$dest"
             return
         fi
-        echo "       failed, or SHA-256 mismatch (expected $sha): $u" >&2
+        echo "       download failed, or its SHA-256 does not match (expected $sha): $u" >&2
         rm -f "$dest.part"
     done
     echo "could not get $name with the expected SHA-256" >&2
     return 1
 }
 
-# install_step NAME DIR ID FUNCTION: run FUNCTION DIR unless DIR already holds
-# install id ID. DIR is emptied first.
+# install_step NAME DIR ID FUNCTION [OTHER_ID]: run FUNCTION DIR unless DIR already holds
+# install id ID (or OTHER_ID). DIR is emptied first. FUNCTION may set STEP_ID to the id
+# to record instead of ID.
 install_step() {
-    local name=$1 dir=$2 id=$3 fn=$4
+    local name=$1 dir=$2 id=$3 fn=$4 other=${5:-}
     case "$dir" in
         "$MH2_DEPS"/*) ;;
         *) echo "refusing to install outside tools/deps: $dir" >&2; exit 1 ;;
     esac
-    if [ -f "$dir/.mh2-installed" ] && [ "$(cat "$dir/.mh2-installed")" = "$id" ]; then
-        echo "[ok]   $name $id"
+    if [ -f "$dir/.mh2-installed" ] && { [ "$(cat "$dir/.mh2-installed")" = "$id" ] || [ "$(cat "$dir/.mh2-installed")" = "${other:-$id}" ]; }; then
+        echo "[ok]   $name $(cat "$dir/.mh2-installed")"
         return
     fi
     echo "[..]   $name $id"
     rm -rf "$dir"
     mkdir -p "$dir"
+    STEP_ID=""
     "$fn" "$dir"
+    id=${STEP_ID:-$id}
     echo "$id" >"$dir/.mh2-installed"
     echo "[done] $name $id"
 }
@@ -153,10 +226,9 @@ install_binutils() {
 install_step binutils-mips-ps2-decompals "$MH2_DEPS/binutils" "$V_BINUTILS_PS2_VERSION" install_binutils
 
 
+
 # --- LLVM (clang), the official release ---------------------------------------
-# tools/content_gen.py reads the C's types from clang's parse (the matching
-# build; CONTRIBUTING, "Content"), and the port compiles with it (mh2-core, the
-# host, the census and tools/pc). Only the programs the project uses are
+# The port compiles with it (mh2-core, the host, the census and tools/pc). Only the programs the project uses are
 # unpacked (about 1 GB of the release's 12): clang, lld, the binary tools,
 # opt, the profile tools, and clang's resource directory (lib/clang).
 LLVM_PROGRAMS=(clang clang-${V_LLVM_VERSION%%.*} clang++ clang-cpp ld.lld lld llvm-ar llvm-ranlib llvm-nm
@@ -170,7 +242,10 @@ install_llvm() {
     members+=("$name/lib/clang")
     tar -xJf "$f" -C "$1" --strip-components 1 "${members[@]}"
 }
-install_step LLVM "$MH2_DEPS/llvm" "$V_LLVM_VERSION" install_llvm
+if [ "$NO_NATIVE" = 0 ]; then
+    install_step LLVM "$MH2_DEPS/llvm" "$V_LLVM_VERSION" install_llvm
+fi
+source "$TOOLS/env.sh"    # CC is the pinned clang from here on
 
 if [ "$NO_NATIVE" = 0 ]; then
     # --- SDL3, built from source with the pinned clang -----------------------
@@ -192,15 +267,43 @@ if [ "$NO_NATIVE" = 0 ]; then
     cc_id="$($CC -dumpfullversion -dumpversion 2>/dev/null | head -n1)"
     install_step SDL3 "$MH2_DEPS/sdl3" "$V_SDL3_VERSION+$CC-$cc_id" install_sdl3
 
-    # --- FFmpeg (LGPL shared build: headers, libraries) ----------------------
+    # --- FFmpeg, the project's own build (LGPL-2.1-or-later; only what the movies use) -----
+    # Installed from the prebuilt archive (a release file of openmh2: FFMPEG_MIRROR_URL and the SHA-256 in versions.txt, made by
+    # tools/pc/build_ffmpeg.sh --archive), checked like every download. With --build-ffmpeg, or when the archive can't be had
+    # (a failed download, a wrong SHA-256), it is built from ffmpeg.org's release tarball by tools/pc/build_ffmpeg.sh with the
+    # pinned clang, which needs make: the libraries are the same either way.
+    ff_name="mh2-ffmpeg-$V_FFMPEG_VERSION-linux-x64.tar.xz"
+    ff_url="${MH2_FFMPEG_MIRROR_URL:-$V_FFMPEG_MIRROR_URL}/$ff_name"
+    ff_prebuilt_id="$V_FFMPEG_VERSION+prebuilt-${V_FFMPEG_PREBUILT_SHA256_LINUX:0:12}"
+    ff_build_id="$(bash "$TOOLS/pc/build_ffmpeg.sh" linux-x64 --stamp)"
     install_ffmpeg() {
-        local f name="ffmpeg-$V_FFMPEG_VERSION-linux64-lgpl-shared-$V_FFMPEG_SERIES"
-        # BtbN's build first; openmh2's mirror of the same file (FFMPEG_MIRROR_URL) second
-        f=$(get_pinned "$GH/BtbN/FFmpeg-Builds/releases/download/$V_FFMPEG_BUILD_TAG/$name.tar.xz" \
-            "$name.tar.xz" "$V_FFMPEG_SHA256_LINUX" "$V_FFMPEG_MIRROR_URL/$name.tar.xz")
-        tar -xJf "$f" -C "$1" --strip-components 1
+        local f
+        if [ "$BUILD_FFMPEG" = 0 ]; then
+            if f=$(get_pinned "$ff_url" "$ff_name" "$V_FFMPEG_PREBUILT_SHA256_LINUX") && tar -xmJf "$f" -C "$1" &&
+                [ -f "$1/.mh2-ffmpeg-stamp" ]; then
+                return
+            fi
+            echo "       the prebuilt FFmpeg could not be had: building it from its source tarball" >&2
+            rm -rf "$1"
+            mkdir -p "$1"
+        fi
+        if ! have make; then
+            {
+                echo "FFmpeg: building it from source needs make, and make is not installed."
+                echo "  Either install make (Debian or Ubuntu: sudo apt-get install make) and run tools/setup.sh again,"
+                echo "  or install the prebuilt libraries: download $ff_url"
+                echo "  (SHA-256 $V_FFMPEG_PREBUILT_SHA256_LINUX) into tools/deps/downloads/ and run tools/setup.sh again without --build-ffmpeg."
+            } >&2
+            exit 1
+        fi
+        MH2_DOWNLOADS="$DOWNLOADS" bash "$TOOLS/pc/build_ffmpeg.sh" linux-x64 --out "$1"
+        STEP_ID="$ff_build_id"
     }
-    install_step FFmpeg "$MH2_DEPS/ffmpeg" "$V_FFMPEG_VERSION+$V_FFMPEG_BUILD_TAG" install_ffmpeg
+    if [ "$BUILD_FFMPEG" = 1 ]; then
+        install_step FFmpeg "$MH2_DEPS/ffmpeg" "$ff_build_id" install_ffmpeg
+    else
+        install_step FFmpeg "$MH2_DEPS/ffmpeg" "$ff_prebuilt_id" install_ffmpeg "$ff_build_id"
+    fi
 
     # --- paraLLEl-GS source (GS renderer), pinned commit + needed submodules --
     # Shared by both platforms: tools/deps/src/parallel-gs. The port's patches
@@ -255,10 +358,16 @@ if [ "$NO_NATIVE" = 0 ]; then
 fi
 
 
+
 # --- Verify -------------------------------------------------------------------
 echo
 check_args=()
 if [ "$NO_NATIVE" = 1 ]; then check_args+=(--skip-native); fi
 python "$TOOLS/check_env.py" "${check_args[@]}"
+echo "$(stamp_hash) $SCOPE" >"$STAMP"
 echo
-echo "Setup complete. In each new shell, run:  source tools/env.sh"
+if [ -f "$TOOLS/build.sh" ]; then
+    echo "Setup complete. tools/build.sh builds with no further step; for the tools in your own shell: source tools/env.sh"
+else
+    echo "Setup complete. In each new shell, run:  source tools/env.sh"
+fi

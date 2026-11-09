@@ -42,7 +42,7 @@ void DIntr(void)
     KThread_SetEie(0);
 }
 
-/* EIntr, the game's own call (polls.txt's `deliver`): interrupts on, and a delivery point when the context's
+/* EIntr, the game's own call (the polled-wait table's `deliver`): interrupts on, and a delivery point when the context's
  * interrupts are then on (the specification, 4.1 d). The library's own uses of it below set the bit without
  * delivering (6.3). The PS2's returns the enable's old bit; sif.h declares it void. */
 void EIntr(void)
@@ -218,7 +218,7 @@ s32 WaitSema(s32 sema)
 
 /* ---------------------------------------------------------------- timers */
 
-/* DelayThread (port-libraries.md, "DelayThread and its alarm's callback"): 0x80008008 at once with interrupts
+/* DelayThread: 0x80008008 at once with interrupts
  * off; else a semaphore (initial 0, maximum 1, the option word 0x1BE5D8; 0x80008003 if none), an alarm of
  * usec in bus clocks whose callback signals it (its error, with the semaphore deleted, if the module has no
  * free alarm), the wait, the semaphore deleted, 0. */
@@ -256,14 +256,13 @@ s32 DelayThread(s32 usec)
     return DelayThreadWork(usec);
 }
 
-/* The alarm module's system time in bus clocks (port-libraries.md, "The timer and alarm module's stateful
- * part"): ((Timer 2's overflows << 16) | its count) << its clock's shift, with interrupts off. */
+/* The alarm module's system time in bus clocks: ((Timer 2's overflows << 16) | its count) << its clock's shift, with interrupts off. */
 s64 GetTimerSystemTime(void)
 {
     return (s64)(KAlarm_SystemTime());
 }
 
-/* The bus clocks as seconds and microseconds (port-libraries.md, "TimerBusClock2USec"): the microseconds
+/* The bus clocks as seconds and microseconds: the microseconds
  * from the clocks less the seconds' low word times the rate, in 64 bits wrapping. */
 void TimerBusClock2USec(s64 clocks, u32 *sec, u32 *usec)
 {

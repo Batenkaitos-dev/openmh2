@@ -1,8 +1,0 @@
-key Return
-key Down
-key Return
-pick empty_folder
-waitdone
-shot failure
-key Return
-end

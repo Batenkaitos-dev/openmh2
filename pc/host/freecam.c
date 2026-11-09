@@ -72,8 +72,6 @@ static struct {
     char title[100];
     int auto_hold;               /* the core says the last draw was not a field scene's: the game has its input back, the pose waits */
     uint32_t on_seq;             /* the block's sequence that turned the freecam on: the core's answers count from it */
-    int settled;                 /* the core has answered for a draw with that pose... */
-    uint32_t settle_vb;          /* ...and this is the VBlank it first did (see poll_status) */
     int game_pad;                /* freecam_game_input = pad */
     uint32_t seq;                /* the block's sequence (the host's) */
     int published;               /* the block holds this pose */
@@ -241,6 +239,11 @@ int freecam_active(void)
     return fc.on;
 }
 
+int freecam_paused(void)
+{
+    return fc.on && fc.paused;
+}
+
 int freecam_controls(void)
 {
     return controlling();
@@ -254,7 +257,7 @@ int freecam_game_pad(void)
 
 static const char *why_text(uint32_t why)
 {
-    return why == 1 ? "not in a field scene" : why == 2 ? "a movie is open" : why == 3 ? "a memory card request is running" : "";
+    return why == 1 ? "not in the village or a hunt" : why == 2 ? "a movie is playing" : why == 3 ? "the memory card is in use" : "";
 }
 
 /* The pause's words for the title and the line: PAUSED (with the steps taken), or what a pause that waits waits for. */
@@ -266,11 +269,11 @@ static void pause_text(char *out, size_t cap)
     if (fc.fz_state == 2) {
         uint32_t n = fc.fz_taken - fc.fz_base;
         if (n)
-            snprintf(out, cap, " (PAUSED, %u step%s)", (unsigned)n, n == 1 ? "" : "s");
+            snprintf(out, cap, " (PAUSED, %u frame%s)", (unsigned)n, n == 1 ? "" : "s");
         else
             snprintf(out, cap, " (PAUSED)");
     } else if (fc.fz_state == 1 && fc.fz_why) {
-        snprintf(out, cap, " (PAUSE WAITS: %s)", why_text(fc.fz_why));
+        snprintf(out, cap, " (PAUSE WAITING: %s)", why_text(fc.fz_why));
     } else {
         snprintf(out, cap, " (PAUSING)");
     }
@@ -316,6 +319,7 @@ static void mouse_mode(void)
 
 static void turn_on(void)
 {
+    pace_release();   /* the plain pause ends: the camera has its own, and needs the game running */
     float eye[3], at[3], fov;
     fc.started = 1;
     fc.base = setting_speed();
@@ -335,7 +339,6 @@ static void turn_on(void)
     host_log("freecam: on (%s; game input: %s)", freecam_key_text("freecam_key"), fc.game_pad ? "the pad" : "neutral");
     publish();
     fc.on_seq = fc.seq;
-    fc.settled = 0;
     show_state();
     mouse_mode();
 }
@@ -382,12 +385,12 @@ static void toggle_pause(void)
     show_state();
 }
 
-/* H: the HUD's stages are left out of the draw (the core's gate; the fades stay). Held back for now: after a hidden
- * frame, parts of the HUD (the map, the item box, a gauge) stay out of every later picture on the GPU, though the
- * game's state is unchanged, so the key hides nothing until the cause is found and fixed. */
+/* H: the HUD's stages are left out of the draw (the core's gate; the fades stay). */
 static void toggle_hide(void)
 {
-    say("freecam: hiding the HUD is not ready yet");
+    fc.hide = !fc.hide;
+    publish();
+    say(fc.hide ? "freecam: HUD hidden" : "freecam: HUD shown");
     show_state();
 }
 
@@ -414,11 +417,11 @@ static void photo_key(void)
 {
     char dir[1300];
     if (fc.photo) {
-        say("photo: the last one is not done");
+        say("photo: the last photo is not done yet");
         return;
     }
     if (!pictures_dir(dir, sizeof dir)) {
-        say("photo: no folder for pictures (this is an automated run: name one with pictures = FOLDER)");
+        say("photo: no photos folder (this is an automated run: name one with pictures = FOLDER)");
         return;
     }
     if (!SDL_CreateDirectory(dir)) {
@@ -461,7 +464,7 @@ static void photo_poll(int have, uint32_t echo, uint32_t vb)
             fc.photo_t0 = SDL_GetTicks();
         } else {
             fc.photo = 0;
-            say("photo: no picture (no renderer)");
+            say("photo: no photo (graphics are off)");
         }
     } else if (fc.photo == 1 && SDL_GetTicks() - fc.photo_t0 > 3000) {
         fc.photo = 0;
@@ -479,7 +482,7 @@ static void photo_poll(int have, uint32_t echo, uint32_t vb)
         say(m);
     } else if (fc.photo == 2 && SDL_GetTicks() - fc.photo_t0 > 5000) {
         fc.photo = 0;
-        say("photo: no picture came");
+        say("photo: no photo was made");
     }
 }
 
@@ -487,16 +490,16 @@ static void photo_poll(int have, uint32_t echo, uint32_t vb)
 static void step_once(void)
 {
     if (!fc.paused) {
-        say("step: pause first (Space)");
+        say("frame advance: pause first (Space)");
         return;
     }
     if (fc.fz_state != 2) {
         if (fc.fz_state == 1 && fc.fz_why) {
             char m[100];
-            snprintf(m, sizeof m, "step: the pause waits (%s)", why_text(fc.fz_why));
+            snprintf(m, sizeof m, "frame advance: the pause is waiting (%s)", why_text(fc.fz_why));
             say(m);
         } else {
-            say("step: the pause has not begun yet");
+            say("frame advance: the pause has not begun yet");
         }
         return;
     }
@@ -585,6 +588,11 @@ typedef struct FcStep {
 static FcStep sStep[4096];
 static int sNStep, sScripted;
 static float sStick[4];          /* a script's sticks: lx, ly, rx, ry, -1 to 1 (0 when none is held) */
+/* The looks the script has made and the core has not yet drawn with: the development tree's pose check needs the VBlank of the first draw
+ * that has each (the picture shows a draw some VBlanks later), because the core runs ahead of the renderer by the ring's fill, and a
+ * loaded machine makes that many frames. */
+static struct { uint64_t start; uint32_t seq; } sLook[8];
+static int sNLook;
 
 /* The script's keys name SDL's scancodes with the spaces left out: W, D, LSHIFT, LCTRL, TAB, SPACE, F9, ... */
 static SDL_Scancode script_key(const char *name)
@@ -715,7 +723,16 @@ static void script_run(void)
     memset(sStick, 0, sizeof(sStick));
     for (int i = 0; i < sNStep; i++) {
         FcStep *s = &sStep[i];
-        if (v < s->start)
+        uint64_t at = v;
+        if (s->what == 'L') {   /* a look is timed by the game's frames: the core's last draw, which is ahead of the renderer by the ring's fill
+                                 * (4 to 7 VBlanks quiet, 17 or more on a loaded machine), so a look lands the same number of frames on whatever
+                                 * the load; the renderer's VBlank only before the core has said anything */
+            int act = 0;
+            uint32_t echo = 0, cvb = 0, z[3];
+            if (core_status(&act, &echo, &cvb, z) && cvb + 1 > at)
+                at = (uint64_t)cvb + 1;
+        }
+        if (at < s->start)
             continue;
         if (s->what == 'S' && v < s->start + s->frames) {
             sStick[0] = s->a;
@@ -765,12 +782,39 @@ static void script_run(void)
             e.motion.xrel = s->a;
             e.motion.yrel = s->b;
             freecam_event(&e);
+            host_log("freecam: script: FCLOOK@%llu applied at VBlank %llu (the renderer's %llu)", (unsigned long long)s->start,
+                     (unsigned long long)at, (unsigned long long)v);
+            if (sNLook < 8) {
+                sLook[sNLook].start = s->start;
+                sLook[sNLook++].seq = 0;
+            }
             break;
         case 'W':
             e.type = SDL_EVENT_MOUSE_WHEEL;
             e.wheel.y = s->a;
             freecam_event(&e);
             break;
+        }
+    }
+}
+
+/* The block was published (publish): the looks made since the last publish are in it. */
+static void script_looks_published(uint32_t seq)
+{
+    for (int i = 0; i < sNLook; i++)
+        if (!sLook[i].seq)
+            sLook[i].seq = seq;
+}
+
+/* The core has drawn with the block of sequence ECHO by its VBlank VB: the looks in it are drawn. */
+static void script_looks_drawn(int have, uint32_t echo, uint32_t vb)
+{
+    for (int i = 0; have && i < sNLook;) {
+        if (sLook[i].seq && (int32_t)(echo - sLook[i].seq) >= 0) {
+            host_log("freecam: script: FCLOOK@%llu first drawn by the core at VBlank %u", (unsigned long long)sLook[i].start, vb);
+            sLook[i] = sLook[--sNLook];
+        } else {
+            i++;
         }
     }
 }
@@ -914,7 +958,7 @@ static void test_env(void)
         if (!at)
             continue;
         *at = 0;
-        if (freecam_script_cmd(tok, at + 1) != 0)
+        if ((!SDL_strncasecmp(tok, "PZ", 2) ? pace_script_cmd(tok, at + 1) : freecam_script_cmd(tok, at + 1)) != 0)   /* (pace.c's PZPAUSE, PZFF too) */
             host_log("MH2_FREECAM_TEST: cannot read \"%s@%s\"", tok, at + 1);
     }
 }
@@ -924,7 +968,7 @@ static void test_env(void)
 
 static int pad_toggle_on(void)
 {
-    return !g_cfg.freecam_pad || SDL_strcasecmp(g_cfg.freecam_pad, "off");
+    return g_cfg.freecam_pad && !SDL_strcasecmp(g_cfg.freecam_pad, "on");
 }
 
 /* The time of the stick presses: the host's clock, or in a script the game's (the VBlanks seen). */
@@ -938,7 +982,7 @@ static uint64_t pad_now(void)
 }
 
 /* Called by input.c on the buttons of the game's pad 0, before anything else touches them (a script of the pad is later). Both stick
- * buttons of the gamepad down together turn the freecam on or off (the setting freecam_pad_toggle, on by default). The game
+ * buttons of the gamepad down together turn the freecam on or off (the setting freecam_pad_toggle, off by default: the game is then given its pad as it is). The game
  * never sees the combination: a stick button is kept from it while the other may still join (60 ms from its press), and, once both
  * were down, until both are up. So when the two are not pressed at the same frame the game sees nothing of the first for those
  * 60 ms; a press the other does not join in that time reaches the game late, and one shorter than that not at all. A session
@@ -1021,25 +1065,21 @@ static void poll_status(void)
         fc.fz_state = z[0];
         fc.fz_why = z[1];
         fc.fz_taken = z[2];
-        audio_set_muted(z[0] == 2);   /* the sound fades out while the game is frozen and back in on the resume */
+        audio_mute_by(AUDIO_MUTE_FREEZE, z[0] == 2);   /* the sound fades out while the game is frozen and back in on the resume */
         show_state();
     }
     photo_poll(have, echo, vb);
+#if !defined(MH2_RELEASE) || defined(MH2_FREECAM_TEST)
+    script_looks_drawn(have, echo, vb);
+#endif
     if (!fc.on) {
         fc.auto_hold = 0;
         return;
     }
     if (!have || (int32_t)(echo - fc.on_seq) < 0)
         return;   /* nothing yet from a draw made with this pose */
-    /* The core names the pose in force since its last poll, but a game frame spans two VBlanks or more, so a poll may name this pose
-     * with no draw made since: the "not a field scene" of a draw from before the pose. A "no" is believed once four VBlanks have
-     * passed with the pose in force (a draw has come by then); a "yes" at once. */
-    if (!fc.settled) {
-        fc.settled = 1;
-        fc.settle_vb = vb;
-    }
-    if (!active && (uint32_t)(vb - fc.settle_vb) < 4)
-        return;
+    /* The core answers for a draw made with the pose (a field scene's, or two game steps with none: pc/core/ipc/ipc_glue.c), so the
+     * answer is believed as it comes. */
     if ((active == 0) != (fc.auto_hold != 0)) {
         fc.auto_hold = !active;
         host_log("freecam: VBlank %llu: %s", (unsigned long long)gs_last_vblank(), fc.auto_hold ? "the game is not in a field scene: its input is back, the pose waits"
@@ -1089,6 +1129,9 @@ void freecam_update(void)
         move(dt);
         if (memcmp(before, &fc.eye[0], 12) || before[3] != fc.yaw || before[4] != fc.pitch || before[5] != fc.fov || notches != fc.notches) {
             publish();
+#if !defined(MH2_RELEASE) || defined(MH2_FREECAM_TEST)
+            script_looks_published(fc.seq);
+#endif
             if (notches != fc.notches || before[5] != fc.fov)
                 show_state();
         }

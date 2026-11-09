@@ -5,7 +5,7 @@
  * _U 01 (upper case), _L 02 (lower case), _N 04 (digit), _S 010 (space), _P 020 (punctuation),
  * _C 040 (control), _X 0100 (hex digit) and _B 0200 (the blank, which newlib marks on the space
  * only); the bytes 128..255 are in no class. It has the 257 entries of the symbol's data. The
- * bytes were then checked against the original's RAM (tools/pc/ps2fp/tests/check_ctype.py: a
+ * bytes were then checked against the original's RAM (the ps2fp tests' ctype check: a
  * verification, not a source). */
 #define CU 0x01
 #define CL 0x02

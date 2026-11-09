@@ -81,6 +81,7 @@ s32 Prim_SendPacket(u32 *packet)
     packet[2] = VIF_FLUSHA;
     packet[3] = (qwc - 1) | VIF_DIRECTHL;
     Mem_CopyQwords(packet, queued, qwc);
+    PC_HUD_QUEUED(queued);
     DmaQueue_AddChain(0, ((u32)queued & 0x0FFFFFFF) | DMA_TAG_REFS, queued, &gDmaQueue);
     return 1;
 }

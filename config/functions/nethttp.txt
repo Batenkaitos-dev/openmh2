@@ -1,4 +1,4 @@
-// Function starts of nethttp, pinned for splat (tools/pin_functions.py).
+// Function starts of nethttp, pinned for splat (the matching build's pin_functions tool).
 // 1517 unnamed functions; named ones are in the module's symbol files (config/symbols/, its YAML's list).
 func_008FAE40 = 0x008FAE40; // type:func
 func_008FAFC0 = 0x008FAFC0; // type:func

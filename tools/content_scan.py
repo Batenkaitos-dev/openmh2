@@ -42,7 +42,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 EXCEPTIONS = ROOT / "config" / "content_exceptions.txt"
 # the files the repository publishes besides src/ and include/: checked for non-ASCII text
-PUBLISHED = ["config", "tools", "CONTRIBUTING.md", "README.md", "docs/mwcc-matching.md"]
+PUBLISHED = ["config", "tools", "CONTRIBUTING.md", "README.md", "docs/guide.md"]
 
 TOKEN = re.compile(r"""
     (?P<comment>/\*.*?\*/|//[^\n]*)

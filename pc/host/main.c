@@ -30,6 +30,7 @@
 #include "launcher_text.h"
 #include "mh2host.h"
 #include "settings.h"
+#include "textpack.h"
 
 HostConfig g_cfg;
 Mh2IpcMap g_map;
@@ -57,22 +58,23 @@ void host_log(const char *fmt, ...)
 typedef struct Opt {
     const char *opt, *arg;
     int text;
+    int advanced;   /* listed under "Advanced" in --help: for tests and automation */
 } Opt;
 
 static const Opt g_other[] = {
-    {"--config", "FILE.ini", T_O_CONFIG},
-    {"--set", "KEY=VALUE", T_O_SET},
-    {"--core", "PATH", T_O_CORE},
-    {"--no-window", NULL, T_O_NOWINDOW},
-    {"--gs-off", NULL, T_O_GSOFF},
-    {"--fast", NULL, T_O_FAST},
-    {"--no-card", NULL, T_O_NOCARD},
-    {"--quit-after", "N", T_O_QUITAFTER},
-    {"--import-card", "FILE", T_O_IMPORTCARD},
-    {"--log-file", "FILE", T_O_LOGFILE},
-    {"--launcher", NULL, T_O_LAUNCHER},
-    {"--no-launcher", NULL, T_O_NOLAUNCHER},
-    {"--help", NULL, T_O_HELP},
+    {"--config", "FILE.ini", T_O_CONFIG, 0},
+    {"--set", "KEY=VALUE", T_O_SET, 0},
+    {"--core", "PATH", T_O_CORE, 0},
+    {"--no-window", NULL, T_O_NOWINDOW, 1},
+    {"--gs-off", NULL, T_O_GSOFF, 1},
+    {"--fast", NULL, T_O_FAST, 1},
+    {"--no-card", NULL, T_O_NOCARD, 1},
+    {"--quit-after", "N", T_O_QUITAFTER, 1},
+    {"--import-card", "FILE", T_O_IMPORTCARD, 0},
+    {"--log-file", "FILE", T_O_LOGFILE, 0},
+    {"--launcher", NULL, T_O_LAUNCHER, 0},
+    {"--no-launcher", NULL, T_O_NOLAUNCHER, 0},
+    {"--help", NULL, T_O_HELP, 0},
 };
 
 static void usage(void)
@@ -89,12 +91,19 @@ static void usage(void)
 static void help(void)
 {
     printf("usage: mh2 [options] [-- CORE ARGS...]\n\nOptions that are not settings:\n");
-    for (size_t k = 0; k < sizeof(g_other) / sizeof(g_other[0]); k++) {
-        char left[80];
-        snprintf(left, sizeof(left), "%s%s%s", g_other[k].opt, g_other[k].arg ? " " : "", g_other[k].arg ? g_other[k].arg : "");
-        printf("  %-26s %s\n", left, TX(g_other[k].text));
+    for (int advanced = 0; advanced < 2; advanced++) {
+        if (advanced)
+            printf("\nAdvanced options, for tests and automation:\n");
+        for (size_t k = 0; k < sizeof(g_other) / sizeof(g_other[0]); k++) {
+            if (g_other[k].advanced != advanced)
+                continue;
+            char left[80];
+            snprintf(left, sizeof(left), "%s%s%s", g_other[k].opt, g_other[k].arg ? " " : "", g_other[k].arg ? g_other[k].arg : "");
+            printf("  %-26s %s\n", left, TX(g_other[k].text));
+        }
+        if (!advanced)
+            printf("  %-26s %s\n", "-- CORE ARGS...", TX(T_O_REST));
     }
-    printf("  %-26s %s\n", "-- CORE ARGS...", TX(T_O_REST));
     printf("\nSettings (an option here, or a line key = value in mh2.ini; the option wins):\n");
     settings_help(stdout);
     exit(0);
@@ -106,7 +115,7 @@ static int g_nignored;
 
 
 /* The options that make a run automated (the guard, below): the tests' options. The player's are
- * --config, --set, --fullscreen, --mute, --vsync and --import-card (pc/host/PLAYING.md). */
+ * --config, --set, --fullscreen, --mute, --vsync and --import-card. */
 static const char *const g_auto_opts[] = {"--archive",  "--core",     "--no-window", "--gs-off",    "--fast",
                                           "--no-card",  "--quit-after", "--memcard1", "--memcard2", "--log-file"};
 
@@ -185,10 +194,21 @@ static void fatal_box(const char *msg)
         return;
     char text[2400];
     const char *log = play_log_path();
-    snprintf(text, sizeof(text), "%s\n\nThe details are at the end of the log%s%s. Please send it with the session's files.",
+    snprintf(text, sizeof(text), "%s\n\nThe details are at the end of the log%s%s. If you report this problem, please include the log (see section 8 of the guide).",
              msg, log ? ", " : "", log ? log : "");
     present_leave_fullscreen();
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "OpenMH2", text, NULL);
+}
+
+/* The core refused to run with what it was given, or the check before it said so: a message for the player, not a fault.
+ * Logged always; the box only for a player (as fatal_box). */
+static void refusal_box(const char *msg)
+{
+    host_log("%s", msg);
+    if (g_cfg.no_window || g_cfg.quit_after)
+        return;
+    present_leave_fullscreen();
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_WARNING, "OpenMH2", msg, NULL);
 }
 
 static void request_quit(void)
@@ -247,14 +267,14 @@ int main(int argc, char **argv)
     }
     settings_log();
     if (strcmp(settings_enhancements(), "off"))
-        host_log("enhancements: %s%s (the picture only; the game is the same)", settings_enhancements(),
+        host_log("enhancements: %s%s (graphics only; the game plays the same)", settings_enhancements(),
                  g_cfg.gs_off ? "; no graphics, so nothing to draw" : "");
     if (g_cfg.texture_dump || g_cfg.texture_packs)
-        host_log("textures: dump %s, packs %s%s%s%s (the picture only; the game is the same)", g_cfg.texture_dump ? "on" : "off",
+        host_log("textures: dump %s, packs %s%s%s%s (graphics only; the game plays the same)", g_cfg.texture_dump ? "on" : "off",
                  g_cfg.texture_packs ? "on" : "off", g_cfg.textures ? ", folder " : "", g_cfg.textures ? g_cfg.textures : "",
                  g_cfg.gs_off ? "; no graphics, so nothing to write or draw" : "");
     if (g_cfg.usb_keyboard)
-        host_log("USB keyboard: connected (%s switches between typing and the pad's keyboard keys; it starts on the pad)",
+        host_log("keyboard typing: connected (%s switches between typing and the controller keys; it starts on the controller)",
                  kbd_toggle_name());
     for (int i = 0; i < g_nignored; i++)
         host_log("%s: ignored", g_ignored[i]);
@@ -264,11 +284,21 @@ int main(int argc, char **argv)
     if (!g_cfg.core_path)
         g_cfg.core_path = process_default_core();
     if (launcher_disc() != 0) {
-        fatal_box("No disc archive was found. Put mh2-disc.arc next to mh2 or in the user data folder, "
-                  "or name it with --archive FILE or archive = FILE in mh2.ini.");
+        fatal_box("The game archive was not found. Put mh2-disc.arc next to mh2 or in the user data folder, "
+                  "or name it with --archive FILE or archive = FILE in mh2.ini. The launcher can make it from your copy of the game.");
         return 1;
     }
     launcher_widescreen();       /* the core's --widescreen when the setting is on (settings.c) */
+    launcher_offline_hub();      /* the core's --offline-hub when the setting is on (settings.c) */
+    launcher_text_pack();        /* the core's --pack when the setting names a text pack (settings.c) */
+    {   /* the chosen pack is looked at before the game starts, and what is wrong with it is said */
+        const char *pack = core_args_pack(g_cfg.core_args, g_cfg.core_nargs);
+        char why[1600];
+        if (pack && textpack_check(pack, why, sizeof(why)) != 0) {
+            refusal_box(why);
+            return MH2IPC_EXIT_REFUSED;
+        }
+    }
     if (!g_cfg.no_card)   /* mh2's own cards (cards.c) */
         cards_choose(play, g_cfg.card[0], g_cfg.card[1], g_cfg.old_card[0], g_cfg.old_card[1], g_cfg.cards_dir);
     local_date();
@@ -291,6 +321,7 @@ int main(int argc, char **argv)
     }
     if (!g_cfg.no_window && present_init() != 0)
         return 1;
+    host_realtime_thread();   /* the main thread shows the pictures of the timed presenter */
     unsigned int hf = 0;
     int gs = gs_init();
     if (gs == -2)
@@ -303,6 +334,8 @@ int main(int argc, char **argv)
         hf |= MH2IPC_HOST_MOVIE;
     if (!g_cfg.no_window && !g_cfg.fast)
         hf |= MH2IPC_HOST_PACE;   /* real-time play (the original game: paced unless --fast or headless) */
+    if (g_cfg.fast_loading)
+        hf |= MH2IPC_HOST_FASTLOAD;   /* no wait for real time while the loading screen is open (pace.c) */
     if (g_cfg.usb_keyboard) {
         hf |= MH2IPC_HOST_USB_KEYBOARD;   /* before the core starts, and unchanged for the session */
         kbd_start(&g_ipc->keys);
@@ -321,7 +354,7 @@ int main(int argc, char **argv)
     }
     if (process_start(g_cfg.core_path, g_cfg.core_args, g_cfg.core_nargs) != 0) {
         char msg[1200];
-        snprintf(msg, sizeof(msg), "mh2-core could not be started (%s)", g_cfg.core_path);
+        snprintf(msg, sizeof(msg), "The game could not be started (%s). mh2-core is missing or damaged. See section 8 of the guide.", g_cfg.core_path);
         fatal_box(msg);
         return 1;
     }
@@ -330,17 +363,22 @@ int main(int argc, char **argv)
     uint64_t quit_at = 0;
     while (running) {
         SDL_Event e;
-        if (SDL_WaitEventTimeout(&e, 4)) {
+        if (SDL_WaitEventTimeout(&e, present_wait_ms())) {
             do {
                 int taken = 1;   /* the window's own keys (below) never reach the game's keyboard */
                 if (e.type == SDL_EVENT_QUIT)
                     request_quit();
+                else if (e.type == SDL_EVENT_WINDOW_EXPOSED || e.type == SDL_EVENT_WINDOW_RESIZED ||
+                         e.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED || e.type == SDL_EVENT_WINDOW_RESTORED)
+                    present_dirty();   /* a paused game sends no picture: the window is drawn again with the one it has */
                 else if (e.type == g_present_event)
                     ;   /* drawn below */
                 else if (states_key(&e))
                     ;   /* the save states' keys (states.c) */
                 else if (freecam_key(&e))
                     ;   /* the freecam's keys (freecam.c) */
+                else if (pace_key(&e))
+                    ;   /* the pause and the step, with the camera off (pace.c) */
                 else if (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat &&
                          (e.key.scancode == SDL_SCANCODE_F11 ||
                           (e.key.scancode == SDL_SCANCODE_RETURN && (e.key.mod & SDL_KMOD_ALT))))
@@ -357,6 +395,7 @@ int main(int argc, char **argv)
         input_update();
         states_update();
         freecam_update();
+        pace_update();
         if (!g_cfg.no_window)
             present_draw();
         /* a core that doesn't end within 5 s of the request is stopped */
@@ -376,15 +415,19 @@ int main(int argc, char **argv)
     if (state == MH2IPC_STATE_FATAL) {
         g_ipc->fatal_message[sizeof(g_ipc->fatal_message) - 1] = 0;
         char msg[600];
-        snprintf(msg, sizeof(msg), "mh2-core stopped: %s", g_ipc->fatal_message);
-        fatal_box(msg);
-        if (!code)
-            code = 1;   /* the core's fatal end is an error, whatever its status */
+        if (code == MH2IPC_EXIT_REFUSED) {   /* the core would not run with what it was given: its message, as it is */
+            refusal_box(g_ipc->fatal_message);
+        } else {
+            snprintf(msg, sizeof(msg), "mh2-core stopped: %s", g_ipc->fatal_message);
+            fatal_box(msg);
+            if (!code)
+                code = 1;   /* the core's fatal end is an error, whatever its status */
+        }
     } else if (state == MH2IPC_STATE_EXITED) {
         host_log("mh2-core ended (%d) after %llu VSyncs", code, (unsigned long long)gs_vsyncs());
     } else {
         char msg[200];
-        snprintf(msg, sizeof(msg), "mh2-core stopped unexpectedly (exit status %d)", code);
+        snprintf(msg, sizeof(msg), "The game stopped unexpectedly (exit status %d).", code);
         fatal_box(msg);
         if (!code)
             code = 1;

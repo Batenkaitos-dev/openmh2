@@ -1,7 +1,6 @@
 /* The IOP's side of libdbc and libpad2 (Dbc_Manager with the DualShock 2
  * driver), the services 0x80001300, 0x8000131C, 0x8000131E and 0x8000131F, as
- * the original's HLE answers them (iop_pad.c: its comment has the
- * protocol), and the pads' state at each VBlank. */
+ * the original's HLE answers them (the same protocol), and the pads' state at each VBlank. */
 #include "io/io.h"
 #include "io/io_kernel.h"
 #include "io/io_pad.h"

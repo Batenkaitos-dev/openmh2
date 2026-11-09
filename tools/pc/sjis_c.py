@@ -4,7 +4,7 @@
     python3 tools/pc/sjis_c.py IN.c OUT.c
 
 The matching build converts a source to Shift-JIS before MWCC reads it
-(tools/mwcc_cc.py), so a string literal's bytes are the game's. clang 18
+(the matching build's compiler wrapper), so a string literal's bytes are the game's. clang 18
 reads UTF-8 and has no execution-charset switch for Shift-JIS, and a raw
 Shift-JIS byte pair whose second byte is 0x5C would read as an escape. So
 every non-ASCII character becomes its Shift-JIS bytes as octal escapes (three

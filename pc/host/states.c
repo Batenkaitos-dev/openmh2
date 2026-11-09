@@ -161,7 +161,7 @@ static void request(int kind, int slot)
         return;
     }
     if (st.flight) {
-        say("wait: the last %s is not done", st.flight == MH2IPC_ST_SAVE ? "save" : "load");
+        say("wait: the last %s is not done yet", st.flight == MH2IPC_ST_SAVE ? "save" : "load");
         return;
     }
     if (movie_active()) {
@@ -193,6 +193,7 @@ static void request(int kind, int slot)
     st.flight = kind;
     st.flight_slot = slot;
     mh2ipc_store(&s->req_seq, ++st.seq);   /* last: the core takes it at its next VBlank */
+    pace_nudge();   /* a pause holds the VBlanks: let one through for it */
 }
 
 void states_action(int what, int arg)
@@ -292,11 +293,13 @@ void states_update(void)
             SDL_RemovePath(st.tmp);
             say("not saved to slot %d: %s", slot, SDL_GetError());
         } else {
-            say("saved to slot %d (VBlank %llu)", slot, vb);
+            say("saved to slot %d", slot);
+            host_log("save state: slot %d was saved at VBlank %llu (display refreshes, not game frames)", slot, vb);
         }
     } else if (refused) {
         say("slot %d not loaded: %s", slot, msg);
     } else {
-        say("loaded slot %d (VBlank %llu)", slot, vb);
+        say("loaded slot %d", slot);
+        host_log("save state: slot %d was loaded at VBlank %llu (display refreshes, not game frames)", slot, vb);
     }
 }

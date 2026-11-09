@@ -1,5 +1,5 @@
 /*
- * The input (from the original's platform_sdl.c): one DualShock
+ * The input (from the original's platform layer): one DualShock
  * 2 on port 0, from the first SDL gamepad (by button position: south =
  * Cross, east = Circle, west = Square, north = Triangle; the analog
  * triggers are L2 and R2) and from the keyboard (PCSX2's default layout:
@@ -245,6 +245,7 @@ void input_update(void)
      * its own (freecam.c) */
     read_pad(&pads[0], kbd_typing() || freecam_controls() ? NULL : k);
     freecam_pad_filter(&pads[0].buttons);   /* L3 and R3 together are the freecam's, not the game's */
+    camstick_apply(&pads[0]);
     if (freecam_controls() && !freecam_game_pad()) {   /* the freecam has control and the game's input is neutral */
         memset(&pads[0], 0, sizeof(pads[0]));
         pads[0].connected = 1;

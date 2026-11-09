@@ -8,6 +8,7 @@
  *                 here. Without it, the fixed date in JST (kern.h)
  *                 is used, the same on every run.
  *   --widescreen  the camera's aspect 16:9 (pal_camera.c)
+ *   --offline-hub the village's gate leads to the online town, offline (pal_hub.c)
  *   snd's (Libsd_Option: --audio cse)
  *   io's (Io_Init: --disc, --memcard1, --memcard2)
  * Before the game's main the boot executable's segment is loaded into the RAM
@@ -16,6 +17,8 @@
 #include "pal_core.h"
 
 #include "pal_camera.h"
+#include "pal_fpmodel.h"
+#include "pal_hub.h"
 #include "pal_freecam.h"
 #include "host.h"
 #include "kernel/kern_int.h"
@@ -75,8 +78,20 @@ int main(int argc, char **argv)
         if (Pal_WidescreenOption(argc, argv, i)) {   /* the camera's aspect */
             continue;
         }
+        {   /* the float model */
+            s32 took_fpu = Pal_FpuModelOption(argc, argv, i);
+            if (took_fpu > 0) {
+                i += took_fpu - 1;
+                continue;
+            }
+        }
+        if (Pal_OfflineHubOption(argc, argv, i)) {   /* the offline hub */
+            continue;
+        }
         { void Libsd_Option(int argc, char **argv, int i); Libsd_Option(argc, argv, i); }   /* --audio */
     }
     Pal_WidescreenStart();   /* the setting, once the options are read */
+    Pal_FpuModelStart();     /* the float model: a saved session's, else the option's */
+    Pal_OfflineHubStart();   /* the offline hub's, the same */
     Kern_Boot(frames, argc, argv);
 }

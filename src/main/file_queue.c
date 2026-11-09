@@ -298,7 +298,7 @@ void FileQueue_Flush(void)
 {
 #if PLATFORM_PC
     /* MWCC rotates the loop: the test, then the body and the test again with the branch back. The "not ready" of
-     * polls.txt is that taken branch, so the mark sits after the second test. */
+     * the polled-wait table is that taken branch, so the mark sits after the second test. */
     if (FileQueue_IsBusy()) {
         for (;;) {
             FileQueue_Update();

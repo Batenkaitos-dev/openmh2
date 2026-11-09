@@ -4,7 +4,7 @@
  * out within a priority; a thread released by a wait joins the tail of its
  * priority, a preempted one stays first. Each thread runs on a fiber of its
  * own (fiber.c); the idle loop has one too. The original game's
- * kernel.c is the same semantics written against guest registers.
+ * the original's kernel is the same semantics written against guest registers.
  */
 #include "kernel/kern_int.h"
 #include "pal_core.h"

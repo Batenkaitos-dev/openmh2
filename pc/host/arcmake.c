@@ -743,6 +743,8 @@ int arc_make(const ArcJob *job, ArcResult *r)
     dir_of(job->out, out_dir, sizeof(out_dir));
     FILE *out = NULL;
     uint8_t *zero = NULL;
+    char made[6][1400];   /* the folders this run makes, the deepest first: a run that fails takes them away again */
+    int nmade = 0;
     c.buf = malloc(CHUNK);
     if (!c.buf) {
         fail(r, AM_E_READ, NULL, NULL);
@@ -758,10 +760,27 @@ int arc_make(const ArcJob *job, ArcResult *r)
             goto done;
         }
     }
-    if (!SDL_CreateDirectory(out_dir)) {
-        fail(r, AM_E_WRITE, NULL, out_dir);
-        snprintf(r->detail, sizeof(r->detail), "%s", SDL_GetError());
-        goto done;
+    {
+        char up[1400];
+        snprintf(up, sizeof(up), "%s", out_dir);
+        SDL_PathInfo pi;
+        int n = 0;
+        while (n < 6 && up[0] && !SDL_GetPathInfo(up, &pi)) {   /* the folders that are not there yet */
+            char parent[1400];
+            snprintf(made[n++], sizeof(made[0]), "%s", up);
+            dir_of(up, parent, sizeof(parent));
+            if (strlen(parent) >= strlen(up))
+                break;
+            snprintf(up, sizeof(up), "%s", parent);
+        }
+        if (!SDL_CreateDirectory(out_dir)) {
+            fail(r, AM_E_WRITE, NULL, out_dir);
+            snprintf(r->detail, sizeof(r->detail), "%s", SDL_GetError());
+            for (int i = 0; i < n; i++)   /* (some of them may have been made before it failed) */
+                SDL_RemovePath(made[i]);
+            goto done;
+        }
+        nmade = n;
     }
     out = hfs_fopen(tmp, "wb");
     if (!out) {
@@ -829,8 +848,11 @@ int arc_make(const ArcJob *job, ArcResult *r)
 done:
     if (out)
         fclose(out);
-    if (r->code)
+    if (r->code) {
         hfs_remove(tmp);
+        for (int i = 0; i < nmade; i++)   /* a folder that holds something else stays (SDL removes only an empty one) */
+            SDL_RemovePath(made[i]);
+    }
     if (iso.f)
         fclose(iso.f);
     free(zero);

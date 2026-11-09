@@ -336,6 +336,66 @@ int main(void)
             FAIL("the schedule off: the mailbox's port 0 (not connected)");
         Ipc_Pace(0);
     }
+    {   /* the pacing (host_ipc.c): the pause lets a VBlank through for each grant, and an unpaced VBlank's samples are dropped */
+        unsigned int hf = H->host_flags;
+        short smp[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+        H->pace_flags = MH2IPC_PACE_HOLD;
+        H->pace_grant = 1;
+        Ipc_Pace(50);   /* a grant is waiting: it passes and is taken */
+        if (H->pace_taken != 1 || (H->pace_state & MH2IPC_PACE_HELD))
+            FAIL("the pause: a grant (taken %u state %u)", H->pace_taken, H->pace_state);
+        H->pace_grant = 4;
+        Ipc_Pace(51);
+        Ipc_Pace(52);
+        Ipc_Pace(53);
+        if (H->pace_taken != 4 || H->pace_vblank != 53)
+            FAIL("the pause: three grants, three VBlanks (taken %u at %u)", H->pace_taken, H->pace_vblank);
+        H->pace_flags = 0;   /* the resume: nothing granted is left over */
+        H->pace_grant = 9;
+        Ipc_Pace(54);
+        H->pace_flags = MH2IPC_PACE_HOLD;
+        H->pace_grant = 10;
+        Ipc_Pace(55);
+        if (H->pace_taken != 10)
+            FAIL("the pause after a resume: one grant, one VBlank (taken %u)", H->pace_taken);
+        H->pace_flags = 0;
+        unsigned int head = H->audio.head;
+        H->pace_flags = MH2IPC_PACE_FF;
+        Ipc_Pace(60);
+        Ipc_AudioWrite(smp, 4);
+        if (!(H->pace_state & MH2IPC_PACE_UNPACED) || H->audio.head != head)
+            FAIL("fast-forward: the VBlank is unpaced and its samples dropped (state %u)", H->pace_state);
+        H->pace_flags = 0;
+        Ipc_Pace(61);
+        Ipc_AudioWrite(smp, 4);
+        if ((H->pace_state & MH2IPC_PACE_UNPACED) || H->audio.head != head + 16)
+            FAIL("paced: the samples are written (state %u)", H->pace_state);
+        {
+            short drain[8];   /* (the later checks of the ring start from what it held) */
+            mh2ipc_stream_read(&H->audio, B, drain, 16);
+        }
+        head = H->audio.head;
+        Ipc_LoadingScreen(1);   /* fast loading is a setting: without it the loading screen changes nothing */
+        Ipc_Pace(62);
+        if ((H->pace_state & MH2IPC_PACE_UNPACED) || !(H->pace_state & MH2IPC_PACE_LOADING))
+            FAIL("the loading screen without the setting (state %u)", H->pace_state);
+        H->host_flags = hf | MH2IPC_HOST_FASTLOAD;
+        Ipc_Pace(63);
+        Ipc_AudioWrite(smp, 4);
+        if (!(H->pace_state & MH2IPC_PACE_UNPACED) || H->audio.head != head)
+            FAIL("fast loading: unpaced under the loading screen, samples dropped (state %u)", H->pace_state);
+        Ipc_PaceMovie(1);   /* a movie is never sped up */
+        Ipc_Pace(64);
+        if (H->pace_state & MH2IPC_PACE_UNPACED)
+            FAIL("fast loading: a movie is open");
+        Ipc_PaceMovie(0);
+        Ipc_LoadingScreen(0);
+        Ipc_Pace(65);
+        if (H->pace_state & (MH2IPC_PACE_UNPACED | MH2IPC_PACE_LOADING))
+            FAIL("the loading screen closed (state %u)", H->pace_state);
+        H->host_flags = hf;
+        Ipc_Pace(0);
+    }
     Ipc_SetRumble(1, 5, 300);
     if (H->rumble[1] != (1u | 255u << 8))
         FAIL("the motors");

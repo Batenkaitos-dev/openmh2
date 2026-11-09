@@ -56,6 +56,9 @@ typedef struct AdxStm AdxStm;
  * by name (ofs and nsct in sectors; nsct < 0: the whole file). NULL when no
  * stream is free or the file is not on the disc. */
 AdxStm *AdxStm_Open(const char *name, s32 ofs, s32 nsct);
+/* The same on a file of a pack (Io_DiscPackFind's answer: first sector and size in bytes): the open takes the same passes,
+ * and the file is not looked up. */
+AdxStm *AdxStm_OpenKnown(const char *name, u32 lba, u32 size, s32 ofs, s32 nsct);
 /* A stream with no file, for ADXT_Create (its stream: one lock pair, as the
  * original's create). Closed with AdxStm_Close. */
 AdxStm *AdxStm_Create(void);

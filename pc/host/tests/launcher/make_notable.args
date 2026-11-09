@@ -1,6 +1,0 @@
---set
-archive=@WORKDIR@/notable/mh2-disc.arc
---archive-table
-@FIX@/arc/table_movie.txt
---movie-lib
-@WORKDIR@/nolib

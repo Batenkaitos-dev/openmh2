@@ -17,7 +17,7 @@
  *  - The movies' step first at the VBlank's end (KERN_VB_END: ipc_movie.c's
  *    Movie_VBlankEnd), headless too.
  *
- * The pads as the original game has them (platform_sdl.c,
+ * The pads as the original game has them (the original's
  * platform_read_pad): port 0 is always connected (headless, or before the
  * host has written its first state: no buttons, the sticks centred, no
  * pressures); port 1 is never connected, so it is not handed over.
@@ -34,6 +34,7 @@
  * Platform-layer code (the game's flags): it touches no game memory.
  */
 #include "common.h"
+#include <string.h>
 #include "io/io.h"
 #include "io/io_pad.h"
 #include "ipc/core_ipc.h"
@@ -92,8 +93,31 @@ static s32 KeyboardWanted(void)
 /* ipc_movie.c: the movie's step, first at each VBlank's end (KERN_VB_END). */
 void Movie_VBlankEnd(u64 vblank);
 
+/* The game's loading screen opens and closes (Loading_Open, Loading_Close: PC_LOADING_SCREEN in include/pal.h): fast loading's signal. */
+void Pal_LoadingScreen(s32 on)
+{
+    Ipc_LoadingScreen(on);
+}
+
+/* The camera of Model_Draw (PC_GS_CAMERA in include/pal.h): the host's renderer gets it when it changes. */
+void Pal_GsCamera(const f32 *view, const f32 *proj)
+{
+    static float last[32];
+    static int have;
+    float m[32];
+    memcpy(m, view, 16 * sizeof(float));
+    memcpy(m + 16, proj, 16 * sizeof(float));
+    if (have && !memcmp(last, m, sizeof(m)))
+        return;
+    memcpy(last, m, sizeof(m));
+    have = 1;
+    Ipc_GsCamera(m);
+}
+
 static void VblankPace(u64 n)
 {
+    Ipc_PaceBias(Pal_FreezeBias());
+    Ipc_PaceMovie(Kern_StateBlocked());   /* a movie is open: it is never sped up */
     Ipc_Pace(n);
 }
 
@@ -113,6 +137,20 @@ static unsigned int sInForce KERN_HOSTBSS;   /* the sequence of the host's pose 
 static unsigned int sOff KERN_HOSTBSS;
 static int sRebase KERN_HOSTBSS;
 
+/* What the host is told of the draws: the pose in force, and whether the last draw was a field scene's with the freecam's view in it.
+ * A game frame spans two VBlanks or more, so the poll that follows the freecam's turning on may come before any draw made with its
+ * pose, and the last draw's answer (a menu's, from before) would be taken for the pose's. Until the first draw with the pose the host
+ * is told nothing new (its sequence is behind the one it waits for): a field draw made since the poll that took the pose
+ * (Pal_FreecamDraws moved) answers; and two game steps begun since with no field draw say that the step between them was not a field
+ * scene's (a step draws at most once, after it begins), and the host is told that at once. After the first answer the last draw's is
+ * told at each poll. */
+static unsigned int sEcho KERN_HOSTBSS;     /* the pose sequence of the last answer */
+static int sSaid KERN_HOSTBSS;              /* ...and its "field scene with the pose" */
+static unsigned int sMarkDraws KERN_HOSTBSS;
+static unsigned int sMarkSteps KERN_HOSTBSS;
+static int sFirst KERN_HOSTBSS;             /* the freecam was turned on and no answer has come for it yet */
+static int sWasOn KERN_HOSTBSS;
+
 static void FreecamPoll(void)
 {
     IpcFreecam fc;
@@ -121,12 +159,26 @@ static void FreecamPoll(void)
     s32 why = 0;
     u32 taken = 0;
     s32 state = Pal_FreezeState(&why, &taken);
+    u32 draws = Pal_FreecamDraws(), steps = Pal_FreecamSteps();
     if (have && sRebase) {
         sRebase = 0;
         sOff = taken - fc.grant;
+        sMarkDraws = draws;   /* a load puts the game's step count back: count again from here */
+        sMarkSteps = steps;
     }
-    /* the draw since the last poll was made with the pose set then: tell the host what it was (a field scene's, with the pose) */
-    Ipc_FreecamStatus(Pal_FreecamActive(), sInForce, Kern_VblankCount(), state, why, taken - sOff);
+    if (!sFirst) {
+        sEcho = sInForce;
+        sSaid = Pal_FreecamActive();
+    } else if (draws != sMarkDraws) {
+        sFirst = 0;
+        sEcho = sInForce;
+        sSaid = Pal_FreecamActive();
+    } else if (steps - sMarkSteps >= 2) {
+        sFirst = 0;
+        sEcho = sInForce;
+        sSaid = 0;
+    }
+    Ipc_FreecamStatus(sSaid, sEcho, Kern_VblankCount() + Pal_FreezeBias(), state, why, taken - sOff);
     if (have) {
         PalFreecamPose pose;
         pose.on = fc.on;
@@ -139,6 +191,15 @@ static void FreecamPoll(void)
         pose.fov = fc.fov;
         pose.hide = fc.hide;   /* the HUD's stages together, when the host asks (photo mode's H) */
         Pal_FreecamSetPose(&pose);
+        if (fc.on && !sWasOn) {   /* turned on: the counts start from this poll */
+            sFirst = 1;
+            sMarkDraws = draws;
+            sMarkSteps = steps;
+        }
+        if (!fc.on) {
+            sFirst = 0;
+        }
+        sWasOn = fc.on;
         sInForce = fc.seq;
         Pal_FreezeSet(fc.frozen, fc.grant + sOff);
     }
@@ -184,6 +245,7 @@ static const KStateHost sStateHost = {StateGet, StateSet, StateIdentity, StateEr
 static void StateResume(void)
 {
     sRebase = 1;
+    Ipc_LoadingScreen(0);   /* the loaded game's screen is open or not; the pacer waits for the next Loading_Open */
     Ipc_StateLoaded(Kern_VblankCount() + 1);   /* the game goes on by starting this VBlank */
 }
 

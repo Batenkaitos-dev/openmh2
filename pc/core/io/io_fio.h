@@ -6,7 +6,7 @@
  * (pc/core/api/fileio.c) and its IOP side (io_fio.c). Both are the core's own, so
  * the request is a C struct; what the game can observe is the client's order of
  * kernel calls and waits (the SDK's section 5, "The rest of the
- * fileio client") and the service's answers (the original's, iop_misc.c,
+ * fileio client") and the service's answers (the original's,
  * at the request: frame clock 1.1).
  *
  * Each request has the client's own semaphore and result word. The service

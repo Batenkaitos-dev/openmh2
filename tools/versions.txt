@@ -1,10 +1,11 @@
 # Pinned tool versions and download checksums.
-# Single source of truth for tools/setup.sh and tools/setup.ps1.
+# Single source of truth for the setup scripts.
 # Format: KEY=VALUE, no spaces or quotes. Lines starting with '#' are comments.
 # Python packages are pinned separately in pyproject.toml / uv.lock.
 #
-# Anything here that affects build output (binutils, LLVM) must not change
-# without a note in the commit message.
+# Anything marked AFFECTS BUILD OUTPUT must not change unless the build
+# still reproduces config/targets.sha1.
+#
 
 # uv: installs the pinned CPython and the project virtualenv
 UV_VERSION=0.12.18
@@ -19,6 +20,7 @@ PYTHON_VERSION=3.14.7
 BINUTILS_PS2_VERSION=v0.10
 BINUTILS_PS2_SHA256_WINDOWS=2bb5904ee174e04f1600cc70ffdb3dc36b0efa4d1892ea446be588ba8dc6198c
 BINUTILS_PS2_SHA256_LINUX=9fe31ea3ee1a37536f9f0e2e12c668e7c3cb99e59f5154bd2f1fc4762473094c
+
 
 
 
@@ -51,21 +53,38 @@ LLVM_SHA256_LINUX=832aeb58d105de1cabc7b982dd2c65de0610f7377df48ae8fc2dd8e97420a1
 LLVM_MINGW_VERSION=20260908
 LLVM_MINGW_SHA256=1bcf74d06b724aeecaa6412ca85f5b26fb1da770e7cdcefa9263c9c5c3ad34b6
 
-# FFmpeg (the port's movie playback: the game's Sofdec files), LGPL shared
-# builds from BtbN/FFmpeg-Builds.
-# Loaded at run time by the port's mh2movie library; without it movies are
-# skipped. BtbN removes old autobuild releases after about six weeks: when
-# the download disappears, pin the same series from a newer autobuild. Its
-# autobuilds carry the release branch's snapshots (n8.1.3-32-g760d10603e: the
-# n8.1.3 tag and 32 fixes of the 8.1 branch), with the same libraries and ABI.
-FFMPEG_VERSION=n8.1.3-32-g760d10603e
-FFMPEG_SERIES=8.1
-FFMPEG_BUILD_TAG=autobuild-2026-11-03-12-50
-FFMPEG_SHA256_WINDOWS=a8d0a12a76f5820456f5a60dbfe1bbf782cf4daa93a1e594a8da8172150992a9
-FFMPEG_SHA256_LINUX=887daa33c71f627cd63367bc8c7d9854878bccc055d41e569ed4a584e4c9a7d0
-# The second source: the same two files (same names) as release files of openmh2, beside FFmpeg's
-# LGPL source (the source offer). Tried when BtbN's download fails or does not match the SHA-256
-# above, with the same check. A placeholder (OPENMH2_MIRROR_URL_TODO) is skipped: it becomes the
-# release's download URL, without a trailing slash, when the repository's address is known.
-FFMPEG_MIRROR_URL=OPENMH2_MIRROR_URL_TODO
+# FFmpeg (the port's movie playback: the game's Sofdec files): the project's own build of ffmpeg.org's release tarball,
+# LGPL-2.1-or-later, only what the movies use (tools/pc/build_ffmpeg.sh: its configure line, the build). Loaded at run
+# time by the port's mh2movie library; without it movies are skipped. The tarball is byte-stable (FFmpeg's release
+# signing key FCF986EA15E6E293A5644F10B4322F04D67658D8 signs it; the SHA-256 below is of the file).
+FFMPEG_VERSION=8.1.3
+FFMPEG_URL=https://ffmpeg.org/releases/ffmpeg-8.1.3.tar.xz
+FFMPEG_SHA256=7138d28c96d9d3e3af4ee3d8cad72741f8ffb40da90c1112235dea3ecd3178a3
+# The release files of openmh2 under the tag ffmpeg-8.1.3 (no trailing slash): the source tarball (the same file, the same name:
+# tried when ffmpeg.org's download fails or does not match the SHA-256 above, with the same check; the source offer) and the
+# two archives setup installs, made by tools/pc/build_ffmpeg.sh --archive (tools/pc/pack_ffmpeg.py: reproducible, two builds
+# give the same bytes): mh2-ffmpeg-<FFMPEG_VERSION>-windows-x64.zip and mh2-ffmpeg-<FFMPEG_VERSION>-linux-x64.tar.xz, each
+# with the libraries, the headers, the import libraries, the licence texts, the configure line and the stamp. Setup builds
+# from the tarball only when asked to (setup.sh --build-ffmpeg, setup.ps1 -BuildFFmpeg) or when the archive can't be had.
+FFMPEG_MIRROR_URL=https://github.com/Batenkaitos-dev/openmh2/releases/download/ffmpeg-8.1.3
+FFMPEG_PREBUILT_SHA256_WINDOWS=5e7df428bd374c345e2e9242edd2bcb57157a1b2d809cd999ea309958ccdaa8c
+FFMPEG_PREBUILT_SHA256_LINUX=5f23d1d8d5179401d9d7f832ad34796c8c40bb09ae2be14c35b95938cd80dcb6
 
+
+# The player's release (tools/pc/dist.py): the Linux kit. Each file is downloaded once and checked against its SHA-256.
+# The compiler: llvm-mingw's Linux build (LLVM_VERSION: the same commit as the pinned release; lld needs no ICU), the C library: Ubuntu's
+# glibc 2.39 (LGPL-2.1+; the kit links mh2-core statically against it, so the core needs no 32-bit system library), and the runtime
+# libraries clang needs for a 32-bit static program, built from LLVM's source (Apache-2.0 with the LLVM exception): compiler-rt's
+# builtins and crt files, and libunwind. No libgcc, no GPL.
+KIT_GH_BASE=https://github.com
+KIT_MINGW_LINUX_PATH=mstorsjo/llvm-mingw/releases/download/20260908/llvm-mingw-20260908-ucrt-ubuntu-22.04-x86_64.tar.xz
+KIT_MINGW_LINUX_SHA256=2258c745e3155870c80793f3e8c80b28fbde11b9ff73c4c78783635b3440b092
+KIT_LLVM_SRC_PATH=llvm/llvm-project/releases/download/llvmorg-23.1.1/llvm-project-23.1.1.src.tar.xz
+KIT_LLVM_SRC_SHA256=ebe9be46fe8756d58c5b198ffad0fa2a766257add81a4dc52179bfacc7888ee6
+KIT_DEB_BASE=http://archive.ubuntu.com/ubuntu
+KIT_DEB_LIBC6_DEV_PATH=pool/main/g/glibc/libc6-dev_2.39-0ubuntu8.9_amd64.deb
+KIT_DEB_LIBC6_DEV_SHA256=e13d5fcc1b2a86f75bca8e0026a8e39f24fe97ca86e92be79991f8697eb1306f
+KIT_DEB_LIBC6_DEV_I386_PATH=pool/main/g/glibc/libc6-dev-i386_2.39-0ubuntu8.9_amd64.deb
+KIT_DEB_LIBC6_DEV_I386_SHA256=44b85dd652192b23c6979b3f8c240b33105520fdba64024cbba0d818af33258b
+KIT_DEB_LINUX_LIBC_DEV_PATH=pool/main/l/linux/linux-libc-dev_6.8.0-147.147_amd64.deb
+KIT_DEB_LINUX_LIBC_DEV_SHA256=fec8e4a308c03cd98dace67370a8d5a8031c36741796065c9f6e3f9548ab0cd2

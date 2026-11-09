@@ -88,10 +88,12 @@ def section_flags(sections) -> list[str]:
 
 
 def source_files() -> list[str]:
-    """The C files of the matching build: build.ninja's cc inputs."""
+    """The C files of the matching build: build.ninja's cc inputs (or config/pc/sources.txt without it)."""
     ninja = ROOT / "build.ninja"
-    if not ninja.exists():
-        sys.exit("census: build.ninja is missing (run tools/configure.py)")
+    if not ninja.exists():   # a tree that never ran the matching build: config/pc/sources.txt lists the same files
+        sys.path.insert(0, str(ROOT / "tools" / "pc"))
+        import sources
+        return sorted(f for _, f in sources.source_files())
     files = []
     for line in ninja.read_text().splitlines():
         m = re.match(r"build \S+: cc (\S+\.c)\b", line)
@@ -207,7 +209,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--arch", choices=["i686", "x86_64", "mingw", "both"], help="default: both (i686 and x86_64) on Linux, mingw on Windows")
     ap.add_argument("--platform", choices=["linux", "windows"], default="windows" if os.name == "nt" else "linux",
-                    help="windows: the census with llvm-mingw's clang against the mingw rows (from WSL: through winrun.py)")
+                    help="windows: the census with llvm-mingw's clang against the mingw rows (from WSL: through the Windows runner)")
     ap.add_argument("-j", type=int, default=os.cpu_count() or 4)
     ap.add_argument("--update", action="store_true", help="rewrite the baseline (refused if a count is higher)")
     ap.add_argument("--files", help="regex: only the files whose path matches (no baseline write)")

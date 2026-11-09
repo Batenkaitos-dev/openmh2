@@ -1,4 +1,4 @@
-// Function starts of yn, pinned for splat (tools/pin_functions.py).
+// Function starts of yn, pinned for splat (the matching build's pin_functions tool).
 // 29 unnamed functions; named ones are in the module's symbol files (config/symbols/, its YAML's list).
 func_00AC8040 = 0x00AC8040; // type:func
 func_00AC8128 = 0x00AC8128; // type:func

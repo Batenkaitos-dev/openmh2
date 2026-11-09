@@ -437,7 +437,7 @@ s32 IoCd_Search(CdFile *file, const char *name, s32 layer)
 }
 
 /* ------------------------------------------------------------ the taps
- * verify's trace tap for each function the game calls (pc/core/verify/verify.h). */
+ * verify's trace tap for each function the game calls. */
 
 s32 sceCdSync(s32 mode, s32 unused)
 {

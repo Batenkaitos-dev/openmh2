@@ -569,6 +569,12 @@ void ElderForecast_Roll(void)
         memset(lists->quests, 0, sizeof(lists->quests));
         for (i = 0; i < WANTED_SEASONS; i++) {
             ElderForecast_RollList(i, lists->quests[0][i]);
+#if PLATFORM_PC
+            if (Game_HubOffered() == 1) {
+                /* the offline hub: the hall's desk lists the second row, which the server rolls online; here by the same rule */
+                ElderForecast_RollList(i, lists->quests[1][i]);
+            }
+#endif
         }
         memcpy(copy->quests, lists->quests, sizeof(lists->quests));
     }

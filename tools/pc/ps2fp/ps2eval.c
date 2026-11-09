@@ -1,19 +1,29 @@
 /* ps2eval: evaluates ps2fp.h's operations on lines "OP A [B]" (hex bit
  * patterns) from stdin, printing the result bits, one per line. Used by
- * tools/pc/fpcheck.py to compare the EE's result of an operation on
+ * a test driver to compare the EE's result of an operation on
  * constants with the round-to-nearest value a compiler's constant folding
- * gives. */
+ * gives. The first argument names the float model: "legacy"
+ * (the default) or "ps2". */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "ps2fp.h"
 
-int main(void)
+int main(int argc, char **argv)
 {
     char op[32];
     unsigned a, b;
     char line[256];
-    setvbuf(stdout, NULL, _IOLBF, 0); /* line by line: fpfold.py drives it through a pipe */
+    if (argc > 1) {
+        if (!strcmp(argv[1], "ps2"))
+            ps2fp_model = 1;
+        else if (strcmp(argv[1], "legacy")) {
+            fprintf(stderr, "ps2eval: the model is legacy or ps2, not %s\n", argv[1]);
+            return 2;
+        }
+    }
+    setvbuf(stdout, NULL, _IOLBF, 0); /* line by line: a test driver drives it through a pipe */
     while (fgets(line, sizeof line, stdin)) {
         a = b = 0;
         if (sscanf(line, "%31s %x %x", op, &a, &b) < 2)

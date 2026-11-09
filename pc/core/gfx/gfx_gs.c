@@ -1,5 +1,5 @@
 /*
- * What the GS receives, and its privileged registers (from the earlier port's hw.c's GS
+ * What the GS receives, and its privileged registers (from the earlier port's hardware model's GS
  * part and gs.c).
  *
  * The core has no GS: the stream goes to the
@@ -20,6 +20,7 @@
  */
 #include "gfx_rt.h"
 #include "host.h"
+#include "pal_freecam.h"
 #include "ipc/core_ipc.h"
 
 typedef struct GsPriv {
@@ -119,7 +120,7 @@ static void Record(u32 kind, u32 arg, const void *data, u32 bytes)
     }
 }
 
-/* ---- SIGNAL, FINISH and LABEL (hw.c hw_gs_event) ---- */
+/* ---- SIGNAL, FINISH and LABEL (the original's hw_gs_event) ---- */
 
 static void GsEvent(int event, u64 payload)
 {
@@ -217,19 +218,24 @@ void Gfx_VBlankStart(u64 vblank)
 }
 
 /* The host's frame boundary (the original's gs_vblank_end(field, frame),
- * hw.c hw_vblank): the field as VBlank start toggled it and the VBlank
+ * the original's hw_vblank): the field as VBlank start toggled it and the VBlank
  * number, to the host as a VSync, or to a test's sink. Not in the G line. */
+__attribute__((weak)) u64 Pal_FreezeBias(void)   /* pal_freecam.c's: the pause's restores; the gfx tests run without it */
+{
+    return 0;
+}
+
 void Gfx_VBlankEnd(u64 vblank)
 {
     if (sSink) {
         sSink(GFX_GS_VBLANK, (u32)vblank, &sField, 4);
         return;
     }
-    Ipc_GsVSync(sField, vblank);
+    Ipc_GsVSync(sField, vblank + Pal_FreezeBias());   /* the host sees VBlanks that go on through the pause's restores */
 }
 
 /* SMODE1 as the BIOS sets it for the video mode; the renderer needs CMOD
- * (NTSC/PAL) and LC (hw.c hw_set_gs_crt). */
+ * (NTSC/PAL) and LC (the original's hw_set_gs_crt). */
 void Gfx_SetGsCrt(u32 interlace, u32 mode, u32 ffmd)
 {
     switch (mode) {
@@ -286,7 +292,7 @@ void Kern_InitGfx(void)
     sVsyncCsr = 0;
 }
 
-/* ---- the privileged registers (hw.c gs_reg, gs_write, gs_read) ---- */
+/* ---- the privileged registers (the original's gs_reg, gs_write, gs_read) ---- */
 
 static u64 *GsReg(u32 addr)
 {

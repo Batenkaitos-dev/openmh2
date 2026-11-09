@@ -30,8 +30,8 @@ int mh2ipc_create(Mh2IpcMap *m, unsigned int bytes)
 {
     static LONG serial;
     memset(m, 0, sizeof(*m));
-    snprintf(m->name, sizeof(m->name), "Local\\mh2ipc-%lu-%ld", (unsigned long)GetCurrentProcessId(),
-             InterlockedIncrement(&serial));
+    snprintf(m->name, sizeof(m->name), "Local\\mh2ipc-%u-%d", (unsigned)GetCurrentProcessId(),
+             (int)InterlockedIncrement(&serial));
     HANDLE h = CreateFileMappingA(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, bytes, m->name);
     if (!h || GetLastError() == ERROR_ALREADY_EXISTS) {
         if (h)

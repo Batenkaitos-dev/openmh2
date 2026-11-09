@@ -6,5 +6,8 @@
  * in play only. SCRIPTED: mh2's own run is a test or a picture check. */
 int core_args_local_date(char *const *args, int nargs, int scripted);
 
+/* The core's --pack folder (the last one given), or NULL. */
+const char *core_args_pack(char *const *args, int nargs);
+
 
 #endif

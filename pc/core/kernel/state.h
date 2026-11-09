@@ -75,4 +75,14 @@ const char *Kern_StateResult(void);
 extern int g_kern_state_card;
 int Kern_StateCardEmbedded(void);   /* now: the switch, or the development build's choice */
 
+/* An in-memory state for the freecam's pause (pal_freecam.c: the state loop): taken and put back in the game's own
+ * thread, outside any VBlank's start. Kern_StateMemSave returns 0 (taken), -1 (not: Kern_StateMemWhy) and, after a restore,
+ * 1 in the restored context, as setjmp does. Kern_StateMemRestore does not return unless there is no snapshot; with gs
+ * nonzero it puts the renderer's block back too. */
+int Kern_StateMemSave(void);
+const char *Kern_StateMemWhy(void);
+void Kern_StateMemRestore(int gs);
+void Kern_StateMemDrop(void);
+int Kern_StateMemHave(void);
+
 #endif

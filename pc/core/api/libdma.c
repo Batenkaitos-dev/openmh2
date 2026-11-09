@@ -56,7 +56,7 @@ static u32 DmaAddr(u32 a)
 
 /* Reads CHCR until STR is clear. In the core a channel is busy only while a
  * GIF transfer waits for PATH3's mask; libdma's own loops are no `wait` of
- * polls.txt (the original game never finds them busy), so a turn here is counted
+ * the polled-wait table (the original game never finds them busy), so a turn here is counted
  * as an anomaly and taken as a library wait's step. */
 static u32 WaitIdle(u32 chan)
 {
@@ -159,7 +159,7 @@ s32 sceDmaRecvN(DmaChan *chanp, void *addr, s32 qwc)
     return sceDmaRecvNWork(chanp, addr, qwc);
 }
 
-/* polls.txt: `ret main 00103890 sceDmaSync v0 != 0 && a1 == 1`: the game's
+/* The polled-wait table: `ret main 00103890 sceDmaSync v0 != 0 && a1 == 1`: the game's
  * busy answer in mode 1 is a "not ready". */
 static s32 sceDmaSyncWork(DmaChan *chanp, s32 mode, s32 timeout)
 {

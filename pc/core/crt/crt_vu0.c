@@ -1,8 +1,8 @@
 /* VU0's macro operations on PC (include/vu0ops.h): the global state, and
  * vu0_exec_word, the decoder of a raw COP2 word over the operations of vu0ops.h
- * (vu0.c's special1 and special2 tables; the VU data memory forms
+ * (the original's special1 and special2 tables; the VU data memory forms
  * are left out). The game's C forms call the operations directly; vu0_exec_word
- * is what tools/pc/ps2fp/tests/vu0_oracle.c compares with vu0.c on random
+ * is what the VU0 oracle test compares with the original's VU0 code on random
  * words and random registers. */
 #include "vu0ops.h"
 

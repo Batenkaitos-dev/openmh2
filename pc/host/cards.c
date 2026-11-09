@@ -107,9 +107,9 @@ static void offer_import(const char *old1, const char *old2)
         return;
     char text[3200];
     snprintf(text, sizeof(text),
-             "mh2 keeps its own memory cards, in\n%s\n\nCopy the old version's cards into it, so that your saves carry over?\n"
-             "%s%s%s%s\nThe old files stay as they are, and mh2 never writes them.",
-             g_dir, from[0] ? "\nPort 1: " : "", from[0] ? from[0] : "", from[1] ? "\nPort 2: " : "",
+             "OpenMH2 keeps its memory cards in\n%s\n\nCopy the cards of an earlier version into it, so that your saves carry over?\n"
+             "%s%s%s%s\nThe old files stay as they are. OpenMH2 never changes them.",
+             g_dir, from[0] ? "\nSlot 1: " : "", from[0] ? from[0] : "", from[1] ? "\nSlot 2: " : "",
              from[1] ? from[1] : "");
     const SDL_MessageBoxButtonData buttons[2] = {
         {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Copy them"},
@@ -120,7 +120,7 @@ static void offer_import(const char *old1, const char *old2)
     int pick = 0;
     if (!SDL_ShowMessageBox(&box, &pick))
         pick = 0;
-    host_log("cards: the old version's cards %s", pick == 1 ? "are copied in" : "are not copied (the player's choice)");
+    host_log("cards: the cards of an earlier version %s", pick == 1 ? "are copied in" : "are not copied (the player's choice)");
     if (pick != 1)
         return;
     if (from[0])
@@ -182,8 +182,8 @@ void cards_choose(int play, const char *card1, const char *card2, const char *ol
     else if (fresh && play)
         offer_import(old1, old2);
     else if (old1 || old2)
-        host_log("cards: memcard1/memcard2 in the settings are the old version's: mh2 uses its own cards "
-                 "(card1, card2), and never writes those");
+        host_log("cards: memcard1/memcard2 in the settings are the cards of an earlier version: OpenMH2 uses its own cards "
+                 "(card1, card2), and never changes those");
     const char *names[2] = {card1 && card1[0] ? card1 : "Mcd001.ps2", card2};
     for (int p = 1; p >= 0; p--) {
         const char *arg = p ? "--memcard2" : "--memcard1";
@@ -252,7 +252,7 @@ int cards_lock(char *msg, size_t cap)
                 fclose(f);
             }
             if (pid && pid_alive(pid)) {
-                snprintf(msg, cap, "The memory card %s is in use by another mh2 (process %lu). Close it first.",
+                snprintf(msg, cap, "The memory card %s is in use by another copy of OpenMH2 (process %lu). Close it first.",
                          g_cfg.core_args[i + 1], pid);
                 unlock_all();
                 return -1;

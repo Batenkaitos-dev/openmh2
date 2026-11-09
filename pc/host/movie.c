@@ -7,11 +7,19 @@
  *  - MOVIE_OPEN (the GS thread): the stream's place in the archive, the
  *    display mode and the game's movie volume; the decoder starts.
  *  - Each VSYNC carries the movie clock (48 kHz frames since the movie
- *    began playing) or none: frame 0 and every frame whose time is at most
- *    clock / 48000 s are shown, in order, on a canvas the size of the mode's
- *    screen, in place of the GS's picture. The GS thread waits for the
- *    decoder's next frame, so the pictures are the original's on its frame
- *    clock (--deterministic) at any decoding speed.
+ *    began playing) or none. At the game's flips (the VSync that follows
+ *    the GS's display registers being written: the original game draws the
+ *    player's current frame once a step, and shows it at the step's flip)
+ *    the picture is chosen: frame 0 and every frame whose time is at most
+ *    clock / 48000 s plus half a frame's, in order, on a canvas the size of
+ *    the mode's screen, in place of the GS's picture. The half frame keeps
+ *    the choice off the tie of a 29.97 Hz movie against two-VBlank flips
+ *    (the clock, the sound's output frames counted at each VBlank, wanders by
+ *    some tens of frames), so each picture holds two VSyncs; it shows a
+ *    picture at most half a frame ahead of its sound. Where no flip comes in
+ *    four VSyncs the choice is made anyway. The GS thread waits for the
+ *    decoder's next frame, so the pictures follow the clock (--deterministic)
+ *    at any decoding speed.
  *  - The sound: the samples between the header's movie_sound_begin and
  *    movie_sound_end (the sample ring's bytes) get the movie's sound mixed in
  *    at the game's volume, as the original's movie_mix does into the
@@ -39,6 +47,7 @@
 
 #define NFRAMES 6
 #define RING_FRAMES (48000 * 4) /* the sound decoded ahead: 4 s */
+#define MAX_IDLE 4              /* VSyncs the picture may stay without a flip */
 
 static struct {
     int tried, ok;
@@ -65,6 +74,9 @@ static struct {
     uint8_t *canvas;        /* the screen: the last frame shown */
     int have_shown;
     unsigned int shown;     /* frames shown (the log) */
+    unsigned int idle;      /* VSyncs since the picture was last chosen */
+    double lead_min, lead_max;  /* the clock minus a shown frame's time, seconds (the log) */
+    double half;            /* half a frame's time: the choice's margin */
     int cw, ch, px, py;
     int16_t *ring;          /* the sound: the decoder writes, the audio thread reads */
     SDL_AtomicInt ring_r, ring_w;
@@ -193,6 +205,9 @@ static void movie_free(void)
     SDL_LockMutex(mv.mu);   /* the audio thread is not mixing it */
     host_log("movie %u: %u frames shown, %u sound frames mixed, %u frames late (the decoder)", mv.id, mv.shown, mv.taken,
              mv.delay);
+    if (mv.shown > 1)
+        host_log("movie %u: pictures shown from %.1f ms before to %.1f ms after their time on the sound's clock", mv.id,
+                 -mv.lead_min * 1e3, mv.lead_max * 1e3);
     mv.thread = NULL;
     if (mv.m)
         lib.close(mv.m);
@@ -272,6 +287,9 @@ void movie_open(const Mh2IpcMovieOpen *o, const char *path)
     mv.qhead = mv.qn = 0;
     mv.have_shown = 0;
     mv.shown = 0;
+    mv.idle = 0;
+    mv.lead_min = mv.lead_max = 0;
+    mv.half = mv.info.fps > 1.0 ? 0.5 / mv.info.fps : 0.0;
     mv.taken = 0;
     mv.delay = 0;
     mv.closing = 0;
@@ -318,17 +336,29 @@ static void wait_frame(void)
         SDL_WaitConditionTimeout(mv.cv, mv.mu, 10);
 }
 
-int movie_vsync(unsigned int clock_plus1, const uint8_t **pixels, uint32_t *w, uint32_t *h)
+int movie_vsync(unsigned int clock_plus1, int flip, const uint8_t **pixels, uint32_t *w, uint32_t *h)
 {
     movie_reap();
     if (!mv.active || mv.closing || !clock_plus1)
         return 0;
     double t = (double)(clock_plus1 - 1) / 48000.0;
+    int choose = flip || ++mv.idle >= MAX_IDLE;   /* the picture is chosen at the game's flip (or when none comes) */
+    if (choose) {
+        mv.idle = 0;
+        t += mv.half;
+    }
     SDL_LockMutex(mv.mu);
-    for (;;) {
+    while (choose) {
         wait_frame();
         if (!(mv.qn > 0 && (!mv.have_shown || mv.pts[mv.qhead] <= t)))
             break;
+        if (mv.have_shown) {
+            double lead = (double)(clock_plus1 - 1) / 48000.0 - mv.pts[mv.qhead];
+            if (mv.shown == 1 || lead < mv.lead_min)
+                mv.lead_min = lead;
+            if (mv.shown == 1 || lead > mv.lead_max)
+                mv.lead_max = lead;
+        }
         size_t row = (size_t)mv.info.width * 4;
         for (int y = 0; y < mv.info.height; y++)
             memcpy(mv.canvas + ((size_t)(mv.py + y) * (size_t)mv.cw + (size_t)mv.px) * 4,

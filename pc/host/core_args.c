@@ -6,6 +6,15 @@
 
 #include "core_args.h"
 
+const char *core_args_pack(char *const *args, int nargs)
+{
+    const char *r = NULL;
+    for (int i = 0; i + 1 < nargs; i++)
+        if (!strcmp(args[i], "--pack"))
+            r = args[i + 1];
+    return r;
+}
+
 /* Play's calendar:
  * in play mh2 starts the core with --local-date, the host's date and time
  * zone. Not in a check or a route run (the core's --check, --frames or

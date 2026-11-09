@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "launcher_build.h"
 #include "mh2host.h"
 
 #ifdef _WIN32
@@ -46,6 +47,14 @@ const char *process_default_core(void)
         base = "";
     snprintf(path, sizeof(path), "%smh2-core" EXE, base);
     FILE *f = hfs_fopen(path, "rb");
+    if (!f) {   /* the release: the program the launcher built from the player's disc, in the user data folder */
+        const char *built = build_core_path();
+        if (built[0] && (f = hfs_fopen(built, "rb")) != NULL) {
+            fclose(f);
+            snprintf(path, sizeof(path), "%s", built);
+            return path;
+        }
+    }
     if (!f) {
         /* the build tree: build/pc/<platform>-x86_64/ beside build/pc/<platform>-i686/core/ */
         snprintf(path, sizeof(path), "%s../" PLATFORM "-i686/core/mh2-core" EXE, base);

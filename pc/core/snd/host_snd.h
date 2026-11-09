@@ -2,7 +2,7 @@
 #define MH2_SND_HOST_SND_H
 
 /*
- * The sound module's own host seam (pc/README.md, "Calling convention"): the
+ * The sound module's own host seam (pc/game_flags.txt): the
  * functions the module's platform files need from the host's C library and
  * operating system, in the host's convention (HOST, cdecl), implemented in
  * host_snd.c, which includes the system headers. (The IOP's threads run on

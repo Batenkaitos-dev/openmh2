@@ -1,7 +1,7 @@
 /*
  * libvu0's sceVpu0Reset (its behaviour at its interface):
  * resets VIF0 (MARK, ERR, FBRST.RST) and VU0 (COP2's FBRST: the
- * original's VU0 takes the write as nothing, vu0.c CTC2), and sends VIF0 its
+ * original's VU0 takes the write as nothing, CTC2), and sends VIF0 its
  * initial settings (STCYCL 4/4, STMASK 0, STMOD 0, ITOP 0).
  */
 #include "common.h"

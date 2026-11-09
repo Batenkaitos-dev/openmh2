@@ -51,6 +51,9 @@
 #include "rand.h"
 #include "talk.h"
 #include "libc.h"
+#if PLATFORM_PC
+#include "game_util.h"
+#endif
 /* The game's code for the official desk was built at optimization level 4. */
 #pragma optimization_level 4
 
@@ -279,6 +282,14 @@ void OfficialDesk_Update(void)
             desk->menuCursor = ROOM_SETTING_MEMBERS;
             gLobbyQuestId = desk->quest->id;
             QuestRoom_ResetSettings();
+#if PLATFORM_PC
+            if (Game_HubRules() == 1 && Game_IsOnline() == 0) {
+                /* the offline hub: no room settings and no post to the lobby, the stamp at once */
+                desk->state++;
+                Win_Shake(&desk->shake);
+                gFieldControl = 0;
+            }
+#endif
             break;
         case MENU_CANCEL:
             desk->state = OFFICIAL_STEP_ROWS_BACK;

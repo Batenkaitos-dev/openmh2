@@ -28,6 +28,9 @@
 #define REG_XYZ2 5
 #define REG_XYZ3 0xD
 
+static s32 sHiding;        /* the stage in progress is one the freecam's pose hides: its 2D packets draw nothing */
+static s32 sHideThis;      /* the packet Pal_HudPacket saw is to be hidden once it is queued (Pal_HudQueued) */
+static u32 sHidden, sUnparsed;   /* packets hidden, and packets of a shape the hide can't read (left as they were): counts */
 static s32 sMarked;        /* the packet to send is a 2D emitter's */
 static s32 sPivot;         /* the pivot's x in the 640-wide coordinates the emitters take, when sPivoted */
 static s32 sPivoted;
@@ -35,6 +38,17 @@ static s32 sPivoted;
 void Pal_HudMark(void)
 {
     sMarked = 1;
+}
+
+void Pal_HudHide(s32 on)
+{
+    sHiding = on;
+}
+
+void Pal_HudHideStats(u32 *hidden, u32 *unparsed)
+{
+    *hidden = sHidden;
+    *unparsed = sUnparsed;
 }
 
 void Pal_HudPivot(s32 x)
@@ -53,21 +67,15 @@ static s32 Shrink(s32 x16, s32 centre)
     return centre + ((x16 - centre) * 3) / 4;
 }
 
-void Pal_HudPacket(u32 *packet, s32 frameWidth)
+/* The packet's vertex registers: the GIF tag at +16 (NLOOP, 15 bits; FLG, bits 58-59; NREG, bits 60-63) and the register
+ * list at +24, the data from +32 with one 64-bit word for each register. Returns how many XYZ2/XYZ3 words (their addresses
+ * in xyz), or -1 for a packet of another shape (not one register list of one loop). */
+static s32 Verts(u32 *packet, u32 *xyz[16])
 {
-    s32 marked = sMarked;
     s32 nreg, i, count = 0;
-    s32 first = 0, last = 0;
-    s32 left, right, centre;
-    u32 *xyz[16];
 
-    sMarked = 0;
-    if (!marked || Pal_WidescreenLevel() < 2 || frameWidth < 64 || frameWidth > 1024) {
-        return;
-    }
-    /* the GIF tag at +16: NLOOP (15 bits), FLG (bits 58-59), NREG (60-63); the register list at +24 */
     if ((packet[4] & 0x7FFF) != 1 || ((packet[5] >> 26) & 3) != GIF_REGLIST) {
-        return;
+        return -1;
     }
     nreg = (s32)(packet[5] >> 28);
     if (nreg == 0) {
@@ -76,15 +84,60 @@ void Pal_HudPacket(u32 *packet, s32 frameWidth)
     for (i = 0; i < nreg; i++) {
         u32 reg = (packet[6 + (i >> 3)] >> ((i & 7) * 4)) & 0xF;
         if (reg == REG_XYZ2 || reg == REG_XYZ3) {
-            u32 *word = &packet[8 + i * 2];   /* the data from +32: one 64-bit word per register */
-            s32 x = (s32)(*word & 0xFFFF);
-            if (count == 0 || x < first) {
-                first = x;
-            }
-            if (count == 0 || x > last) {
-                last = x;
-            }
-            xyz[count++] = word;
+            xyz[count++] = &packet[8 + i * 2];
+        }
+    }
+    return count;
+}
+
+/* The packet as it was queued (the copy the DMA chain holds, or the glyph's own place in the font's buffer), after
+ * Pal_HudPacket: when the stage is hidden, all its vertices go to x = 0, which is outside the scissor (the frame is drawn
+ * about x = 2048), so a sprite, a triangle and a line each cover no pixel. The packet is built, queued and sent as the game
+ * has it: its place in the buffers, the queue's words and the emitter's scratchpad are the same. */
+void Pal_HudQueued(u32 *queued)
+{
+    s32 i, count;
+    u32 *xyz[16];
+
+    if (!sHideThis) {
+        return;
+    }
+    sHideThis = 0;
+    count = Verts(queued, xyz);
+    if (count < 0) {
+        sUnparsed++;
+        return;
+    }
+    for (i = 0; i < count; i++) {
+        *xyz[i] &= 0xFFFF0000u;
+    }
+    sHidden++;
+}
+
+void Pal_HudPacket(u32 *packet, s32 frameWidth)
+{
+    s32 marked = sMarked;
+    s32 i, count;
+    s32 first = 0, last = 0;
+    s32 left, right, centre;
+    u32 *xyz[16];
+
+    sMarked = 0;
+    sHideThis = marked && sHiding;
+    if (sHideThis) {
+        return;   /* the packet is left as the emitter built it (the scratchpad keeps what it keeps); its queued copy is hidden */
+    }
+    if (!marked || Pal_WidescreenLevel() < 2 || frameWidth < 64 || frameWidth > 1024) {
+        return;
+    }
+    count = Verts(packet, xyz);
+    for (i = 0; i < count; i++) {
+        s32 x = (s32)(*xyz[i] & 0xFFFF);
+        if (i == 0 || x < first) {
+            first = x;
+        }
+        if (i == 0 || x > last) {
+            last = x;
         }
     }
     left = GS_CENTRE - (frameWidth / 2 << 4);

@@ -1,4 +1,5 @@
 /* The io start, its log and the disc's reads (io.h). */
+#include "host.h"
 #include "io/io.h"
 #include "io/io_host.h"
 #include "io/io_pad.h"
@@ -88,6 +89,31 @@ int Io_DiscFind(const char *path, u32 *lba, u32 *size)
     return Host_DiscFind(path, lba, size);
 }
 
+int Io_DiscPackOpen(const char *dir)
+{
+    return Host_DiscPackOpen(dir);
+}
+
+const char *Io_DiscPackName(void)
+{
+    return Host_DiscPackName();
+}
+
+int Io_DiscPackHash(char hex[65])
+{
+    return Host_DiscPackHash(hex);
+}
+
+int Io_DiscPackFind(const char *key, u32 *lba, u32 *size)
+{
+    unsigned int l = 0, n = 0;
+    if (Host_DiscPackFind(key, &l, &n) != 0)
+        return -1;
+    *lba = l;
+    *size = n;
+    return 0;
+}
+
 int Io_DiscRead(u32 lba, u32 count, void *dst)
 {
     return Host_DiscRead(lba, count, dst);
@@ -170,7 +196,7 @@ void Io_RegisterServices(void)
 }
 
 /* Pointers into the process's arguments: the process's, not a save state's (kernel/kern.h). */
-static const char *g_optDisc KERN_HOSTBSS, *g_optCard[2] KERN_HOSTBSS;
+static const char *g_optDisc KERN_HOSTBSS, *g_optCard[2] KERN_HOSTBSS, *g_optPack KERN_HOSTBSS;
 
 s32 Io_Option(s32 argc, char **argv, s32 i)
 {
@@ -180,6 +206,8 @@ s32 Io_Option(s32 argc, char **argv, s32 i)
         return 0;
     if (StrEq(argv[i], "--disc"))
         g_optDisc = argv[i + 1];
+    else if (StrEq(argv[i], "--pack"))
+        g_optPack = argv[i + 1];
     else if (StrEq(argv[i], "--memcard1"))
         g_optCard[0] = argv[i + 1];
     else if (StrEq(argv[i], "--memcard2"))
@@ -205,8 +233,10 @@ int Io_Start(void)
             r = Host_DiscOpen(disc = tries[i]);
     }
     if (r != 0)
-        Io_Log("no disc archive (%s): give --disc FILE or MH2_DISC (python tools/port/make_archive.py writes build/port/mh2-disc.arc)",
+        Io_Log("no game archive (%s): give --disc FILE or MH2_DISC, or make it in the launcher (the Game archive page: Make the archive from a disc image)",
                (u32)disc, 0);
+    if (r == 0 && g_optPack && Host_DiscPackOpen(g_optPack) != 0)
+        Host_DiscPackRefuse();   /* a pack that was asked for is never silently left out: the run ends, and says why */
     Io_RegisterServices();
     return r == 0 ? 0 : -1;
 }

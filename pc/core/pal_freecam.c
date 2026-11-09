@@ -42,13 +42,14 @@ typedef struct Swap {
     u8 inst[SWAP_BYTES];    /* what the beginning put there */
 } Swap;
 
-static PalFreecamPose sPose;     /* the host's */
+static PalFreecamPose sPose KERN_HOSTBSS;   /* the host's: the pause's restores do not take it back; a pose moved while paused would be put back with the pages and never reach a frozen frame (shown: with it in the snapshot the paused picture stays at the pose of the pause, with it here the picture is that of a pose set before the pause, pixel for pixel) */
 static s32 sField;               /* the draw is a field scene's */
 static s32 sSwapped;             /* the beginning replaced something, the end puts it back */
 static s32 sActive;
 static u32 sFieldStep = 0xFFFFFFFFu;   /* the game step of the last field draw (Pal_FreezeStep's count) */
 static u32 sStep;                /* the game steps Pal_FreezeStep has seen */
 static u32 sHide;                /* the stages this field draw hides (bit n: PAL_STAGE_n) */
+static u32 sDraws KERN_HOSTBSS;  /* the field draws so far (Pal_FreecamDraws): the host's count, a restore does not take it back */
 static Swap sSw[SWAP_MAX];
 static s32 sNSw;
 static s32 sHaveGame;
@@ -79,6 +80,16 @@ s32 Pal_FreecamActive(void)
     return sActive;
 }
 
+u32 Pal_FreecamDraws(void)
+{
+    return sDraws;
+}
+
+u32 Pal_FreecamSteps(void)
+{
+    return sStep;
+}
+
 void Pal_FreecamField(s32 on)
 {
     sField = on;
@@ -88,10 +99,10 @@ void Pal_FreecamField(s32 on)
 #define HIDE_SCENE ((1u << PAL_STAGE_FADE_B) | (1u << PAL_STAGE_FADE_A) | (1u << PAL_STAGE_LOADING))
 
 
-s32 Pal_FreecamHide(s32 stage)
+void Pal_FreecamStage(s32 stage)
 {
     u32 m = sHide;
-    return (m >> stage) & 1;
+    Pal_HudHide(stage >= 0 && stage < PAL_STAGE_COUNT ? (s32)((m >> stage) & 1) : 0);
 }
 
 /* Puts VAL into the object, remembering what it held. */
@@ -176,6 +187,7 @@ void Pal_FreecamBegin(const PalFreecamObjs *o)
     sGameFov = *o->fov;
     sHaveGame = 1;
     sFieldStep = sStep;
+    sDraws++;
     pr = Pose(o, eye, at, &roll, &fov, &form, &hide);
     if (!pr) {
         return;
@@ -230,6 +242,7 @@ void Pal_FreecamEnd(void)
 {
     s32 i;
     sHide = 0;
+    Pal_HudHide(0);
     if (!sSwapped) {
         return;
     }
@@ -244,19 +257,31 @@ void Pal_FreecamEnd(void)
 }
 
 /*
- * The frozen frame. Frozen, a step of the game's main loop is only the last field frame's draw again, with the freecam's
- * pose of the moment, and the game's own flip: no pad read, no update, none of the frame's lists made again. The flip
- * waits for the VBlank, so a frozen frame is a VBlank: the VBlank-driven state (the VSync counter, the timers, the sound
- * and the IOP) goes on, and only the game's tasks stand still.
+ * The pause: a state loop.
+ *
+ * Paused, the game does not stand still: it runs the same step again and again. At a step's start (Pal_FreezeStep, the first
+ * thing a step of the game's main loop does) the kernel keeps a snapshot of the whole writable image (kernel/state.c,
+ * Kern_StateMemSave: the pages, the guest clock, the fibers, the libraries' and the sound engine's state) and of the renderer;
+ * at the next step's start it puts the pages back and goes on in the context that took it, so the step runs again, with the
+ * pose of the moment, the game's own draw and the game's own flip. When the pause ends the snapshot is put back for the last
+ * time, the renderer's block with it, and the step runs for real: the game goes on as one that was never paused, and no
+ * VBlank of the loop's passed. The VBlanks that did pass are counted into an outward bias (Pal_FreezeBias), which the pacer, the
+ * scanout's record and the host's status add, so that the host sees VBlanks that go on.
+ *
+ * The words of the loop are the process's (KERN_HOSTBSS): a restore does not touch them.
  */
 extern s32 Mc_RequestPending(void);   /* api/libmc.c: a memory card request is in flight (not yet synced) */
+extern s32 gSysCurBuf;                /* src/main/display.c: the frame buffer shown; the flip at a VBlank toggles it */
 
-static s32 sHold;                /* the host's request */
-static u32 sGrant, sTaken;       /* real frames the host granted, and the core ran, while frozen */
-static s32 sFrozen;
-static s32 sWasFrozen;           /* the step before was a frozen frame */
-static s32 sWhy;
-static u64 sStartVb;             /* the VBlank the freeze began at */
+static s32 sHold KERN_HOSTBSS;                /* the host's request */
+static u32 sGrant KERN_HOSTBSS, sTaken KERN_HOSTBSS;   /* steps the host granted, and the core ran, while paused */
+static s32 sLoop KERN_HOSTBSS;                /* a snapshot is held and the step is run again from it */
+static s32 sWhy KERN_HOSTBSS;
+static u64 sBias KERN_HOSTBSS;                /* the VBlanks the restores have put back */
+static u64 sBaseVb KERN_HOSTBSS;              /* the VBlank count when the snapshot was taken */
+static s32 sAgain KERN_HOSTBSS;               /* the step is being put back to run again (not to run for real after the pause) */
+static u32 sRuns KERN_HOSTBSS;                /* the times the step has been put back since the snapshot: the parity of the frame buffers */
+static u64 sHigh KERN_HOSTBSS;                /* the highest VBlank the loop passed before a restore: the development layer's step has seen up to it */
 
 
 
@@ -274,21 +299,39 @@ s32 Pal_FreezeState(s32 *why, u32 *taken)
     if (taken) {
         *taken = sTaken;
     }
-    return sFrozen ? PAL_FREEZE_FROZEN : sHold ? PAL_FREEZE_WAITING : PAL_FREEZE_RUNNING;
+    return sLoop ? PAL_FREEZE_FROZEN : sHold ? PAL_FREEZE_WAITING : PAL_FREEZE_RUNNING;
 }
 
-/* A real step: 2 when it follows frozen frames (the flip timing of the game's frames is put back), else 0. */
-static s32 Real(void)
+u64 Pal_FreezeBias(void)
 {
-    s32 r = sWasFrozen ? 2 : 0;
-    sWasFrozen = 0;
-    return r;
+    return sBias;
 }
 
-/* Why a freeze cannot take hold at this step (0: it can). */
+/* The development layer's step of a VBlank runs once for each VBlank number: the loop passes the same numbers again, and the
+ * last pass, the real one, repeats what the first one saw. */
+s32 Pal_FreezeSkipVfy(u64 n)
+{
+    return sHigh != 0 && n <= sHigh;
+}
+
+void Pal_FreezePadAgain(u64 n)
+{
+    (void)n;
+}
+
+/* A state file was loaded, or the run starts over: the snapshot belongs to a game that is gone. */
+void Pal_FreezeCancel(void)
+{
+    sLoop = 0;
+    sHigh = 0;
+    sWhy = 0;
+    Kern_StateMemDrop();
+}
+
+/* Why a pause cannot take hold at this step (0: it can). */
 static s32 Why(s32 field)
 {
-    if (!field) {   /* the step before was not a field scene's draw: a frozen frame has nothing to draw again */
+    if (!field) {   /* the step before was not a field scene's draw: a loop of this step would draw no field scene */
         return PAL_FREEZE_WHY_SCENE;
     }
     if (Kern_StateBlocked()) {
@@ -301,42 +344,77 @@ static s32 Why(s32 field)
 }
 
 
+/* The first thing a step of the game's main loop does. Returns 0, and does not return at all when the pause puts the
+ * snapshot back: the call that took it returns again, in the restored context, and the step goes on from there. */
 s32 Pal_FreezeStep(void)
 {
     s32 hold = sHold;
     u32 cur = ++sStep;
     u64 vb = Kern_VblankCount();
     s32 field = sFieldStep == cur - 1;   /* the step before drew a field scene's frame */
-    s32 why;
-    if (sFrozen && !hold && ((vb - sStartVb) & 1)) {
-        hold = 1;   /* the game goes on at a VBlank of the parity it stopped at: its frames keep their fields */
-    }
-    if (!hold) {
-        if (sFrozen) {
-            sFrozen = 0;
+    s32 why = 0, r;
+    if (sLoop) {   /* the step has run since the snapshot */
+        s32 end = !hold;
+        if (!end) {
+            why = Why(field);
+            end = why != 0;
         }
-        sWhy = 0;
-        return Real();
-    }
-    if (!sFrozen) {
+        if (end) {   /* the pause is over: the game as it was at the snapshot, the renderer too, and the step runs for real */
+            sLoop = 0;
+            sWhy = why;
+            if (vb > sHigh) {
+                sHigh = vb;
+            }
+            sBias += vb - sBaseVb;
+            sAgain = 0;
+            Kern_StateMemRestore(1);   /* does not return when it has the snapshot */
+            Kern_StateMemDrop();
+            return 0;
+        }
+        if (sGrant == sTaken) {   /* paused: the step again */
+            if (vb > sHigh) {
+                sHigh = vb;
+            }
+            sBias += vb - sBaseVb;
+            sAgain = 1;
+            Kern_StateMemRestore(0);
+            sLoop = 0;   /* no snapshot: the pause is over */
+            sWhy = PAL_FREEZE_WHY_SCENE;
+            return 0;
+        }
+        sTaken++;   /* a step: the step that ran stays, and the loop goes on from here */
+    } else {
+        if (!hold) {
+            sWhy = 0;
+            return 0;
+        }
         why = Why(field);
         if (why) {
             sWhy = why;
-            return Real();
+            return 0;
         }
-        sFrozen = 1;
-        sWhy = 0;
-        sStartVb = vb;
-        sTaken = sGrant;   /* grants made before the freeze are not used */
-    } else if (!field) {   /* a real step of the freeze's was not a field scene's frame: the freeze ends */
-        sFrozen = 0;
+        sTaken = sGrant;   /* grants made before the pause are not used */
+    }
+    r = Kern_StateMemSave();
+    if (r == 1) {   /* the restored context: the step runs again */
+        /* The chain a step sends is drawn into the buffer its flip leaves off screen, and the next flip shows it. The snapshot has
+         * the buffer of its own step, so a step put back would show the picture the step before it drew, every time: the pose of
+         * the moment would be drawn and never shown. Each run takes the other buffer, as one step after another does. */
+        if (sAgain) {   /* (the end of the pause comes back here too, and the step then runs as it would have) */
+            sAgain = 0;
+            sRuns++;
+            gSysCurBuf ^= (s32)(sRuns & 1);
+        }
+        return 0;
+    }
+    sRuns = 0;
+    if (r < 0) {
+        sLoop = 0;
         sWhy = PAL_FREEZE_WHY_SCENE;
-        return Real();
+        return 0;
     }
-    if (sGrant != sTaken) {   /* a step: one real frame, then frozen again */
-        sTaken++;
-        return Real();
-    }
-    sWasFrozen = 1;
-    return 1;
+    sLoop = 1;
+    sWhy = 0;
+    sBaseVb = Kern_VblankCount();
+    return 0;
 }

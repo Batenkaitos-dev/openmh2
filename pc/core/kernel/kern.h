@@ -12,7 +12,7 @@
  * Who includes it: the platform layer's game-facing files (the .c files under pc/core/
  * and pc/core/api/, compiled with the game's flags and calling
  * convention). A host_*.c file does not call these functions (the calling
- * conventions differ: pc/README.md).
+ * conventions differ: pc/game_flags.txt).
  *
  * Contexts. Platform code runs in one of four contexts, and some calls
  * behave differently in each:
@@ -118,7 +118,7 @@ void Kern_RaiseDmac(int channel);
  * (0x1000F100-0x1000F1FF: a byte to TXFIFO 0x1000F180 is the console's, one
  * log line per newline) and the SIF (0x1000F200-0x1000F2FF: MSCOM, SMCOM,
  * MSFLG (a write sets bits), SMFLG (a write clears bits)), as the original's
- * hw.c. Another address there reads 0.
+ * hardware model. Another address there reads 0.
  */
 u32 Kern_EeRegRead32(u32 addr);
 void Kern_EeRegWrite32(u32 addr, u32 value);
@@ -190,7 +190,7 @@ s32 Kern_SemaPoll(s32 id);
 
 /*
  * A library wait (the specification, 6): a library function whose own code
- * waits in a busy loop on the PS2 (polls.txt's `wait` records). It keeps the
+ * waits in a busy loop on the PS2 (the polled-wait table's `wait` records). It keeps the
  * processor: no thread of equal or lower priority runs while it waits. Write
  * it as
  *
@@ -202,7 +202,7 @@ s32 Kern_SemaPoll(s32 id);
  * - Kern_LibWaitArrive: the call reached the loop's head other than by going
  *   round (it fell into it). One delivery point: the due events fire, the
  *   rounds run (the IOP, the SIF, the interrupts), a requested thread switch
- *   is made. No time moves; no w count. A function with `entry` in polls.txt
+ *   is made. No time moves; no w count. A function with `entry` in the polled-wait table
  *   (sceGsSyncPath) arrives at its entry, whether or not it loops.
  * - Kern_LibWaitStep: one going-round of the loop. One w count for the
  *   calling thread, the poll flag cleared, the jump (time

@@ -21,5 +21,8 @@ HOST FILE *HostFile_Open(const char *path, const char *mode);
 HOST int HostFile_Remove(const char *path);
 HOST int HostFile_Rename(const char *from, const char *to);
 HOST int HostFile_Replace(const char *from, const char *to);
+/* The entries of folder DIR, in no order, without "." and "..": FN(name, is_folder, arg) for each, the names UTF-8. 0 when
+ * the folder was read, -1 when it could not be. (A pack's files are listed to make its hash.) */
+HOST int HostFile_List(const char *dir, void (*fn)(const char *name, int is_folder, void *arg), void *arg);
 
 #endif

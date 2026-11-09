@@ -20,5 +20,7 @@ set(CMAKE_RC_COMPILER "${MH2_LLVM_MINGW}/bin/i686-w64-mingw32-windres.exe")
 # llvm-mingw's ld.lld hands an argument that starts with "/" to its COFF driver as it is, so -Wl,/driver is
 # lld-link's /driver, the flag the warning asks for. Linked twice from the same objects (lld 23.1.1), with and
 # without it, mh2-core.exe differs in two bytes only (the PE header and the debug directory timestamps).
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=lld -Wl,--image-base=0x08000000 -Wl,--disable-dynamicbase -Wl,--disable-high-entropy-va -Wl,--section-alignment=0x10000 -Wl,/driver")
+# --no-insert-timestamp fixes both timestamps at 0, so two links of the same objects give the same bytes (the release
+# kit's core equals build.py --release's, byte for byte).
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=lld -Wl,--image-base=0x08000000 -Wl,--disable-dynamicbase -Wl,--disable-high-entropy-va -Wl,--section-alignment=0x10000 -Wl,/driver -Wl,--no-insert-timestamp")
 set(MH2_PLATFORM windows)

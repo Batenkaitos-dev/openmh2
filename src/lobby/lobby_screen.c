@@ -171,6 +171,9 @@ void LobbyScreen_InitLists(void)
     TownQuestLists *lists;
     TownQuestLists *kept;
 
+#if PLATFORM_PC
+    Game_HubRulesSet(0);   /* the lobby screen starts in the village: the offline hub's rules are the doors' */
+#endif
     gScene.mealAttack = 0;
     gScene.mealDefense = 0;
     gScene.mealHealth = 0;
@@ -534,6 +537,16 @@ s32 LobbyScreen_EnterSeq(s32 mode)
             break;
         case LOBBY_ENTER_VILLAGE_OFFLINE:
             gTownSpawnSet = 0;
+#if PLATFORM_PC
+            if (Game_HubReturnArea() != 0) {
+                /* the offline hub: back from a quest taken in the town, to the area of the desk, with the town's rules and lists */
+                gPlayers[gScene.localPlayer].nextArea = Game_HubReturnArea();
+                gQuestReturnArea = 0;
+                Game_HubRulesSet(1);
+                QuestList_Rebuild();
+                break;
+            }
+#endif
             if (gSave.awayFromVillage != 0) {
                 gPlayers[gScene.localPlayer].nextArea = AREA_HUB_0x57;
             } else {
@@ -966,7 +979,7 @@ s32 LobbyScreen_LoadBanks(void)
         Sound_StopBank(SE_SLOT_EM);     /* the town has no monsters: its bank goes in their slot */
         if (gScene.area == AREA_HOUSE || gScene.area == AREA_HUB_0x57) {
             bank = SND_BANK_FILE(SND_BANK_HOUSE);
-        } else if (Game_IsOnline() == 1) {
+        } else if (Game_RulesOnline() == 1) {
             bank = SND_BANK_FILE(SND_BANK_TOWN_NET);
         } else {
             bank = SND_BANK_FILE(SND_BANK_TOWN);
@@ -1122,12 +1135,18 @@ void LobbyScreen_EnterArea(void)
     Player *pl = &gPlayers[gScene.localPlayer];
     u8 samePlace;
     Vec3f startPos;
+#if PLATFORM_PC
+    u16 fromArea;
+#endif
 
     switch (gLobbyScreenStep) {
     case 0:
         gLobby->connected = 0;
         gSoundLoading = 1;
         Loading_Start();
+#if PLATFORM_PC
+        fromArea = gScene.area;
+#endif
         samePlace = Town_EnterArea(pl->nextArea, 1);
         if (samePlace == 0) {
             Town_SpawnNpcs(pl->nextArea);
@@ -1139,7 +1158,12 @@ void LobbyScreen_EnterArea(void)
         FadeA_Start(FADE_BLACK);
         gSoundLoading = 0;
         Loading_Stop();
+#if PLATFORM_PC
+        /* The offline hub: the town's sound banks are loaded at the entry, the village's again at the return */
+        if ((pl->nextArea == AREA_HUB_0x57 && samePlace == 0) || Game_HubBanksChange(fromArea, pl->nextArea) == 1) {
+#else
         if (pl->nextArea == AREA_HUB_0x57 && samePlace == 0) {
+#endif
             gLobbyScreenStep++;
         } else {
             gLobbyScreenStep += 2;

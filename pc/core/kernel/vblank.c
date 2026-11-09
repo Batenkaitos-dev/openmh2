@@ -10,6 +10,7 @@
 #include "kernel/khost.h"
 #include "kernel/klog.h"
 #include "pal_core.h"
+#include "pal_freecam.h"
 #include "snd/snd.h"
 #include "io/io_pad.h"
 #include "gfx/gfx.h"
@@ -81,6 +82,18 @@ __attribute__((weak)) void KState_VBlankStart(u64 vblank)
     (void)vblank;
 }
 
+/* The freecam's pause (pal_freecam.c) owns these; the kernel's own tests run without it. */
+__attribute__((weak)) s32 Pal_FreezeSkipVfy(u64 n)
+{
+    (void)n;
+    return 0;
+}
+
+__attribute__((weak)) void Pal_FreezePadAgain(u64 n)
+{
+    (void)n;
+}
+
 static void VblankStart(u64 now, u32 param)
 {
     u64 n;
@@ -89,6 +102,10 @@ static void VblankStart(u64 now, u32 param)
     n = ++sVblankCount;                  /* 1 */
     Hook(KERN_VB_PACE, n);               /* 2 */
     Spu2_Advance(now);                   /* 3 */
+    if (!Pal_FreezeSkipVfy(n)) {         /* the pause's loop passes a VBlank number again: the recorder saw it once */
+    } else {
+        Pal_FreezePadAgain(n);           /* 6: its pad only */
+    }
     Hook(KERN_VB_INPUT, n);              /* 7 */
     Io_PadVBlank();
     Gfx_VBlankStart(n);                  /* 8 */

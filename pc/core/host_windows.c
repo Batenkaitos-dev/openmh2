@@ -2,6 +2,7 @@
 #include <io.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <wchar.h>
 #include <windows.h>
 
@@ -43,6 +44,22 @@ HOST void Host_Fatal(const char *msg)
     fflush(stderr);
     FatalHook(msg);
     abort();
+}
+
+static int sRefused;
+
+HOST int Host_Refused(void)
+{
+    return sRefused;
+}
+
+HOST void Host_Refuse(const char *msg)
+{
+    fprintf(stderr, "mh2-core: %s\n", msg);
+    fflush(stderr);
+    sRefused = 1;
+    FatalHook(msg);
+    exit(HOST_EXIT_REFUSED);
 }
 
 HOST void Host_StubFatal(const char *name)
@@ -136,6 +153,43 @@ HOST FILE *HostFile_Open(const char *path, const char *mode)
     f = _wfopen(wp, wm);
     free(wp);
     return f;
+}
+
+HOST int HostFile_List(const char *dir, void (*fn)(const char *name, int is_folder, void *arg), void *arg)
+{
+    size_t n = strlen(dir);
+    char *pat = (char *)malloc(n + 3);
+    wchar_t *wp;
+    WIN32_FIND_DATAW fd;
+    HANDLE h;
+    if (!pat) {
+        return -1;
+    }
+    memcpy(pat, dir, n);
+    memcpy(pat + n, "/*", 3);
+    wp = HostWide_Alloc(pat);
+    free(pat);
+    if (!wp) {
+        return -1;
+    }
+    h = FindFirstFileW(wp, &fd);
+    free(wp);
+    if (h == INVALID_HANDLE_VALUE) {
+        return -1;
+    }
+    do {
+        char *u;
+        if (!wcscmp(fd.cFileName, L".") || !wcscmp(fd.cFileName, L"..")) {
+            continue;
+        }
+        u = HostWide_ToUtf8(fd.cFileName);
+        if (u) {
+            fn(u, (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0, arg);
+            free(u);
+        }
+    } while (FindNextFileW(h, &fd));
+    FindClose(h);
+    return 0;
 }
 
 HOST int HostFile_Remove(const char *path)

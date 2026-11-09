@@ -166,7 +166,7 @@ void Kern_DmacStatWrite(u32 value)
     KThread_SetDmacStat(s);
 }
 
-/* The SIO's TXFIFO: the console, a log line per newline (the original's hw.c). */
+/* The SIO's TXFIFO: the console, a log line per newline (as the original does). */
 static char sSioLine[256];
 static u32 sSioLen;
 

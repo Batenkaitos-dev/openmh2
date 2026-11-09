@@ -3,7 +3,7 @@
 
 /*
  * The memory card file system on a PCSX2-format card image (host_mcfs.c, adapted
- * from the original's mcfs.c, whose comment has the on-card layout).
+ * from the original's).
  * A host file: these functions use the host's convention (io_host.h's rules).
  * The card service (io_mc.c) calls them. Results follow the sceMc result codes.
  * Plain C types only: both the host's files and the game-facing ones include it.

@@ -916,7 +916,7 @@ static void Libsd_Call(IopCpu *c, u32 index)
         u64 vb = Kern_VblankCount();
         if (vb != sVb) {
             sVb = vb;
-            TR("V %llx 0", (unsigned long long)vb);
+            TR("V %x 0", (unsigned)vb);
         }
     }
     if (!x->fn) {

@@ -24,9 +24,15 @@ silently left with x86 semantics.
 Usage: ps2fp.py IN.ll OUT.ll [--stats]
 Exit status: 0, or 1 with the errors on stderr.
 """
+import os
 import re
 import sys
+import zlib
 from collections import Counter
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
+ORDER_FILE = os.path.join(HERE, "mulorder.txt")
 
 FLAGS = r"(?:(?:nnan|ninf|nsz|arcp|contract|afn|reassoc|fast)\s+)*"
 INT_FLAGS = r"(?:(?:nuw|nsw|exact)\s+)*"
@@ -52,7 +58,7 @@ def canon(g1, g2):
     if n.startswith("\\01"):
         n = n[3:]
     n = re.sub(r"@@?\d+$", "", n)
-    return n[len("__regcall3__"):] if n.startswith("__regcall3__") else n    # the core's default convention (pc/README.md)
+    return n[len("__regcall3__"):] if n.startswith("__regcall3__") else n    # the core's default convention (pc/game_flags.txt)
 
 
 def split_params(s):
@@ -106,9 +112,31 @@ def int_const(tok):
         return None
 
 
+def read_order(path=ORDER_FILE):
+    """mulorder.txt: where MWCC puts the operands of a commutative float operation in the other order than the C
+    source. One line per function and operation: `FILE FUNC OP N K K ...` (FILE relative to the repository, OP fadd or
+    fmul, N the number of that operation in the function, K the ordinals, counted in the function's IR order, whose
+    operands the pass exchanges). Result: {(file, func, op): (N, {K})}."""
+    out = {}
+    if not os.path.exists(path):
+        return out
+    with open(path, encoding="utf-8") as f:
+        for ln in f:
+            ln = ln.split("#")[0].split()
+            if not ln:
+                continue
+            out[(ln[0], ln[1], ln[2])] = (int(ln[3]), {int(k) for k in ln[4:]})
+    return out
+
+
 class Rewriter:
-    def __init__(self, text, name):
+    def __init__(self, text, name, order=None, trace=None):
         self.name = name
+        self.rel = os.path.relpath(os.path.abspath(name), ROOT).replace(os.sep, "/")   # the source's name in mulorder.txt
+        self.order = order if order is not None else {}
+        self.trace = trace             # a path: trace build (MH2_FPTRACE): float add and multiply carry a site id, written there
+        self.opk = Counter()           # (function, op) -> the operations met so far
+        self.sites = []
         self.lines = text.split("\n")
         self.errors = []
         self.stats = Counter()
@@ -168,7 +196,21 @@ class Rewriter:
             self.err(ln, "frem")
             return [ln]
         if ty == "float":
-            return [self.call(FLOAT_ARITH[op], "float", ["float " + a, "float " + b], dst, ind, tail)]
+            helper, args = FLOAT_ARITH[op], ["float " + a, "float " + b]
+            a_orig = (a, b)
+            if op in ("fadd", "fmul"):
+                k = self.opk[(self.func, op)]
+                self.opk[(self.func, op)] += 1
+                ent = self.order.get((self.rel, self.func, op))
+                if ent and k in ent[1]:
+                    args.reverse()     # MWCC's operand order (mulorder.txt)
+                if self.trace:
+                    sid = zlib.crc32(("%s:%s:%s:%d" % (self.rel, self.func, op, k)).encode()) & 0xFFFFFFFF
+                    kind = ("c" if is_const(a_orig[0]) else "v") + ("c" if is_const(a_orig[1]) else "v")   # the source's operands: constant or not
+                    self.sites.append("%08x %s %s %s %d %s" % (sid, self.rel, self.func, op, k, kind))
+                    helper += "_t"
+                    args.append("i32 %d" % (sid - (1 << 32) if sid >= 1 << 31 else sid))
+            return [self.call(helper, "float", args, dst, ind, tail)]
         if ty == "double":
             h = DOUBLE_ARITH[op]
             out = []
@@ -328,6 +370,9 @@ class Rewriter:
                 out.append(ln)
                 continue
             if ln.startswith("}"):
+                for (rel, fn, op), (n, ks) in self.order.items():
+                    if rel == self.rel and fn == self.func and self.opk[(fn, op)] != n:
+                        self.errors.append("%s: %s: mulorder.txt is stale: %d %s, it says %d" % (self.name, fn, self.opk[(fn, op)], op, n))
                 self.func = None
                 skip = False
                 out.append(ln)
