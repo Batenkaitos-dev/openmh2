@@ -1,6 +1,6 @@
 # OpenMH2
 
-**OpenMH2 lets you play Monster Hunter 2 (Dos) on your PC, on Windows or Linux.** Dos is the PlayStation 2 game that never left Japan.
+**OpenMH2 lets you play Monster Hunter 2 (Dos) on your PC, on Windows or Linux.**
 
 **A fully native port, built from the ground up.** OpenMH2 is built on [mh2-decomp](https://github.com/Batenkaitos-dev/mh2-decomp), which turns the game's code back into readable C source that, compiled for the PS2, rebuilds the original game byte for byte. OpenMH2 compiles that same source into a native PC program, with its own new code in place of the PS2's system software, so no PS2 BIOS is needed. It is not an emulator and not a recompilation: unlike a "recomp", it does not translate the PS2's machine code, and nothing emulates the PS2's processor.
 
