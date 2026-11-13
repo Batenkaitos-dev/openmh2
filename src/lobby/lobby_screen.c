@@ -517,6 +517,12 @@ s32 LobbyScreen_EnterSeq(s32 mode)
         }
         break;
     case 1:
+#if PLATFORM_PC
+        if (mode == LOBBY_ENTER_VILLAGE_OFFLINE && Game_HubReturnArea() != 0) {
+            /* the offline hub's return: the town's rules are on before the models load, so the common motions are the town's set (2), not the offline set (1) */
+            Game_HubRulesSet(1);
+        }
+#endif
         LobbyScreen_LoadModels();
         gLobby->seqStep++;
     case 2:
