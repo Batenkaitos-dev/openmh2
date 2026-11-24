@@ -13,6 +13,7 @@
 
 #include "hfr.h"
 #include "mh2host.h"
+#include "scale.h"
 
 uint32_t g_present_event;
 #define HFR_QUEUE 12
@@ -28,6 +29,18 @@ static struct {
     int fresh;
     int shown;
     int movie;   /* the latest picture is a movie one */
+    int have;                       /* a picture has arrived (the window can be drawn again with it) */
+    /* the picture's scaling to the window (scale.h): smooth (the GPU's bilinear filter), sharp (the processor's cubic filter,
+     * into a texture of the picture's size in the window) or whole (nearest, a whole multiple of the picture's width) */
+    int sc_mode, sc_strength, sc_workers;
+    unsigned char *sc_src;          /* sharp: a copy of the picture being filtered (the GS thread goes on) */
+    size_t sc_srccap;
+    uint32_t sc_w, sc_h;
+    int sc_new;                     /* the copy is a picture not yet filtered */
+    unsigned char *sc_out;          /* the filtered picture, RGBA8 */
+    size_t sc_outcap;
+    SDL_Texture *sc_tex;
+    int sc_dw, sc_dh;               /* its size */
     int typing;                     /* the USB keyboard types (keyboard.c) */
     char freecam[160];              /* the freecam's line (freecam.c), empty: it is off */
     char pace[60];                  /* the pause's or fast-forward's words (pace.c), empty: none */
@@ -106,7 +119,8 @@ int present_init(void)
             wflags |= SDL_WINDOW_NOT_FOCUSABLE | (!strcmp(m, "hidden") ? SDL_WINDOW_HIDDEN : 0);
     }
 #endif
-    pr.window = SDL_CreateWindow(MH2_WINDOW_TITLE, 960, 720, wflags);
+    int win_w = 960, win_h = 720;
+    pr.window = SDL_CreateWindow(MH2_WINDOW_TITLE, win_w, win_h, wflags);
     if (!pr.window) {
         host_log("SDL_CreateWindow: %s", SDL_GetError());
         return -1;
@@ -117,6 +131,30 @@ int present_init(void)
         return -1;
     }
     host_log("renderer: %s", SDL_GetRendererName(pr.renderer));
+    pr.sc_mode = SCALE_SMOOTH;
+    pr.sc_strength = 2;
+    if (g_cfg.scaling && *g_cfg.scaling) {
+        int m = scale_mode_of(g_cfg.scaling);
+        if (m < 0)
+            host_log("scaling: %s is not smooth, sharp or whole: smooth", g_cfg.scaling);
+        else
+            pr.sc_mode = m;
+    }
+    if (g_cfg.sharpness && *g_cfg.sharpness) {
+        int s = scale_strength_of(g_cfg.sharpness);
+        if (s < 0)
+            host_log("sharpness: %s is not low, medium or high: medium", g_cfg.sharpness);
+        else
+            pr.sc_strength = s;
+    }
+    pr.sc_workers = SDL_GetNumLogicalCPUCores() - 1;
+    if (pr.sc_workers > 3)
+        pr.sc_workers = 3;
+    if (pr.sc_workers < 0)
+        pr.sc_workers = 0;
+    if (pr.sc_mode != SCALE_SMOOTH)
+        host_log("scaling: %s%s%s", g_cfg.scaling, pr.sc_mode == SCALE_SHARP ? ", sharpness " : "",
+                 pr.sc_mode == SCALE_SHARP ? (pr.sc_strength == 1 ? "low" : pr.sc_strength == 2 ? "medium" : "high") : "");
     apply_vsync(false);
     SDL_SetRenderDrawColor(pr.renderer, 0, 0, 0, 255);
     SDL_RenderClear(pr.renderer);
@@ -492,6 +530,7 @@ void present_submit(const void *pixels, uint32_t width, uint32_t height, uint32_
     SDL_PushEvent(&e);
 }
 
+
 void present_draw(void)
 {
     if (!pr.renderer)
@@ -507,31 +546,51 @@ void present_draw(void)
         pr.note[0] = 0;
         pr.dirty = 1;
     }
-    if (!pr.fresh && !(pr.dirty && pr.texture)) {
+    if (!pr.fresh && !(pr.dirty && pr.have)) {
         SDL_UnlockMutex(pr.mu);
         return;
     }
     int fresh = pr.fresh;
     pr.fresh = 0;
     pr.dirty = 0;
-    if (pr.texture && (pr.texture->w != (int)pr.width || pr.texture->h != (int)pr.height)) {
-        SDL_DestroyTexture(pr.texture);
-        pr.texture = NULL;
-    }
-    if (!pr.texture) {
-        pr.texture = SDL_CreateTexture(pr.renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, (int)pr.width,
-                                       (int)pr.height);
-        if (pr.texture) {
-            SDL_SetTextureBlendMode(pr.texture, SDL_BLENDMODE_NONE);
-            SDL_SetTextureScaleMode(pr.texture, SDL_SCALEMODE_LINEAR);
+    if (fresh)
+        pr.have = 1;
+    int sharp = pr.sc_mode == SCALE_SHARP;
+    if (sharp) {   /* the filter runs outside the lock, on a copy */
+        if (fresh) {
+            size_t n = (size_t)pr.width * pr.height * 4;
+            if (n > pr.sc_srccap) {
+                free(pr.sc_src);
+                pr.sc_src = malloc(n);
+                pr.sc_srccap = pr.sc_src ? n : 0;
+            }
+            if (pr.sc_src) {
+                memcpy(pr.sc_src, pr.pixels, n);
+                pr.sc_w = pr.width;
+                pr.sc_h = pr.height;
+                pr.sc_new = 1;
+            }
         }
+    } else {
+        if (pr.texture && (pr.texture->w != (int)pr.width || pr.texture->h != (int)pr.height)) {
+            SDL_DestroyTexture(pr.texture);
+            pr.texture = NULL;
+        }
+        if (!pr.texture) {
+            pr.texture = SDL_CreateTexture(pr.renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, (int)pr.width,
+                                           (int)pr.height);
+            if (pr.texture) {
+                SDL_SetTextureBlendMode(pr.texture, SDL_BLENDMODE_NONE);
+                SDL_SetTextureScaleMode(pr.texture, SDL_SCALEMODE_LINEAR);
+            }
+        }
+        if (pr.texture && fresh)
+            SDL_UpdateTexture(pr.texture, NULL, pr.pixels, (int)pr.width * 4);
     }
-    if (pr.texture && fresh)
-        SDL_UpdateTexture(pr.texture, NULL, pr.pixels, (int)pr.width * 4);
     uint32_t w = pr.width, h = pr.height;
     int movie = pr.movie;
     SDL_UnlockMutex(pr.mu);
-    if (!pr.texture)
+    if (sharp ? !pr.sc_w : !pr.texture)
         return;
     SDL_SetRenderDrawColor(pr.renderer, 0, 0, 0, 255);
     SDL_RenderClear(pr.renderer);
@@ -548,7 +607,64 @@ void present_draw(void)
         dst.h = (float)ow * (float)ah / (float)aw;
         dst.y = ((float)oh - dst.h) / 2.0f;
     }
-    SDL_RenderTexture(pr.renderer, pr.texture, NULL, &dst);
+    if (pr.sc_mode == SCALE_WHOLE) {   /* the largest whole multiple of the picture's width that fits; where not even one does, the fit, filtered */
+        int rw = 0, rh = 0;
+        if (scale_whole_size(ow, oh, (int)w, aw, ah, &rw, &rh)) {
+            dst.w = (float)rw;
+            dst.h = (float)rh;
+            dst.x = (float)((ow - rw) / 2);
+            dst.y = (float)((oh - rh) / 2);
+            SDL_SetTextureScaleMode(pr.texture, SDL_SCALEMODE_NEAREST);
+        } else {
+            SDL_SetTextureScaleMode(pr.texture, SDL_SCALEMODE_LINEAR);
+        }
+    }
+    if (sharp) {   /* the picture filtered to the window's size, drawn one to one */
+        int dw = (int)(dst.w + 0.5f), dh = (int)(dst.h + 0.5f);
+        dst.x = (float)(int)(dst.x + 0.5f);
+        dst.y = (float)(int)(dst.y + 0.5f);
+        dst.w = (float)dw;
+        dst.h = (float)dh;
+        int ok = dw > 0 && dh > 0;
+        if (ok && (pr.sc_new || !pr.sc_tex || pr.sc_dw != dw || pr.sc_dh != dh)) {
+            size_t n = (size_t)dw * (size_t)dh * 4;
+            if (n > pr.sc_outcap) {
+                free(pr.sc_out);
+                pr.sc_out = malloc(n);
+                pr.sc_outcap = pr.sc_out ? n : 0;
+            }
+            if (pr.sc_tex && (pr.sc_tex->w != dw || pr.sc_tex->h != dh)) {
+                SDL_DestroyTexture(pr.sc_tex);
+                pr.sc_tex = NULL;
+            }
+            if (!pr.sc_tex) {
+                pr.sc_tex = SDL_CreateTexture(pr.renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, dw, dh);
+                if (pr.sc_tex) {
+                    SDL_SetTextureBlendMode(pr.sc_tex, SDL_BLENDMODE_NONE);
+                    SDL_SetTextureScaleMode(pr.sc_tex, SDL_SCALEMODE_NEAREST);
+                }
+            }
+            ok = pr.sc_out && pr.sc_tex &&
+                 !scale_resample(pr.sc_src, (int)pr.sc_w, (int)pr.sc_h, pr.sc_out, dw, dh, pr.sc_strength, pr.sc_workers) &&
+                 SDL_UpdateTexture(pr.sc_tex, NULL, pr.sc_out, dw * 4);
+            if (ok) {
+                pr.sc_new = 0;
+                pr.sc_dw = dw;
+                pr.sc_dh = dh;
+            }
+        }
+        if (ok) {
+            SDL_RenderTexture(pr.renderer, pr.sc_tex, NULL, &dst);
+        } else {   /* the filter or its texture failed: smooth from now on, with the picture the renderer has */
+            host_log("scaling: the sharp filter failed (%s): smooth", SDL_GetError());
+            pr.sc_mode = SCALE_SMOOTH;
+            SDL_LockMutex(pr.mu);
+            pr.fresh = 1;
+            SDL_UnlockMutex(pr.mu);
+        }
+    } else {
+        SDL_RenderTexture(pr.renderer, pr.texture, NULL, &dst);
+    }
     if (pr.note[0] && SDL_GetTicks() < pr.note_until) {   /* top centre */
         float sc = dst.w >= 1200.0f ? 2.0f : 1.0f;
         draw_osd_line(dst.x + (dst.w - (float)strlen(pr.note) * 8.0f * sc) / 2.0f, dst.y + 6 + 16 * sc, sc, pr.note);
@@ -581,6 +697,11 @@ void present_shutdown(void)
         free(pr.hf.slot[i].px);
     if (pr.texture)
         SDL_DestroyTexture(pr.texture);
+    if (pr.sc_tex)
+        SDL_DestroyTexture(pr.sc_tex);
+    free(pr.sc_src);
+    free(pr.sc_out);
+    scale_free();
     if (pr.renderer)
         SDL_DestroyRenderer(pr.renderer);
     if (pr.window)

@@ -142,6 +142,28 @@ extern SceneState gScene;
 #define SCENE_PLAYERS       4   /* the quest's player slots (SceneState.inQuest, gQuest.hunterRank, the start areas) */
 #define SCENE_EM_KINDS      4   /* SceneState.emKind: the stage's monster slots */
 
+/*
+ * The quest's kind slots through these macros: SCENE_EM_KIND_N of them (the slots a quest fills), SCENE_EM_KIND_MAX at most,
+ * SCENE_EM_KIND(i) a slot's kind, SCENE_PART_MODELS(slot) its second model set, SCENE_EM_TEX(slot) its first picture handle.
+ * Off the content core they are Dos's four and the scene's own cells, the expressions the game always had. In the content core a
+ * quest of the pack has six, as Frontier fills them, and Dos's own quests four; the slots 4 and 5 live in the content core
+ * (include/content_area.h).
+ */
+
+
+
+
+
+
+
+
+#define SCENE_EM_KIND_MAX       SCENE_EM_KINDS
+#define SCENE_EM_KIND_N         SCENE_EM_KINDS
+#define SCENE_EM_KIND(i)        gScene.emKind[i]
+#define SCENE_PART_MODELS(slot) gScene.partModels[slot]
+#define SCENE_EM_TEX(slot)      ((slot) * 20 + 163)
+
+
 /* SceneState.inQuest's values, per player slot (set by the lobby's network
  * code; the monsters only target and follow players IN_QUEST_YES). */
 #define IN_QUEST_LEFT       0       /* the player left the quest */
@@ -190,6 +212,11 @@ void EmSlot_Clear(s16 i);
 void EmSlot_FreeModels(s16 i);
 void Area_FreeModels(void);
 void Area_LoadSubModels(u16 id);
+
+
+
+
+
 void CharMake_LoadPartsModel(s32 gender);
 void CharMake_FreePartsModel(void);
 void ScEvent_Init(void);

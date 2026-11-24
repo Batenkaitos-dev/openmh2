@@ -213,6 +213,17 @@ static u64 *Tex_SelectPacket(u64 *pkt, s32 image)
     /* the alpha test passes alpha other than 0, the depth test the nearer pixel */
     *pkt++ = GS_TEST_ATE | (GS_ATST_NOTEQUAL << 1) | GS_TEST_ZTE | (GS_ZTST_GREATER << 17);
     *pkt++ = GS_REG_TEST_1;
+
+
+
+
+
+
+
+
+
+
+
     *pkt++ = (u64)tbp | ((s64)(width / 64) << 14) | ((u64)GS_PSMT8 << 20) | ((s64)logW << 26) |
            ((s64)logH << 30) | ((u64)12 << 32) | ((u64)cbp << 37) | ((u64)0x20000000 << 32);
     *pkt++ = GS_REG_TEX0_1;

@@ -15,7 +15,7 @@
 #include "scene.h"
 #include "lobby_globals.h"
 #include "lobby_net.h"
-#include "lobby_menu.h"
+#include "lobby_menu_work.h"
 #include "lobby_labels.h"
 #include "lobby_text.h"
 #include "menu_task.h"

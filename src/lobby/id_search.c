@@ -12,7 +12,7 @@
 #include "lobby_globals.h"
 #include "pad.h"
 #include "lobby_state.h"
-#include "lobby_menu.h"
+#include "lobby_menu_work.h"
 #include "lobby_labels.h"
 #include "bgm.h"
 #include "sprite_queue.h"

@@ -119,6 +119,42 @@ void vu1_continue(void);
 void vu1_stats(u64 *runs, u64 *pairs);
 void Gfx_Vu1UseCompiled(int on);
 u64 vu1_hash_bytes(u64 h, const void *p, u32 n);
+/* The second pass (gfx_pass.c): the snapshots of the units it runs on, and their sandbox. */
+/* The pass's development switches (MH2_PASS_*): read from the environment in a development build; a release build names none, and each
+ * takes its default (PASS_FIXED: the mode, the thread and the live alphas follow the pass's ring there, Pal_GsLabels). */
+static inline const char *Pass_NoEnv(void)
+{
+    return (const char *)0;
+}
+#define PASS_ENV(name) Pass_NoEnv()
+#define PASS_FIXED 1
+#define PASS_DEVTEXT(dev, rel) rel
+extern int Pal_GsLabels;
+#define GFX_PASS_SB_QW 32800   /* a tag of 32,767 qwords and its tag */
+u32 vif_state(void *buf, int load);
+u32 vu1_state(void *buf, int load);
+u32 gif_state(void *buf, int load);
+u32 gs_state(void *buf, int load);
+u32 gif_real_export(u8 *dst, u32 cap);
+void gif_real_import(const u8 *src);
+const u16 *vif_image_pages(void);
+void gif_sandbox(int on, void *bufs);
+void gif_sandbox_clear(void);
+int gif_sandbox_same(void);
+int gif_pending(void);
+/* The window and the pass: gfx_dma.c opens a window around a VIF1 transfer, hands it each piece of data it sends, and the pass runs when it closes. */
+extern int gGfxPassOpen, gGfxPassRun;
+void Pass_WindowBegin(void);
+void Pass_Data(int ch, const void *p, u32 qwords);
+void Pass_Tag(u64 hi);
+void Pass_Model(const void *label);
+void Pass_TagEnd(u32 taddr);
+void Pass_StepEnd(u64 vblank);
+void Pass_VBlankStart(u64 vblank);
+void Pass_Real(int path, const void *data, u32 qwords);
+void Pass_Out(int path, const void *data, u32 qwords);
+void Pass_WindowEnd(void);
+
 /* gfx_gs.c: what the GS receives (the stream, hashed and handed on) */
 void gs_gif(int path, const void *data, u32 qwords);
 void gs_priv_write(u32 addr, u64 value);

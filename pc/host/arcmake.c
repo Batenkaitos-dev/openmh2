@@ -859,3 +859,43 @@ done:
     free(c.buf);
     return r->code;
 }
+
+/* Where the disc file NAME is in the player's copy GIVEN (a disc image, a folder with the disc's files, or a folder that holds the image): the host file and the byte
+ * in it where the disc file starts. Read through the ISO 9660 reader above; nothing is copied. */
+int arc_source_locate(const char *given, const char *name, char *file, size_t cap, uint64_t *offset, uint64_t *size, char *err, size_t ecap)
+{
+    Source s;
+    ArcResult r;
+    memset(&s, 0, sizeof(s));
+    memset(&r, 0, sizeof(r));
+    if (find_source(given, &s, &r) != 0) {
+        snprintf(err, ecap, "no disc copy in %s", given);
+        return -1;
+    }
+    if (!s.iso) {
+        uint64_t sz = 0;
+        if (!find_extracted(s.path, name, file, cap, &sz)) {
+            snprintf(err, ecap, "%s has no %s", s.path, name);
+            return -1;
+        }
+        *offset = 0;
+        *size = sz;
+        return 0;
+    }
+    Iso iso = {0};
+    if (iso_open(&iso, s.path, &r) != 0) {
+        snprintf(err, ecap, "%s is not an ISO 9660 disc image", s.path);
+        return -1;
+    }
+    uint32_t lba = 0, sz = 0;
+    int f = iso_find(&iso, name, &lba, &sz);
+    fclose(iso.f);
+    if (f != 1) {
+        snprintf(err, ecap, f == 0 ? "the image %s has no %s" : "the image %s cannot be read", s.path, name);
+        return -1;
+    }
+    snprintf(file, cap, "%s", s.path);
+    *offset = (uint64_t)lba * SECTOR;
+    *size = sz;
+    return 0;
+}

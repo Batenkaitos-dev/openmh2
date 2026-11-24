@@ -28,6 +28,7 @@
 #include "quest.h"
 #include "text.h"
 #include "area_menu.h"
+#include "content_area.h"
 #include "game_util.h"
 #include "item_shop.h"
 #include "menu_steps.h"
@@ -220,6 +221,50 @@ void AreaMenu_GoTo(u16 area)
     SpawnPt *spawn = NULL;
     u16 setIndex;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     switch (area) {
     case AREA_HUB_0x89:
 #if PLATFORM_PC
@@ -246,6 +291,11 @@ void AreaMenu_GoTo(u16 area)
                 break;
             }
         } else {
+
+
+
+
+
             switch (menu->fromArea) {
             case AREA_HUB_0xAA:
             case AREA_HUB_0xAB:

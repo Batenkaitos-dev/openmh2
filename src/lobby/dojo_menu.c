@@ -1858,7 +1858,9 @@ void DojoMenu_DrawQuestPage(s16 x, s16 y)
     }
 }
 
+
 extern char *gItemNames[];
+
 
 /* Draws the point exchange: the points held, the page, the lines (greyed
  * when the hunter can't pay for one), the cursor, the item's description,

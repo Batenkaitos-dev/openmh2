@@ -49,7 +49,9 @@ extern ObjAttach gObjAttachPool[OBJ_ATTACH_POOL_SIZE];
  * fall between the halves of gObjAttachPool's own address. */
 extern ObjAttach gObjAttachPoolLast;
 extern ObjAttach *gObjAttachList;
+
 extern Em gEms[];
+
 
 /* Empties the three object pools (Obj, StageObj, ObjAttach) and frees every work block. */
 void Obj_InitAll(void)

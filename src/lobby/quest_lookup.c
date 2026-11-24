@@ -8,6 +8,9 @@
  */
 
 #include "common.h"
+
+
+
 #include "lobby_menu.h"
 #include "quest.h"
 #include "lobby_labels.h"
@@ -27,7 +30,11 @@ extern QuestInfo **gGuildQuestLists[];
 QuestInfo *Quest_GetDiscInfo(u16 id)
 {
     s32 i;
+
+
+
     u16 *groupLast = gQuestGroupLastIds;
+
     QuestInfo **entry;
 
     if (id >= QUEST_ID_DOWNLOADED) {
@@ -38,8 +45,22 @@ QuestInfo *Quest_GetDiscInfo(u16 id)
             break;
         }
     }
+
+
+
     entry = gGuildQuestLists[i];
+
     entry += id % 100;
+
+
+
+
+
+
+
+
+
+
     Quest_SetCurrent(id, entry, 1);
     return *entry;
 }

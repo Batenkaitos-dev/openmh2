@@ -32,6 +32,12 @@ void Load_EquipModelPack(s32 id, s32 female);
 extern s32 *gPartModelFilesMale[8];
 extern s32 *gPartModelFilesFemale[8];
 extern s32 gWeaponModelPackFiles[340];
+
+
+
+
+
+
 extern s32 gEmPartModelPackFiles[76];
 extern s32 gAreaSubModelFiles[200];
 extern s32 *gEmSlotAnimFiles[20];

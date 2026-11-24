@@ -13,6 +13,7 @@
 #include "camera.h"
 #include "cam_areas.h"
 #include "engine_math.h"
+#include "pal.h"
 #include "mem_util.h"
 #include "cam_helpers.h"
 
@@ -33,6 +34,9 @@ void CamReq_Reset(void)
     gCamCtl.request = 0;
     gCamCtl.requestArg = NULL;
     gCamCtl.follow.distNo = CAM_DIST_DEFAULT;
+#if PLATFORM_PC
+    PC_CAM_TILT_RESET(&gCamCtl.follow);
+#endif
 }
 
 /*

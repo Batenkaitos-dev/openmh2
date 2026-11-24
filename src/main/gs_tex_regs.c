@@ -142,17 +142,30 @@ s32 Gs_BuildTexRegs(u32 handle, u64 *texAlphaReg, u64 *texLodReg, u64 *texBaseRe
         } else {
             *texAlphaReg = TEXA_TA1_FULL;
         }
+
+
+
+
+
+
         *texBaseReg = (u64)texRec->vram | ((u64)bufWidth << 14) | ((u64)texRec->psm << 20) | ((u64)texRec->tw << 26) |
                 ((u64)texRec->th << 30) | TEX0_TCC_RGBA | ((u64)pal->vram << 37) |
                 ((u64)pal->psm << 51) | TEX0_CLD_LOAD;
+
     } else {
         if (texRec->fmt == TEX_FMT_NO_ALPHA) {
             *texAlphaReg = TEXA_TA0_FULL | TEXA_TA1_FULL;
         } else {
             *texAlphaReg = TEXA_TA1_FULL;
         }
+
+
+
+
+
         *texBaseReg = (u64)texRec->vram | ((u64)bufWidth << 14) | ((u64)texRec->psm << 20) | ((u64)texRec->tw << 26) |
                 ((u64)texRec->th << 30) | TEX0_TCC_RGBA;
+
     }
     switch (flags & RF_TEX_CLAMP_MASK) {
     case 0:
@@ -183,10 +196,17 @@ s32 Gs_BuildTexRegs(u32 handle, u64 *texAlphaReg, u64 *texLodReg, u64 *texBaseRe
             levelVramOut++;
             levelBufWidthOut++;
         }
+
+
+
+
+
+
         *mipBaseLow = (u64)levelVram[0] | ((u64)levelBufWidth[0] << 14) | ((u64)levelVram[1] << 20) | ((u64)levelBufWidth[1] << 34) |
                 ((u64)levelVram[2] << 40) | ((u64)levelBufWidth[2] << 54);
         *mipBaseHigh = (u64)levelVram[3] | ((u64)levelBufWidth[3] << 14) | ((u64)levelVram[4] << 20) | ((u64)levelBufWidth[4] << 34) |
                 ((u64)levelVram[5] << 40) | ((u64)levelBufWidth[5] << 54);
+
     }
     return 1;
 }

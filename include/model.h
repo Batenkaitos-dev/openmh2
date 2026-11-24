@@ -515,6 +515,11 @@ Model *Model_SetupWithPackRaw(s16 idx, s32 modelFile, s32 slot, s32 packId, s32 
 Model *Model_SetupLoadedPackEx(s16 idx, s32 modelFile, s32 slot, s32 *pack, s32 setupFlags, s32 secondId, s32 skelKind, s32 src);
 extern s32 gTexPackFiles[2836];
 extern s32 gModelPackIds[340];
+
+
+
+
+
 extern s32 gTexCreateKinds[2];
 
 s32 SkelFile_BuildPart(SkelHeader *dst, SkelHeader *built, void *skelFile, s32 part);
@@ -592,6 +597,12 @@ void Gs_SetTexRegs(u32 tex, u64 *texa, u64 *tex1Reg, u64 *tex0Reg, u64 *clamp, u
 void Model_RelocateAll(void);
 void Model_Relocate(ModelEntry *entry);
 s32 Model_Draw(u32 handle, s32 flags);
+
+
+
+
+
+
 s32 Model_FreeHandle(u32 handle);
 
 #endif /* MODEL_H */

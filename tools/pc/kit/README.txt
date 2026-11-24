@@ -44,6 +44,8 @@ Making a translation
   built, the launcher also lists the game's own strings in core/strings.tsv in the user data folder (a work file, one string
   a line, for the translator to fill in). docs/translation-packs.md in the project's repository is the author's guide: the
   tools' commands, the pack's files, every message the checker prints, and the limits.
+  To use a pack, put its folder in the text_packs folder of the user data folder (the launcher's Content page opens it) and
+  choose it there, in "Translation pack": the launcher says whether the game accepts it.
 
 Licences
   The project's own work is public domain (CC0 1.0). The folder "licenses" holds the notices and the source offers of the

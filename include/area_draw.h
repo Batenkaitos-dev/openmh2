@@ -320,6 +320,12 @@ extern char *gArenaRecordLabels[2];
 extern char *gArenaRecordFmt[4];
 extern char *gStatusStatLabels[8];
 extern char *gWeaponTypeNames[12];
+
+
+
+
+
+
 extern char *gStatusBoxTitles[8];
 extern char *gStatusPageFmt[2];
 extern char *gMemberCardNumFmt;

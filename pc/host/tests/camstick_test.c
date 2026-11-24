@@ -73,6 +73,48 @@ static int Count(int n, int buttons, int rx, int ry, unsigned bit)
     return c;
 }
 
+/* A hash (FNV-1a, 64 bits) of the pads the mapping makes over a fixed sweep: every setting of the mode, the invert, the speed
+ * and the stick; sticks over the whole range, the hold button and the player's own buttons coming and going, the VBlanks
+ * counting up with gaps. smooth 1 sets the smooth camera's row. */
+static uint64_t SweepHash(int smooth)
+{
+    static const char *const modes[] = {"on", "hold"}, *const invs[] = {"none", "x", "y", "xy"};
+    static const char *const speeds[] = {"25", "50", "75", "100"}, *const whiches[] = {"right", "left"};
+    uint64_t h = 1469598103934665603ull;
+    for (int m = 0; m < 2; m++)
+        for (int iv = 0; iv < 4; iv++)
+            for (int sp = 0; sp < 4; sp++)
+                for (int wh = 0; wh < 2; wh++) {
+                    Cfg(modes[m], invs[iv], speeds[sp], whiches[wh]);
+                    g_cfg.camera_smooth = smooth;
+                    for (int i = 0; i < 1500; i++) {
+                        g_vblank += 1 + (i % 7 == 0);
+                        int x = (i * 37 + (i >> 5) * 11) & 255, y = (i * 91 + (i >> 3) * 5) & 255;
+                        int bt = ((i & 64) ? B_L3 : 0) | ((i & 128) ? B_CROSS : 0) | ((i & 512) ? B_UP : 0);
+                        Mh2IpcPad p = Pad(bt, x, y);
+                        if (wh) {
+                            p.lx = (uint8_t)x;
+                            p.ly = (uint8_t)y;
+                            p.rx = (uint8_t)(255 - x);
+                            p.ry = (uint8_t)(255 - y);
+                        }
+                        camstick_apply(&p);
+                        unsigned char raw[21];   /* connected, buttons, the four sticks, the twelve pressures, the two camera numbers */
+                        raw[0] = p.connected;
+                        raw[1] = (unsigned char)(p.buttons & 255);
+                        raw[2] = (unsigned char)(p.buttons >> 8);
+                        raw[3] = p.rx, raw[4] = p.ry, raw[5] = p.lx, raw[6] = p.ly;
+                        memcpy(raw + 7, p.pressure, 12);
+                        raw[19] = p.camTurn, raw[20] = p.camTilt;
+                        for (unsigned k = 0; k < 21; k++)
+                            h = (h ^ raw[k]) * 1099511628211ull;
+                    }
+                }
+    return h;
+}
+
+#define SWEEP_OFF 0x837e89f04be9db2bull
+
 int main(void)
 {
     /* off: nothing changes */
@@ -183,6 +225,150 @@ int main(void)
         Mh2IpcPad p = Pad(0, 0xFF, 0x00), q = p;
         camstick_apply(&p);
         Check(!memcmp(&p, &q, sizeof(p)), "the freecam in control: nothing");
+    }
+    /* the smooth camera: the stick as two numbers, no D-pad bit */
+    Cfg("on", "none", "100", "right");
+    g_cfg.camera_smooth = 1;
+    {
+        g_vblank = 10;
+        Mh2IpcPad p = Pad(B_CROSS | B_LEFT, 0xFF, 0x80);
+        camstick_apply(&p);
+        Check((int8_t)p.camTurn == 50 && (int8_t)p.camTilt == 0, "smooth: full right is turn 50, tilt 0");
+        Check(p.buttons == (B_CROSS | B_LEFT), "smooth: no D-pad bit is added, the player's own stays");
+        Check(p.pressure[0] == 0 && p.pressure[1] == 0 && p.pressure[2] == 0 && p.pressure[3] == 0, "smooth: no D-pad pressure");
+        Check(p.rx == 0x80 && p.ry == 0x80, "smooth: the game is given the stick at rest");
+        Mh2IpcPad q = Pad(0, 0x00, 0x80);
+        camstick_apply(&q);
+        Check((int8_t)q.camTurn == -50 && q.camTilt == 0, "smooth: full left is turn -50");
+        Mh2IpcPad u = Pad(0, 0x80, 0x00);
+        camstick_apply(&u);
+        Check(u.camTurn == 0 && (int8_t)u.camTilt == 50, "smooth: full up is tilt 50 (looks up)");
+        Mh2IpcPad d = Pad(0, 0x80, 0xFF);
+        camstick_apply(&d);
+        Check(d.camTurn == 0 && (int8_t)d.camTilt == -50, "smooth: full down is tilt -50");
+        Mh2IpcPad r = Pad(0, 0x80, 0x80);
+        camstick_apply(&r);
+        Check(r.camTurn == 0 && r.camTilt == 0, "smooth: at rest, both 0");
+        Mh2IpcPad e = Pad(0, 128 + 38, 0x80);
+        camstick_apply(&e);
+        Check(e.camTurn == 0, "smooth: the edge of the rest zone is 0");
+        Mh2IpcPad l = Pad(0, 128 + 64, 0x80);
+        camstick_apply(&l);
+        Check((int8_t)l.camTurn == 9, "smooth: a light push (r 64) is 9");
+        Mh2IpcPad g = Pad(0, 128 + 90, 128 - 90);
+        camstick_apply(&g);
+        Check((int8_t)g.camTurn == 35 && (int8_t)g.camTilt == 35, "smooth: a diagonal gives both (35 and 35)");
+        Mh2IpcPad h = Pad(0, 128 - 90, 128 + 90);
+        camstick_apply(&h);
+        Check((int8_t)h.camTurn == -35 && (int8_t)h.camTilt == -35, "smooth: the opposite diagonal gives both, negative");
+        /* stateless: the same stick, the same numbers at any VBlank, whatever came before */
+        int same = 1;
+        for (int v = 1; v < 40; v++) {
+            g_vblank = (uint64_t)v * 3;
+            Mh2IpcPad w = Pad(0, 128 + 64, 0x80);
+            camstick_apply(&w);
+            same &= (int8_t)w.camTurn == 9;
+        }
+        Check(same, "smooth: the numbers do not depend on the VBlank");
+        /* monotone and symmetric over the whole range of one axis */
+        int mono = 1, sym = 1, prev = 0;
+        for (int k = 0; k <= 127; k++) {
+            Mh2IpcPad a = Pad(0, 128 + k, 0x80), b = Pad(0, 128 - k, 0x80);
+            camstick_apply(&a);
+            camstick_apply(&b);
+            int t = (int8_t)a.camTurn;
+            mono &= t >= prev && t <= 50;
+            sym &= (int8_t)b.camTurn == -t;
+            prev = t;
+        }
+        Check(mono && sym, "smooth: the turn grows with the push, to 50, and left is right reversed");
+    }
+    Cfg("on", "none", "50", "right");
+    g_cfg.camera_smooth = 1;
+    {
+        g_vblank = 4;
+        Mh2IpcPad p = Pad(0, 0xFF, 0x80);
+        camstick_apply(&p);
+        Check((int8_t)p.camTurn == 25, "smooth: speed 50 turns at half");
+        Mh2IpcPad q = Pad(0, 0x80, 0x00);
+        camstick_apply(&q);
+        Check((int8_t)q.camTilt == 50, "smooth: the turning speed does not change the tilt");
+    }
+    Cfg("on", "x", "100", "right");
+    g_cfg.camera_smooth = 1;
+    {
+        g_vblank = 4;
+        Mh2IpcPad p = Pad(0, 0xFF, 0x00);
+        camstick_apply(&p);
+        Check((int8_t)p.camTurn == -35 && (int8_t)p.camTilt == 35, "smooth: invert x turns the other way, the tilt stays (a diagonal, 35 each)");
+    }
+    Cfg("on", "y", "100", "right");
+    g_cfg.camera_smooth = 1;
+    {
+        g_vblank = 4;
+        Mh2IpcPad p = Pad(0, 0xFF, 0x00);
+        camstick_apply(&p);
+        Check((int8_t)p.camTurn == 35 && (int8_t)p.camTilt == -35, "smooth: invert y tilts the other way, the turn stays (a diagonal, 35 each)");
+    }
+    Cfg("on", "none", "100", "left");
+    g_cfg.camera_smooth = 1;
+    {
+        g_vblank = 4;
+        Mh2IpcPad p = Pad(0, 0xFF, 0x80);
+        p.lx = 0xFF;
+        camstick_apply(&p);
+        Check((int8_t)p.camTurn == 50 && p.lx == 0x80 && p.rx == 0xFF, "smooth: which = left: the left stick is the camera, the right the game's");
+    }
+    /* smooth with hold: nothing without the button, the button withheld, the latch after a release */
+    Cfg("hold", "none", "100", "right");
+    g_cfg.camera_smooth = 1;
+    {
+        g_vblank = 1;
+        Mh2IpcPad p = Pad(B_CROSS, 0xFF, 0x80), q = p;
+        camstick_apply(&p);
+        Check(!memcmp(&p, &q, sizeof(p)), "smooth hold: without the button the stick is the game's and the numbers are 0");
+        g_vblank++;
+        Mh2IpcPad r = Pad(B_L3 | B_CROSS, 0xFF, 0x80);
+        camstick_apply(&r);
+        Check((int8_t)r.camTurn == 50 && !(r.buttons & B_L3) && (r.buttons & B_CROSS) && r.rx == 0x80,
+              "smooth hold: with the button, the numbers; the button is kept from the game");
+        g_vblank++;
+        Mh2IpcPad s = Pad(0, 0xFF, 0x80);   /* released, the stick still over */
+        camstick_apply(&s);
+        Check(s.camTurn == 0 && s.camTilt == 0 && s.rx == 0x80, "smooth hold: released with the stick over: the numbers 0, the game gets rest");
+        g_vblank++;
+        Mh2IpcPad u = Pad(0, 0x80, 0x80);
+        camstick_apply(&u);
+        g_vblank++;
+        Mh2IpcPad w = Pad(0, 0xFF, 0x80);
+        camstick_apply(&w);
+        Check(w.rx == 0xFF && w.camTurn == 0, "smooth hold: back at rest, the stick is the game's again");
+    }
+    /* the freecam has the pad: the numbers stay 0 */
+    Cfg("on", "none", "100", "right");
+    g_cfg.camera_smooth = 1;
+    {
+        g_freecam = 1;
+        g_vblank = 4;
+        Mh2IpcPad p = Pad(0, 0xFF, 0x00), q = p;
+        camstick_apply(&p);
+        Check(!memcmp(&p, &q, sizeof(p)), "smooth: the freecam in control: nothing");
+    }
+    /* the camera stick off: the row does nothing */
+    Cfg("off", "none", "100", "right");
+    g_cfg.camera_smooth = 1;
+    {
+        Mh2IpcPad p = Pad(B_CROSS | B_L3, 0xFF, 0x00), q = p;
+        camstick_apply(&p);
+        Check(!memcmp(&p, &q, sizeof(p)), "smooth with the camera stick off: nothing");
+    }
+    /* the row off is the old mapping to the bit: a sweep of sticks, buttons and VBlanks over every setting, hashed; the value
+     * is what the mapping gave before the smooth camera was added (made with that file); with the row on the sweep differs */
+    {
+        uint64_t off = SweepHash(0), on = SweepHash(1);
+        Check(off == SWEEP_OFF, "the row off: the sweep's hash is the old mapping's");
+        Check(on != SWEEP_OFF, "the row on: the sweep's hash differs (the control)");
+        printf("camstick sweep: off %016llx on %016llx\n", (unsigned long long)off, (unsigned long long)on);
     }
     if (bad) {
         printf("camstick: %d failed\n", bad);

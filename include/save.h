@@ -624,11 +624,37 @@ extern f32 gBarrelLightShotRange;
 extern f32 gBarrelHeavyShotSpeeds[];
 extern f32 gBarrelHeavyShotWobble;
 extern f32 gBarrelHeavyShotRange;
+
 extern ItemData gItemData[921];
+
 
 /* A sharpness table row: the highest sharpness of each level (Player_GetSharpnessLevel);
  * gSharpnessTables: a weapon type's rows (the player's weaponType). */
 typedef s16 SharpRow[6];
 extern SharpRow *gSharpnessTables[12];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #endif /* SAVE_H */

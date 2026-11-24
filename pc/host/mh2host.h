@@ -44,6 +44,9 @@ typedef struct HostConfig {
     int vsync;                 /* --vsync, the setting vsync: -1 auto (on in fullscreen), 0 off, 1 on */
     const char *log_file;      /* --log-file FILE: the log (play.c; in play, by default) */
     int launcher;              /* --launcher 1: show the launcher; --no-launcher -1: not (launcher.c) */
+    int content_core;          /* the core the host starts is the content core: the renderer's memory is 8 MB, not the GS's 4 (gs.c). Set in main.c
+                                * from the core's file (core_is_content), whichever way the core was named (the launcher's Play, the
+                                * --core option, a development option); in development builds --content-core sets it too */
     const char *import_card;   /* --import-card FILE: copied into mh2's cards folder (cards.c), then mh2 ends */
     const char *cards_dir;     /* the setting cards: mh2's cards folder (cards.c) */
     const char *card[2];       /* the settings card1, card2: the cards' names in that folder */
@@ -77,7 +80,10 @@ typedef struct HostConfig {
     int fast_loading;          /* --fast-loading, fast_loading = on: no wait for real time while the game's loading screen is open (pace.c) */
     const char *fast_forward_cap;   /* the setting fast_forward_cap: a multiple of the game's speed, or none (default 4; pace.c) */
     /* The camera on the right stick (camstick.c; off by default): camera_stick off|hold|on, camera_stick_button, camera_stick_which,
-     * camera_stick_invert, camera_stick_speed */
+     * camera_stick_invert, camera_stick_speed; camera_smooth (the setting camera_modern): the stick as two numbers for the game's smooth camera (the core's
+     * --smooth-camera), in place of the D-pad bits */
+    /* The picture's scaling to the window (scale.h; present.c): scaling smooth|sharp|whole, sharpness low|medium|high (smooth if NULL) */
+    const char *scaling, *sharpness;
     const char *camera_stick, *camera_stick_button, *camera_stick_which, *camera_stick_invert, *camera_stick_speed;
     int ssaa_asked, hires_asked; /* the renderer could not make the samples (gs.c): what was asked; ssaa and hires then read off */
     /* Widescreen: unlike the two above it changes the game's state (the camera's aspect and the 2D picture's
@@ -87,6 +93,7 @@ typedef struct HostConfig {
     /* The offline hub (the core's --offline-hub; off by default): the village's gate leads to the online town, played with
      * no network. It changes the game's state, so a save state made with it loads only with it. */
     int offline_hub;
+    int camera_smooth;
 } HostConfig;
 
 extern HostConfig g_cfg;
@@ -116,8 +123,10 @@ const char *settings_enhancements(void);
 const char *settings_widescreen(void);
 void launcher_core_arg(const char *name, const char *value);
 void launcher_core_flag(const char *name);   /* NAME alone, before the core's own arguments */
+int text_pack_dir(const char *name, char *out, size_t cap);   /* the folder a text_pack value names (settings.c) */
 void launcher_text_pack(void);    /* the core's --pack DIR when the setting names a text pack (settings.c) */
 void launcher_widescreen(void);   /* the core's --widescreen when it is on (settings.c) */
+void launcher_smooth_camera(void);  /* the core's --smooth-camera when the setting is on and the camera stick is (settings.c) */
 void launcher_offline_hub(void);  /* the core's --offline-hub when the setting is on (settings.c) */
 /* The windows' title: the project's own name, with the game named as what it runs (Capcom's name is its trademark). */
 #define MH2_WINDOW_TITLE "OpenMH2 for Monster Hunter 2 (Dos)"

@@ -25,6 +25,7 @@
 #include "rand.h"
 #include "vibration.h"
 #include "save.h"
+#include "content_wpn.h"
 
 /* prototypes */
 void Player_SetState(Player *p, u16 state, u8 sub, u16 flags);
@@ -193,9 +194,15 @@ u8 Player_CanGuardHit(Player *pl)
 {
     u8 ret = 0;
 
+
+
+
+
+
     if (pl->stamina < 75) {
         return 0;
     }
+
     if ((pl->hitAttrs & 0x80) && (Player_HasSkill(pl, SKILL_GUARD_PLUS20) == 0 || pl->weaponType == WEAPON_HEAVY_BOWGUN)) {
         return 0;
     }
@@ -208,6 +215,11 @@ u8 Player_CanGuardHit(Player *pl)
     case WEAPON_LANCE:
     case WEAPON_GUNLANCE:
     case WEAPON_HEAVY_BOWGUN:
+
+
+
+
+
         if (pl->weaponOut != 0) {
             switch (pl->action) {
             case PL_POSTURE_STANDING:
@@ -234,6 +246,31 @@ u8 Player_CanGuardHit(Player *pl)
  * The great sword's test of lastAttackKind is always true (!= one kind or
  * != another), as the original has it.
  */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 u8 Player_GuardHit(Player *pl)
 {
     s16 dull;
@@ -268,6 +305,11 @@ u8 Player_GuardHit(Player *pl)
             force = 255;
         }
     }
+
+
+
+
+
     if (force >= 40) {
         react = 2;
         Player_SetState(pl, PL_GROUP_REACT, PL_REACT_GUARD_KNOCKBACK, PL_SET_SNAP_POS | PL_SET_SNAP_YAW);

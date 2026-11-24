@@ -145,6 +145,22 @@ typedef struct ForgeRecipe {
 extern ForgeRecipe gArmorRecipes[];
 extern ForgeRecipe gWeaponRecipes[];
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* The materials of a weapon upgrade. */
 typedef struct WeaponMats {
     /* 0x0 */ ItemStack need[WEAPON_UP_MATS];

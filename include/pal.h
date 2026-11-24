@@ -47,6 +47,12 @@
  * - PC_TEXT(s) at the top of each of the text layer's entry points (text_layer.c, font.c): s is the string the function was
  *   given, and the text pack (if one is chosen) may answer with its replacement for it (pc/core/io/host_text.c); the same
  *   string without one. Nothing on the PS2.
+ * - PC_CAM_LATCH(ctl, allowed), PC_CAM_KEYS(ctl, work, camControl), PC_CAM_TURN_STEP(ctl, step), PC_CAM_BLEND(...) and
+ *   PC_CAM_TILT_RESET(work): the modern camera's seven places in the game's camera code (pc/core/pal_modcam.c; see Pal_SmoothCamera
+ *   below). CamCtl_ReadPad latches the stick; CamFollow_GetKeys turns the stick into the D-pad's key for the turn and moves the tilt;
+ *   CamFollow_Update sizes the turn's step by the push and blends the eye's offset toward the next view; the places where the game
+ *   sets the view itself (the spit roast's turn, the blocked view, the camera's reset) put the tilt back. With the setting off every
+ *   one does nothing. Nothing on the PS2.
  * - PC_FREECAM_STAGE(stage) in front of a draw statement names the stage of Frame_Draw (PAL_STAGE_* below) that follows: the
  *   statement runs as the game has it, and while the freecam's pose hides the stage its 2D packets draw nothing (in a field
  *   scene's draw only). Nothing on the PS2.
@@ -58,7 +64,7 @@
 #define PC_VIEW_X(halfW) (halfW)
 #define PC_HUD_2D() ((void)0)
 #define PC_HUD_PACKET(p, frameWidth) ((void)0)
-#define PC_HUD_QUEUED(q) ((void)0)
+#define PC_HUD_QUEUED(q, qwc) ((void)0)
 #define PC_HUD_PIVOT(x) ((void)0)
 #define PC_HUD_PIVOT_END() ((void)0)
 #define PC_FREECAM_FIELD(on) ((void)0)
@@ -68,6 +74,17 @@
 #define PC_TEXT(s) ((void)0)
 #define PC_LOADING_SCREEN(on) ((void)0)
 #define PC_GS_CAMERA(view, proj) ((void)0)
+#define PC_GS_MODEL(handle, top, end, flags, prog, world) ((void)0)
+#define PC_GS_ANCHOR(id, point) ((void)0)
+#define PC_GS_ANCHOR_END() ((void)0)
+#define PC_GS_RUN_NEW(run) ((void)0)
+#define PC_GS_RUN(run) ((void)0)
+#define PC_GS_RUN_END() ((void)0)
+#define PC_CAM_LATCH(ctl, allowed) ((void)0)
+#define PC_CAM_KEYS(ctl, work, camControl) ((void)0)
+#define PC_CAM_TURN_STEP(ctl, step) ((void)0)
+#define PC_CAM_BLEND(ctl, work, pl, distKind, offY, offZ) ((void)0)
+#define PC_CAM_TILT_RESET(work) ((void)0)
 #define PAL_SYNC_EI() __asm__ volatile ("sync.l\n\tei")
 #define PAL_NOPS_8() __asm__ volatile ("nop\n nop\n nop\n nop\n nop\n nop\n nop\n nop")
 #define PAL_NOPS_7() __asm__ volatile ("nop\n nop\n nop\n nop\n nop\n nop\n nop")
@@ -81,7 +98,7 @@
 #define PC_VIEW_X(halfW) Pal_ViewHalfWidth(halfW)
 #define PC_HUD_2D() Pal_HudMark()
 #define PC_HUD_PACKET(p, frameWidth) Pal_HudPacket((p), (frameWidth))
-#define PC_HUD_QUEUED(q) Pal_HudQueued(q)
+#define PC_HUD_QUEUED(q, qwc) Pal_HudQueued((q), (qwc))
 #define PC_HUD_PIVOT(x) Pal_HudPivot(x)
 #define PC_HUD_PIVOT_END() Pal_HudPivotEnd()
 #define PC_FREECAM_FIELD(on) Pal_FreecamField(on)
@@ -91,6 +108,20 @@
 #define PC_TEXT(s) ((s) = (void *)Pal_Text((const char *)(s)))
 #define PC_LOADING_SCREEN(on) Pal_LoadingScreen(on)
 #define PC_GS_CAMERA(view, proj) Pal_GsCamera((view), (proj))
+#define PC_CAM_LATCH(ctl, allowed) Pal_CamLatch((ctl), (allowed))
+#define PC_CAM_KEYS(ctl, work, camControl) Pal_CamKeys((ctl), (work), (camControl))
+#define PC_CAM_TURN_STEP(ctl, step) ((step) = (s16)Pal_CamTurnStep((ctl), (step)))
+#define PC_CAM_BLEND(ctl, work, pl, distKind, offY, offZ) Pal_CamBlend((ctl), (work), (pl), (distKind), (offY), (offZ))
+#define PC_CAM_TILT_RESET(work) Pal_CamTiltReset(work)
+/* A release build keeps the labels only when the host made the pass's ring (the higher frame rates): Pal_GsLabels is set once, as the core
+ * attaches, and is 0 otherwise, so that at 30 no label is made or stored and the game's path is the flag's test. */
+extern int Pal_GsLabels;
+#define PC_GS_MODEL(handle, top, end, flags, prog, world) (Pal_GsLabels ? Pal_GsModel((handle), (top), (end), (flags), (prog), (world), __builtin_return_address(0)) : (void)0)
+#define PC_GS_ANCHOR(id, point) (Pal_GsLabels ? Pal_GsAnchor((id), (point)) : (void)0)
+#define PC_GS_ANCHOR_END() (Pal_GsLabels ? Pal_GsAnchorEnd() : (void)0)
+#define PC_GS_RUN_NEW(run) (Pal_GsLabels ? Pal_GsRunNew(run) : (void)0)
+#define PC_GS_RUN(run) (Pal_GsLabels ? Pal_GsRun(run) : (void)0)
+#define PC_GS_RUN_END() (Pal_GsLabels ? Pal_GsRunEnd() : (void)0)
 #endif
 
 #if PLATFORM_PC
@@ -163,11 +194,229 @@ f32 Pal_FrustumAspect(void);
 f32 Pal_ViewHalfWidth(f32 halfW);   /* PC_VIEW_X: 320 becomes 4/3 of it at level 2, any other value stays */
 
 /*
+ * The modern camera (pc/core/pal_modcam.c; the core's --smooth-camera): the right stick turns the follow camera at a speed that
+ * follows the push and tilts it smoothly between the game's own lowest and highest views, a diagonal doing both. An enhancement: off
+ * by default, and with it off the camera is the game's to the bit (every function below does nothing); with it on and the stick at
+ * rest it is the game's too. The stick's two numbers (-127 to 127) are latched into the camera's own state (include/camera.h:
+ * CamCtl padCamTurn and padCamTilt, CamFollow tiltFrac), so a saved state carries them. Game code asks only inside PLATFORM_PC
+ * blocks, through the PC_CAM_* macros.
+ */
+s32 Pal_SmoothCamera(void);
+struct CamCtl;
+struct CamFollow;
+struct Player;
+void Pal_CamLatch(struct CamCtl *ctl, s32 allowed);
+void Pal_CamKeys(struct CamCtl *ctl, struct CamFollow *work, s32 camControl);
+s32 Pal_CamTurnStep(struct CamCtl *ctl, s32 step);
+void Pal_CamBlend(struct CamCtl *ctl, struct CamFollow *work, struct Player *pl, u16 distKind, f32 *offY, f32 *offZ);
+void Pal_CamTiltReset(struct CamFollow *work);
+
+/*
  * The offline hub enhancement's setting (pc/core/pal_hub.c): 1 when the village's gate leads to the online town played
  * offline (the core's --offline-hub), else 0. Off by default; with it off the game is Dos as it was. Game code asks it
  * only inside PLATFORM_PC blocks.
  */
 s32 Pal_OfflineHub(void);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /*
  * The 2D picture's shape (pc/core/pal_hud.c; level 2): Pal_HudMark marks the packet the emitter is about to send,
@@ -188,7 +437,7 @@ void Pal_HudPivotEnd(void);
  * Set by Pal_FreecamStage for the stage in progress. Pal_HudHideStats: the packets hidden, and those of a shape it can't read.
  */
 void Pal_HudHide(s32 on);
-void Pal_HudQueued(u32 *queued);   /* PC_HUD_QUEUED: the queued packet, after PC_HUD_PACKET */
+void Pal_HudQueued(u32 *queued, s32 qwc);   /* PC_HUD_QUEUED: the queued packet and its size in quadwords (the tag's too), after PC_HUD_PACKET */
 void Pal_HudHideStats(u32 *hidden, u32 *unparsed);
 
 /*
@@ -259,6 +508,37 @@ void Pal_LoadingScreen(s32 on);
  * they differ from the last it sent. It changes nothing the game sees. Nothing on the PS2.
  */
 void Pal_GsCamera(const f32 *view, const f32 *proj);
+
+/*
+ * The label of a model draw (Model_Draw: its handle, the first and the last tag of its DMA chain, its flags, its VU1 program and gMtxSlots[0], the matrix of
+ * the model): the renderer knows by it which GIF data is which model's, for the in-between pictures of a higher frame rate. The record goes
+ * into the ring when the DMA reads that tag, before the data the chain makes. It changes nothing the game sees. Nothing on the PS2, and nothing
+ * in a release build of the port (which has no higher frame rates).
+ */
+void Pal_GsModel(u32 handle, const void *top, const void *end, s32 flags, s32 prog, const f32 *world, const void *site);
+
+/*
+ * PC_GS_MODEL's last argument is the return address of Model_Draw: where in the game the draw was called from (a diagnostic: the renderer's logs name the
+ * function that made a draw, and `nm` on the core resolves it).
+ *
+ * The label of a 2D element that follows a 3D point (PC_GS_ANCHOR(id, point) ... PC_GS_ANCHOR_END(), around the drawing of the target marker, a name tag, a
+ * monster's bar: what the game places from Camera_ProjectPoint): id names the element (the call site's number in the high half, the thing it belongs to
+ * in the low), point is the world point (3 floats) it is placed from. The packets the 2D emitters queue between the two calls (Pal_HudQueued) are the
+ * anchor's: the renderer moves them with the point's screen position between the steps of a higher frame rate, and leaves every other 2D element as the
+ * game draws it. The camera is the game's gMtxView and gMtxProjClip at the call. It changes nothing the game sees. Nothing on the PS2, and nothing in a
+ * release build of the port.
+ */
+void Pal_GsAnchor(u32 id, const f32 *point);
+void Pal_GsAnchorEnd(void);
+
+/*
+ * The game's text is queued as runs (Font_Printf: PC_GS_RUN_NEW(run) for each new one) and drawn later, once a frame (Font_DrawPage: PC_GS_RUN(run) ... PC_GS_RUN_END()
+ * around the drawing of each run). A run made while an anchor is open is that anchor's: its glyph packets, when they are drawn, are labelled with it (the point and the
+ * camera are those of the anchor when the run was made). Nothing on the PS2, and nothing in a release build of the port.
+ */
+void Pal_GsRunNew(const void *run);
+void Pal_GsRun(const void *run);
+void Pal_GsRunEnd(void);
 
 /*
  * Asked at the start of each step of the game main loop (SubMain_Step): 1 when this step is a frozen frame (the last field

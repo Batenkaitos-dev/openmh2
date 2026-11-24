@@ -46,7 +46,9 @@ s16 Player_IsState(void *obj, s32 group, s32 state);
 #else
 s32 Player_IsState(void *obj, s32 group, s32 state);
 #endif
+
 extern char *gItemNames[];
+
 extern char gEmTraderMsgBufs[];
 extern u16 EmTrader_GiftItemsV0[];
 extern u16 EmTrader_GiftItemsV1[];

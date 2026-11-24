@@ -58,6 +58,49 @@ void Pal_RegisterLowRange(const char *what, const void *lo, unsigned int size)
     sRangeCount++;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 static void MapLowPool(void)
 {
     unsigned int lo, hi, above;
@@ -74,6 +117,9 @@ static void MapLowPool(void)
     if (!sLowPool) {
         Pal_Fatal("the low pool (48 MB under 0x10000000) could not be mapped");
     }
+
+
+
 }
 
 void *Pal_LowAlloc(unsigned int size, const char *what)
@@ -147,7 +193,7 @@ void Pal_ArenaFree(void *p)
     }
 }
 
-int Pal_LowRegions(unsigned int lo[2], unsigned int hi[2])
+int Pal_LowRegions(unsigned int lo[PAL_LOW_REGIONS], unsigned int hi[PAL_LOW_REGIONS])
 {
     if (!sLowPool) {
         return 0;
@@ -156,7 +202,21 @@ int Pal_LowRegions(unsigned int lo[2], unsigned int hi[2])
     hi[0] = lo[0] + sLowPoolUsed;
     lo[1] = lo[0] + (LOW_POOL_SIZE - ARENA_SIZE);
     hi[1] = lo[1] + sArenaTop;
-    return 2;
+
+
+
+
+    return PAL_LOW_REGIONS;
+}
+
+int Pal_ArenaRange(unsigned int *lo, unsigned int *hi)
+{
+    if (!sLowPool) {
+        return 0;
+    }
+    *lo = (unsigned int)(unsigned long)sLowPool + (LOW_POOL_SIZE - ARENA_SIZE);
+    *hi = *lo + ARENA_SIZE;
+    return 1;
 }
 
 static void CheckRange(const char *what, unsigned int lo, unsigned int hi)
@@ -165,6 +225,19 @@ static void CheckRange(const char *what, unsigned int lo, unsigned int hi)
         Host_Log(what);
         Pal_Fatal("a range the game can see does not lie below 0x10000000 (the one named above)");
     }
+}
+
+/* The pool's place, once, for the start-up check (--check): "the low pool at 0x02000000". */
+void Pal_LowPoolReport(void)
+{
+    static const char hex[] = "0123456789abcdef";
+    char msg[48] = "the low pool at 0x";
+    unsigned int at = (unsigned int)(unsigned long)sLowPool, i, n = 18;
+    for (i = 0; i < 8; i++) {
+        msg[n++] = hex[(at >> (28 - 4 * i)) & 15];
+    }
+    msg[n] = 0;
+    Host_Log(msg);
 }
 
 void Pal_CheckLowMemory(void)

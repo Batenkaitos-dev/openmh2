@@ -42,6 +42,9 @@
 #include "libgcc.h"
 #include "vec_math.h"
 
+
+
+
 #pragma optimization_level 4
 
 extern ObjAttach *gObjAttachList;
@@ -61,7 +64,9 @@ static void Obj_ClearHitMarks(void *obj)
     head->hitIdNext = 0;
 }
 
+
 extern Em gEms[];
+
 /* Restarts the hit ids and clears the hit marks of the four players and the 20 monsters. */
 void Hit_ResetAll(void)
 {
@@ -210,7 +215,11 @@ void ObjAttach_HitEffects(ObjAttach *attach, Player *attacker, ObjHead *targetHe
         if (target->isEm == 0 && Player_CanGuard(target) == 1 && (!(target->hitAttrs & 0x80) || Player_HasSkill(target, SKILL_GUARD_PLUS20) == 1)) {
             if (Player_TestFlag(target, PLF_GUARD) != 0
                 || ((Player_HasSkill(target, SKILL_AUTO_GUARD) == 1 || HeavyBowgun_HasShield(target) == 1) && target->weaponOut != 0 && target->prevFreeState != 0)) {
+
+
+
                 if (Player_InGuardArc(target->rot[1], target->hitAngle) == 1 && target->stamina >= 75) {
+
                     HitSpark_SpawnForPlayer(target, 0, out);
                     HitSplash_CreateOnEm((Em *) target, attach, 6, 1, out, 1.0f);
                     return;
@@ -836,6 +845,11 @@ void ObjAttach_DamageEm(ObjAttach *attach, Player *attacker, Em *em, HitShape *l
     if (attach->ownerIndex != ATTACH_OWNER_NONE && attacker != NULL) {
         ObjAttach_LinkTarget(attach, attacker);
         attacker->hitPending = elist->zone + 1;
+
+
+
+
+
         if (Player_TestFlags(attach, ATKF_OWNER_CONTACT) != 0) {
             attacker->hitStopAdd = attach->hitStop;
             attacker->contact = em;
@@ -953,6 +967,11 @@ void ObjAttach_DamageEm(ObjAttach *attach, Player *attacker, Em *em, HitShape *l
                     break;
                 case 0:
                 default:
+
+
+
+
+
                     Sound_PlayPlayerSe(em, gHitSeIds[attacker->weaponType * 8 + attacker->hitKind * 2], 0, out, 1, 0);
                     extraSe = gHitSeIds[attacker->weaponType * 8 + attacker->hitKind * 2 + 1];
                     if (extraSe != 0) {
@@ -3838,8 +3857,13 @@ void ObjAttach_DamagePlayer(ObjAttach *attach, Player *attacker, Player *victim,
     } else {
         guard = 1;
     }
+
+
+
+
     if (Player_TestFlag(victim, PLF_GUARD) == 0 || Player_InGuardArc((u16)victim->rot[1], victim->hitAngle) == 0
         || victim->stamina < 75 || guard == 1) {
+
         switch (attach->hitSe) {
         case 255:
             break;

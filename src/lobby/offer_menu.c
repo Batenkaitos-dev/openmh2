@@ -65,7 +65,9 @@ s32 SavePouch_Count(u16 item);
 extern LobbyMenu *gLobbyMenu;
 void Text_Printf(char *s, ...);
 extern char *D_0080C044;
+
 extern char *gItemNames[];
+
 void Text_PrintfColored(char *s, ...);
 void Text_SetSize(s32 size);
 

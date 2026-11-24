@@ -1180,7 +1180,9 @@ void PriceInfo_DrawList(s16 x, s16 y)
     }
 }
 
+
 extern char *gItemNames[];
+
 void Text_SetColor(s16 color);
 /*
  * A wanted entry's detail card at x, y for wanted line line: the frame

@@ -22,6 +22,7 @@
 #if PLATFORM_PC
 extern f32 gMtxView[16];
 extern f32 gMtxProjClip[16];
+extern f32 gMtxSlots[];
 #endif
 
 #pragma optimization_level 4
@@ -34,6 +35,14 @@ void Mem_Fill(void *dst, u8 c, s32 n);
 void Mem_Copy(void *dst, void *src, u32 n);
 
 extern ModelEntry gModelPool[];
+
+
+
+
+
+#define DRAW_POOL gModelPool
+#define DRAW_COUNT DRAW_MODEL_COUNT
+
 /* A ModelMat per render state, RS_MATERIAL(0) to RS_MATERIAL(31). */
 extern ModelMat gRsMaterials[];
 extern s32 gRenderFlags2;
@@ -49,12 +58,12 @@ s32 Model_Create(MeshDesc *hdr, u32 flags)
     ModelEntry *entry;
     u8 *dst;
 
-    for (i = 0; i < DRAW_MODEL_COUNT; i++) {
-        if (gModelPool[i].used == 0) {
+    for (i = 0; i < DRAW_COUNT; i++) {
+        if (DRAW_POOL[i].used == 0) {
             break;
         }
     }
-    entry = &gModelPool[i];
+    entry = &DRAW_POOL[i];
     Mem_Fill(entry, 0, sizeof(ModelEntry));
     entry->used = hdr->flags;
     entry->vtxFormat = hdr->format;
@@ -315,8 +324,19 @@ void Model_BuildVifPackets(MeshDesc *mesh, ModelEntry *entry)
     prim = gVu1GifInfos[info->gifInfo].prim;
     regs = gVu1GifInfos[info->gifInfo].regs;
     nreg = gVu1GifInfos[info->gifInfo].nreg;
+
+
+
+
+
+
+
+
     if ((entry->renderFlags & 0x18000) == 0x8000) {
-        prim |= 0x20;
+
+
+
+            prim |= 0x20;
     }
     base = (u32)Mem_GetAddr(entry->data);
     out = base;
@@ -331,7 +351,11 @@ void Model_BuildVifPackets(MeshDesc *mesh, ModelEntry *entry)
     offs = (s32 *)(base + entry->chainTblOfs);
     for (i = 0; i < count; i++) {
         raw = *stream;
+
+
+
         toggle = 0;
+
         stream++;
         if (mesh->flags & MESH_STRIP_MAT) {
             curA = *stream;
@@ -498,6 +522,9 @@ void Model_BuildVifPackets(MeshDesc *mesh, ModelEntry *entry)
                 } else {
                     texVtx++;
                 }
+
+
+
                 if (bits & 1) {
                     ((f32 *)out)[0] = texVtx->pos[0];
                     ((f32 *)out)[1] = texVtx->pos[1];
@@ -544,6 +571,9 @@ void Model_BuildVifPackets(MeshDesc *mesh, ModelEntry *entry)
                         ((f32 *)lastQw)[0] = ((f32 *)lastQw)[0] * gDispTexScaleU;
                         ((f32 *)lastQw)[1] = ((f32 *)lastQw)[1] * gDispTexScaleV;
                     }
+
+
+
                 }
                 break;
             case 309:
@@ -599,6 +629,9 @@ void Model_BuildVifPackets(MeshDesc *mesh, ModelEntry *entry)
                         ((f32 *)lastQw)[0] = ((f32 *)lastQw)[0] * gDispTexScaleU;
                         ((f32 *)lastQw)[1] = ((f32 *)lastQw)[1] * gDispTexScaleV;
                     }
+
+
+
                 }
                 if ((bits & 0x10) && (bits & 0x20)) {
                     lastQw = (u32 *)out;
@@ -674,6 +707,10 @@ void Model_BuildVifPackets(MeshDesc *mesh, ModelEntry *entry)
     if (entry->vifSize != out - base) {
         Debug_Printf("A = %x B = %x, %x @flPS2ConvClayData", base, out, entry->vifSize);
     }
+
+
+
+
 }
 
 /* A 0..255 alpha as the GS's 0..128 (mode 0) or as 0..1 (mode 1). */
@@ -1078,14 +1115,14 @@ void Model_RelocateAll(void)
     ModelEntry *entry;
 
     i = 0;
-    entry = gModelPool;
+    entry = DRAW_POOL;
     do {
         if (entry->used != 0 && entry->data != NULL) {
             Model_Relocate(entry);
         }
         i++;
         entry++;
-    } while (i < 384);
+    } while (i < DRAW_COUNT);
 }
 
 /*
@@ -1138,7 +1175,7 @@ void Mem_CopyQwords(void *src, void *dst, u32 qwc);
  */
 s32 Model_Draw(u32 handle, s32 flags)
 {
-    ModelEntry *entry = &gModelPool[handle - 1];
+    ModelEntry *entry = &DRAW_POOL[handle - 1];
     MeshDesc hdr;
     u8 *top;
     u32 *progCall;
@@ -1151,6 +1188,17 @@ s32 Model_Draw(u32 handle, s32 flags)
         return 1;
     }
     PC_GS_CAMERA(gMtxView, gMtxProjClip);
+
+
+
+
+
+
+
+
+
+
+
     if (!(entry->flags & MODEL_NO_COPY)) {
         if (entry->renderFlags != gRenderFlags2) {
             Dma_FlushQueue();
@@ -1160,6 +1208,10 @@ s32 Model_Draw(u32 handle, s32 flags)
             }
             Model_ReadHeader(entry, &hdr);
             if (Model_Setup(entry, &hdr) == 0) {
+
+
+
+
                 return 0;
             }
             Mem_Compact();
@@ -1207,14 +1259,38 @@ s32 Model_Draw(u32 handle, s32 flags)
         *(u128 *)&progCall[4] = 0;
         DmaQueue_AddChain(0, (u32)progCall & 0x0FFFFFFF, last, &gDmaQueue);
     }
+    PC_GS_MODEL(handle, top, end, flags, entry->prog, gMtxSlots);
     DmaQueue_AddChain(0, ((u32)top & 0x0FFFFFFF) | 0x50000000, (u32 *)end, &gDmaQueue);
     return 1;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* Frees model h (its handles and pool entry); 0 when h is not a model in use. */
 s32 Model_FreeHandle(u32 handle)
 {
-    ModelEntry *entry = &gModelPool[handle - 1];
+    ModelEntry *entry = &DRAW_POOL[handle - 1];
 
     if (handle == 0) {
         return 0;

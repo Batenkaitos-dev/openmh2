@@ -32,6 +32,9 @@ extern u16 gFrameTick; /* sub_main: the frame counter */
 #include "scene.h"
 #include "save.h"
 #include "quest.h"
+
+
+
 #include "area.h"
 #include "qsync.h"
 #include "sound.h"
@@ -1733,7 +1736,9 @@ s32 Plsel_ItemStackValue(u16 *stack)
 struct Frame;
 struct PrimLine;
 extern u32 gItemColors[];
+
 extern char *gItemNames[];
+
 
 /* Draws the item box grid (48 slots), the item under the cursor with its
  * name and count, and the selling window. */
@@ -2789,11 +2794,22 @@ static f64 Stripped_Sub(f64 lhs, f64 rhs)
  * the test's delay slot, as in the game. Without it MWCC loads the size into
  * a1 and fills the slot with kind's andi (2 words short; the old block
  * stayed at 24 words). Nothing left in plsel calls such a helper. */
+
+
+
+
+
+#define G_LINE(line) (line)
+
+
 void Plsel_BuildResultText(s32 kind)
 {
     char **fmts;
     char bufA[128];
     char bufB[128];
+
+
+
     char **str;
     s32 rec;
     s32 goal;
@@ -3049,7 +3065,7 @@ void Plsel_BuildResultText(s32 kind)
         sprintf(w->lines[w->lineCount++], bufB);
         break;
     case 4:
-        sprintf(w->lines[w->lineCount++], gPlselStrFmt, fmts[43]);
+        sprintf(w->lines[w->lineCount++], gPlselStrFmt, G_LINE(fmts[43]));
         sprintf(w->lines[w->lineCount++], gPlselStrFmt, str[0]);
         if (Quest_GetOutcome(1) == 1) {
             if (w->mainDone != 0) {
@@ -3086,25 +3102,25 @@ void Plsel_BuildResultText(s32 kind)
         if (w->lineCount < 8) {
             w->lineCount = 8;
         }
-        sprintf(bufB, fmts[48], w->hrpTotal);
+        sprintf(bufB, G_LINE(fmts[48]), w->hrpTotal);
         Sjis_Widen(bufB, bufA);
         sprintf(w->lines[w->lineCount++], bufA);
         sprintf(w->lines[w->lineCount++], gPlselStrFmt, str[0]);
-        sprintf(bufB, fmts[49], w->hrPoints);
+        sprintf(bufB, G_LINE(fmts[49]), w->hrPoints);
         Sjis_Widen(bufB, bufA);
         sprintf(w->lines[w->lineCount++], bufA);
         if (w->hrpResult == 0) {
             if (w->rankChange == 1) {
-                sprintf(w->lines[w->lineCount++], gHrUpText);
+                sprintf(w->lines[w->lineCount++], G_LINE(gHrUpText));
             }
         } else if (w->hrpResult == 1) {
-            sprintf(w->lines[w->lineCount++], gHrpNoLossText);
+            sprintf(w->lines[w->lineCount++], G_LINE(gHrpNoLossText));
         } else if (w->hrpResult == 2) {
-            sprintf(w->lines[w->lineCount++], gHrMaxText);
+            sprintf(w->lines[w->lineCount++], G_LINE(gHrMaxText));
         } else {
-            sprintf(w->lines[w->lineCount++], gHrpNotMetText);
+            sprintf(w->lines[w->lineCount++], G_LINE(gHrpNotMetText));
         }
-        sprintf(bufB, fmts[50], w->rankAfter);
+        sprintf(bufB, G_LINE(fmts[50]), w->rankAfter);
         Sjis_Widen(bufB, bufA);
         sprintf(w->lines[w->lineCount++], bufA);
         break;
@@ -3505,9 +3521,19 @@ void Plsel_ComputeReward(void)
     w->hrpTotal += w->hrpSubA;
     w->hrpTotal += w->hrpSubB;
     w->hrpTotal += w->hrpDeaths;
+
+
+
+
     w->hrpResult = Hr_AddPoints(w->hrpTotal);
     w->hrPoints = gSave.hrPoints;
     w->rankAfter = Save_RankFromPoints(&gSave);
+
+
+
+
+
+
     if (w->rankAfter != w->rankBefore) {
         if (w->rankAfter > w->rankBefore) {
             w->rankChange = 1;
@@ -3515,6 +3541,10 @@ void Plsel_ComputeReward(void)
             w->rankChange = 2;
         }
     }
+
+
+
+
     Plsel_CheckRankAwards(w->rankAfter);
 }
 

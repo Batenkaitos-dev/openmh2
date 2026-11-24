@@ -235,15 +235,24 @@ void ScreenTex_SetRegs(void)
     u64 *miptbp2Data = &gScreenTexPacket.miptbp2.data;
     s16 bufWidth;
 
+
+
+
     gScreenTexPacket.tex1.data = 0;
+
     bufWidth = gScreenTex.width / 64;
     if (bufWidth == 0) {
         bufWidth = 1;
     }
     *texaData = (u64)128 << 32;   /* TA1 0x80: alpha 1.0 */
     /* TBP0, TBW, PSM, TW, TH; TCC 1 (RGBA) */
+
+
+
+
     *tex0Data = (u64)tex->vram | ((u64)bufWidth << 14) | ((u64)tex->psm << 20) | ((u64)tex->tw << 26) |
             ((u64)tex->th << 30) | ((u64)1 << 34);
+
     switch (flags & RF_TEX_CLAMP_MASK) {
     case 0:
         *clampData = 0;

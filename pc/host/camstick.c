@@ -16,6 +16,14 @@
  * accumulator over the VBlank numbers, so a frame count, not the host's time, decides), and the game's own easing smooths
  * the steps. The tilt is the game's: a push beyond three fifths presses UP or DOWN once and, held, again every 24 VBlanks. The game
  * reads the pad once a frame (two VBlanks), so a decision lasts two VBlanks.
+ *
+ * camera_modern = on (config field camera_smooth; the game's --smooth-camera, off by default) changes what the stick becomes: no D-pad bit, but two
+ * numbers, the turn and the tilt, each a signed byte in the pad record (Mh2IpcPad camTurn and camTilt), which the game's
+ * camera reads (pc/core/pal_modcam.c): the turn's speed follows the push, and the tilt moves the view smoothly between the
+ * game's lowest and highest views. The numbers are the stick's alone (no frame count, no state): a round rest zone of 38 of
+ * 127, the push r above it as m = (r - 38) * 256 / 89, the curve c = m * (m + 256) / 512, each axis its share of c, then
+ * the speed, so a full push at speed 100 gives 50 (the game's own turn step is 23 times the number a camera update). All in
+ * integers. Who has the stick (hold, on, the latch after a release, the freecam) is the same as without it.
  */
 #include <stdlib.h>
 #include <string.h>
@@ -35,6 +43,8 @@ enum {
                           * one VBlank would be seen on every second frame or on none, by the frame's parity) */
 #define TILT_PRESS 1     /* decisions a press lasts */
 #define TILT_REPEAT 12   /* decisions between a held tilt's presses (24 VBlanks) */
+#define SM_FULL 50       /* the number a full push gives at speed 100 */
+#define SM_TILT_SPEED 100   /* the tilt's speed (percent) */
 
 typedef struct CamStickCfg {
     int mode;            /* 0 off, 1 hold, 2 on */
@@ -42,6 +52,8 @@ typedef struct CamStickCfg {
     int left;            /* the left stick */
     int inv_x, inv_y;
     int speed;           /* percent of the game's step */
+    int smooth;          /* camera_modern: the two numbers in place of the D-pad bits */
+    int tilt_speed;      /* percent: the tilt's share of a full push (smooth only) */
 } CamStickCfg;
 
 static struct {
@@ -112,6 +124,35 @@ static unsigned step(const CamStickCfg *c, int x, int y, int active)
     return bits;
 }
 
+/* The integer square root of v (0 to 65535). */
+static int cs_isqrt(int v)
+{
+    int r = 0;
+    for (int b = 128; b; b >>= 1)
+        if ((r + b) * (r + b) <= v)
+            r += b;
+    return r;
+}
+
+/* The smooth camera's two numbers for a stick at (x, y), each -127 to 127 (y negative is up): *turn is positive to the right,
+ * *tilt positive to look up. Both 0 inside the rest zone. */
+static void smooth_numbers(const CamStickCfg *c, int x, int y, int *turn, int *tilt)
+{
+    x = cs_clamp(x, -127, 127);
+    y = cs_clamp(y, -127, 127);
+    *turn = *tilt = 0;
+    int r2 = x * x + y * y;
+    if (r2 <= DEAD * DEAD)
+        return;
+    int r = cs_isqrt(r2);
+    int m = cs_clamp((r - DEAD) * 256 / (127 - DEAD), 0, 256);
+    int cv = m * (m + 256) / 512;
+    int tx = x * cv / r;
+    int ty = -y * cv / r;
+    *turn = cs_clamp(tx * c->speed * SM_FULL / 25600 * (c->inv_x ? -1 : 1), -127, 127);
+    *tilt = cs_clamp(ty * c->tilt_speed * SM_FULL / 25600 * (c->inv_y ? -1 : 1), -127, 127);
+}
+
 /* The mapping on a pad at the VBlank vb it is for (the core's next sample). */
 static void camstick_map(const CamStickCfg *c, Mh2IpcPad *pad, uint64_t vb)
 {
@@ -135,6 +176,16 @@ static void camstick_map(const CamStickCfg *c, Mh2IpcPad *pad, uint64_t vb)
     if (cs.latch && resting)
         cs.latch = 0;
     cs.was_active = active;
+    if (c->smooth) {
+        int turn = 0, tilt = 0;
+        if (active)
+            smooth_numbers(c, x, y, &turn, &tilt);
+        pad->camTurn = (uint8_t)(int8_t)turn;
+        pad->camTilt = (uint8_t)(int8_t)tilt;
+        if (active || cs.latch)
+            *sx = *sy = 0x80;   /* the stick is the camera's: the game is given it at rest */
+        return;
+    }
     if (!cs.have || t != cs.t) {
         /* a new decision (or several, when the host fell behind): it runs once for each */
         uint64_t n = cs.have && t > cs.t ? t - cs.t : 1;
@@ -186,5 +237,7 @@ void camstick_apply(Mh2IpcPad *pad)
     c.inv_y = (inv >> 1) & 1;
     c.speed = g_cfg.camera_stick_speed ? atoi(g_cfg.camera_stick_speed) : 100;
     c.speed = cs_clamp(c.speed, 10, 100);
+    c.smooth = g_cfg.camera_smooth != 0;
+    c.tilt_speed = SM_TILT_SPEED;
     camstick_map(&c, pad, gs_last_vblank() + 1);
 }

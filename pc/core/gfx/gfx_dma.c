@@ -32,6 +32,7 @@
  */
 #include "gfx_rt.h"
 #include "pal.h"
+#include "ipc/core_ipc.h"
 
 enum { DMAC_VIF0, DMAC_VIF1, DMAC_GIF, DMAC_FROM_IPU, DMAC_TO_IPU, DMAC_SIF0, DMAC_SIF1, DMAC_SIF2,
        DMAC_FROM_SPR, DMAC_TO_SPR };
@@ -141,6 +142,8 @@ static void DmaSink(int ch, u32 addr, u32 qwc, int spr)
         } else {
             p = Mem(addr & 0x7FFFFFF0u);
         }
+        if (gGfxPassOpen && (ch == DMAC_VIF1 || ch == DMAC_GIF))
+            Pass_Data(ch, p, n);
         switch (ch) {
         case DMAC_VIF0: vif_write(0, p, n); break;
         case DMAC_VIF1: vif_write(1, p, n); break;
@@ -154,8 +157,39 @@ static void DmaSink(int ch, u32 addr, u32 qwc, int spr)
     }
 }
 
+/* DmaSink for a chain's data, which cuts the transfer at the edges of the 2D packets that an anchored element queued (the labels of PC_GS_ANCHOR; VIF1 only): the
+ * ring gets MH2IPC_REC_ANCHOR before such a packet's data and after it, so the renderer knows which GIF data is the element's. The VIF takes the same words in the
+ * same order (it takes them 64 quadwords at a time in any case); with no label (a release build has none) it is DmaSink. */
+static void DmaSinkL(int ch, u32 addr, u32 qwc, int spr)
+{
+    u32 at, n;
+    if (ch != DMAC_VIF1 || spr) {
+        DmaSink(ch, addr, qwc, spr);
+        return;
+    }
+    while (qwc && Ipc_GsAnchorNext(addr & 0x0FFFFFF0u, (addr & 0x0FFFFFF0u) + qwc * 16, &at, &n)) {
+        u32 lead = (at - (addr & 0x0FFFFFF0u)) / 16;
+        if (lead) {
+            DmaSink(ch, addr, lead, 0);
+            addr += lead * 16;
+            qwc -= lead;
+        }
+        if (n > qwc)
+            n = qwc;
+        Ipc_GsAnchorBegin();
+        DmaSink(ch, addr, n, 0);
+        Ipc_GsAnchorEnd();
+        addr += n * 16;
+        qwc -= n;
+    }
+    if (qwc)
+        DmaSink(ch, addr, qwc, 0);
+}
+
 static void DmaTagSink(int ch, u64 tagHi)
 {
+    if (ch == DMAC_VIF1 && gGfxPassOpen)
+        Pass_Tag(tagHi);
     if (ch == DMAC_VIF0 || ch == DMAC_VIF1)
         vif_write_tag(ch, tagHi);
     else
@@ -198,6 +232,11 @@ static void DmaSourceChain(int ch)
         u32 qwc, id, irq, addr;
         int spr, end = 0;
         memcpy(&t, Mem(taddr), 16);
+        if (ch == 1) {
+            IpcLabel lab;
+            if (Ipc_GsModelTag(taddr, &lab))   /* a model draw's label, if this tag is the first of one */
+                Pass_Model(&lab);
+        }
         tag = t.d[0];
         qwc = (u32)(tag & 0xFFFF);
         id = (u32)(tag >> 28) & 7;
@@ -210,26 +249,26 @@ static void DmaSourceChain(int ch)
         switch (id) {
         case 0: /* refe */
             c[MADR] = addr;
-            DmaSink(ch, addr, qwc, spr);
+            DmaSinkL(ch, addr, qwc, spr);
             c[MADR] = addr + qwc * 16;
             c[TADR] = taddr + 16;
             end = 1;
             break;
         case 1: /* cnt */
             c[MADR] = taddr + 16;
-            DmaSink(ch, c[MADR], qwc, 0);
+            DmaSinkL(ch, c[MADR], qwc, 0);
             c[MADR] += qwc * 16;
             c[TADR] = c[MADR];
             break;
         case 2: /* next */
             c[MADR] = taddr + 16;
-            DmaSink(ch, c[MADR], qwc, 0);
+            DmaSinkL(ch, c[MADR], qwc, 0);
             c[MADR] += qwc * 16;
             c[TADR] = addr;
             break;
         case 3: case 4: /* ref, refs */
             c[MADR] = addr;
-            DmaSink(ch, addr, qwc, spr);
+            DmaSinkL(ch, addr, qwc, spr);
             c[MADR] = addr + qwc * 16;
             c[TADR] = taddr + 16;
             break;
@@ -266,6 +305,10 @@ static void DmaSourceChain(int ch)
             break;
         }
         c[CHCR] = (c[CHCR] & ~0x30u) | (asp << 4);
+        if (ch == 1) {
+            Ipc_GsModelTagEnd(taddr);
+            Pass_TagEnd(taddr);
+        }
         if (end || (irq && tie))
             return;
     }
@@ -286,12 +329,20 @@ static void DmaRun(int ch)
     default:
         if (ch == DMAC_VIF1 && !(c[CHCR] & 1)) {
             DmaFromGs(c);
-        } else if (mod == 1 && ch != DMAC_FROM_IPU) {
-            DmaSourceChain(ch);
         } else {
-            DmaSink(ch, SprBit(ch, c[MADR]), c[QWC], 0);
-            c[MADR] += c[QWC] * 16;
-            c[QWC] = 0;
+            if (ch == DMAC_VIF1) {
+                Pass_WindowBegin();   /* a transfer to VIF1: the second pass runs on a copy of it when it is done */
+            }
+            if (mod == 1 && ch != DMAC_FROM_IPU) {
+                DmaSourceChain(ch);
+            } else {
+                DmaSink(ch, SprBit(ch, c[MADR]), c[QWC], 0);
+                c[MADR] += c[QWC] * 16;
+                c[QWC] = 0;
+            }
+            if (ch == DMAC_VIF1) {
+                Pass_WindowEnd();
+            }
         }
         break;
     }
@@ -312,6 +363,8 @@ static void DmaStart(int ch)
 
 void hw_gif_dma_resume(void)
 {
+    if (gGfxPassRun)   /* the second pass: the PATH3 data a chain let through was recorded where it came, and is sent there */
+        return;
     if (!sGifDmaWaiting)
         return;
     sGifDmaWaiting = 0;

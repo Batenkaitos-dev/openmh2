@@ -56,6 +56,7 @@ extern s32 gStageFile; /* sub_main: the stage file's address */
 #include "town_frame.h"
 #include "libc.h"
 #include "libkernl.h"
+#include "content_area.h"
 
 struct StageEntry;
 
@@ -255,7 +256,7 @@ void Galex_QuestTask(TaskSlot *task)
             return;
         case 3:
             Sound_StopBank(7);
-            bankId = (gAreaSeBanks[gScene.area] + 11) | 0x10000;
+            bankId = (gAreaSeBanks[AREA_SEBANK_ROW(gScene.area)] + 11) | 0x10000;
             FlushCache(0);
             Sound_QueueBank(bankId, loadBuf);
             gScene.subStep++;

@@ -138,6 +138,10 @@ u8 Equip_GetClass(EquipItem *e);
 extern s32 gBoxSortTypeKeys[];
 extern s32 gBoxSortClassKeys[];
 
+
+
+
+
 /* The equipment box's sort key (smaller first). A weapon: its class's key (gBoxSortClassKeys
  * by Equip_GetClass) + its data's sort order << 16 + id * 16; an armour piece: its type's key
  * (gBoxSortTypeKeys) + its sort order << 16 + id << 8 + its level (low 4 bits). Both add the
@@ -156,7 +160,11 @@ u32 BoxEquip_SortKey(EquipItem *item)
         } else {
             key += Equip_GetData(item)->gun.sortOrder << 16;
         }
+
+
+
         key += gBoxSortClassKeys[Equip_GetClass(item)];
+
     } else {
         data = &Equip_GetData(item)->armor;
         key += item->level & 0xF;

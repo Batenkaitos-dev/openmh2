@@ -2114,7 +2114,7 @@ void TeostraBlastCharge_Draw(DrawSlot *node)
     s16 monsterSlot;
 
     monsterSlot = TeostraBlastCharge_FindMonsterSlot();
-    if (monsterSlot != -1 && (set = gScene.partModels[monsterSlot]) != NULL && set->active && obj->visible) {
+    if (monsterSlot != -1 && (set = SCENE_PART_MODELS(monsterSlot)) != NULL && set->active && obj->visible) {
         switch (node->part) {
         case 0:
         case 1:

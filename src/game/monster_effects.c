@@ -2172,7 +2172,7 @@ void MonsterFx_DrawChain(DrawSlot *node)
 
     emSlot = EmSlot_FindKind(((Em *) obj->owner)->type);
     if (emSlot != -1) {
-        modelSet = gScene.partModels[emSlot];
+        modelSet = SCENE_PART_MODELS(emSlot);
         if (modelSet != NULL && modelSet->active != 0) {
             mats = modelSet->mats;
             grow = MonsterFx_GrowFactor(obj);
@@ -2298,7 +2298,7 @@ void MonsterFx_DrawSeq(DrawSlot *node)
         if (emSlot == -1) {
             return;
         }
-        modelSet = gScene.partModels[emSlot];
+        modelSet = SCENE_PART_MODELS(emSlot);
     }
     if (modelSet != NULL && modelSet->active != 0) {
     model = &modelSet->matSets[stepModels[piece->idx] & ~0x8000];

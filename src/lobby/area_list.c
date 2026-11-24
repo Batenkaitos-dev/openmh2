@@ -18,7 +18,7 @@
 #include "lobby_net.h"
 #include "lobby_globals.h"
 #include "pad.h"
-#include "lobby_menu.h"
+#include "lobby_menu_work.h"
 #include "lobby_text.h"
 #include "bgm.h"
 #include "lobby_labels.h"

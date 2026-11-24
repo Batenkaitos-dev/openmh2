@@ -38,6 +38,12 @@
 #include "player.h"
 #include "lobby_menu.h"
 #include "lobby_forge.h"
+
+
+
+
+
+
 #include "pad.h"
 #include "lobby_labels.h"
 #include "area_draw.h"
@@ -86,8 +92,34 @@ void WeaponForge_Open(WorkshopMenu *menu)
 {
     WeaponForgeWork *forge = (WeaponForgeWork *)((u8 *)menu + FORGE_WORK_OFFSET);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     forge->previewOff = 1;
     forge->filter = menu->shortList;
+
+
+
     if (forge->filter != 0) {
         forge->previewOff = 1;
         forge->row = WEAPON_TAB_GREAT_LONG;
@@ -101,7 +133,12 @@ void WeaponForge_Open(WorkshopMenu *menu)
 /* Whether a weapon recipe's id is a random-weapon recipe's (WEAPON_ID_RANDOM_FIRST and up). */
 s32 Forge_IsRandomWeapon(s16 id)
 {
+
+
+
+
     return id >= WEAPON_ID_RANDOM_FIRST;
+
 }
 
 /*
@@ -201,6 +238,9 @@ void WeaponForge_Make(WeaponForgeWork *forge)
         Items_Take(recipe->mat[i].item, recipe->mat[i].count);
     }
     slot = Box_AddItem(&gSave, made.type, made.id, 0);
+
+
+
     Save_AddMoney(-price);
     LobbySe_Play(LOBBY_SE_MONEY);
     if (forge->wear != 0) {
@@ -404,7 +444,13 @@ void WeaponForge_Upgrade(WeaponForgeWork *forge)
             Items_Take(forge->mats[forge->cursor].need[i].item, forge->mats[forge->cursor].need[i].count);
         }
         piece.level = 0;
+
+
+
         Box_SetSlot(&gSave, idx, &piece);
+
+
+
         Save_AddMoney(-cost);
         LobbySe_Play(LOBBY_SE_MONEY);
         break;
@@ -496,6 +542,14 @@ s32 WeaponForge_IsListed(s16 tab, ForgeRecipe *recipe, s32 recipeIdx)
     EquipItem made;
 
     memset(&made, 0, sizeof(made));
+
+
+
+
+
+
+
+
     if (recipe->type == EQUIP_BLADE) {
         if (tab == WEAPON_TAB_GUNS) {
             return 0;
@@ -538,6 +592,9 @@ s32 WeaponForge_IsListed(s16 tab, ForgeRecipe *recipe, s32 recipeIdx)
         }
         break;
     }
+
+
+
     made.type = recipe->type;
     made.id = recipe->id;
     if (Forge_CheckRecipe(FORGE_RECIPES_WEAPON, recipeIdx, FORGE_COUNT_ALL) == FORGE_RECIPE_LOCKED) {
@@ -576,6 +633,30 @@ s32 WeaponForge_CanMake(WeaponForgeWork *forge, s16 line)
     return (u16)Box_FindFreeSlot(&gSave) != BOX_NONE;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /*
  * Fills the forge list with page `page` of the recipes listed on the
  * current tab that pass the filter (seven a page), sets the line count and
@@ -602,6 +683,9 @@ void WeaponForge_LoadMakePage(WeaponForgeWork *forge, s32 page)
         if (WeaponForge_IsListed(forge->row, recipe, recipeIdx) == 1) {
             if ((forge->filter == 0 && Recipe_IsInList(recipe->type, recipe->id) == 0)
                 || (forge->filter == 1 && Recipe_IsInList(recipe->type, recipe->id) == 1)) {
+
+
+
                 if (listed >= firstShown && listed <= lastShown) {
                     forge->makeList[shown] = recipeIdx;
                     shown++;
@@ -671,7 +755,11 @@ s32 WeaponForge_MakeInput(WeaponForgeWork *forge, u16 pad)
             LobbySe_Play(LOBBY_SE_CANCEL);
             return MENU_CANCEL;
         } else {
+
+
+
             forge->row = Menu_WrapUpDownSe(forge->row, WEAPON_TAB_COUNT, LOBBY_SE_CURSOR);
+
         }
         break;
     case FORGE_MAKE_SLIDE_IN:
@@ -835,6 +923,19 @@ void WeaponForge_RollRandom(EquipItem *out, u16 key)
 
 extern WeaponUp gBladeUpgrades[];
 extern WeaponUp gGunUpgrades[];
+
+
+
+
+
+
+
+
+#define BLADE_UP(id) (&gBladeUpgrades[(id)])
+#define GUN_UP(id) (&gGunUpgrades[(id)])
+#define BLADE_UP_MATS(id) (&gBladeUpgrades[(id)].mats)
+#define GUN_UP_MATS(id) (&gGunUpgrades[(id)].mats)
+
 /*
  * Opens the upgrade pages: the box cursor on the first slot, both windows
  * sliding in. It walks the whole box testing each blade's and bow's
@@ -859,14 +960,14 @@ void WeaponForge_OpenUpgrades(WeaponForgeWork *forge)
             switch ((&gSave.box[i])->type) {
             case EQUIP_BLADE:
                 forge->upgradeKind = EQUIP_BLADE;
-                forge->upgradeEntry = &gBladeUpgrades[(&gSave.box[i])->id];
+                forge->upgradeEntry = BLADE_UP((&gSave.box[i])->id);
                 break;
             case EQUIP_GUN:
                 if (WeaponForge_IsBow(&gSave.box[i]) != 1) {
                     continue;
                 }
                 forge->upgradeKind = EQUIP_BLADE;
-                forge->upgradeEntry = &gGunUpgrades[(&gSave.box[i])->id];
+                forge->upgradeEntry = GUN_UP((&gSave.box[i])->id);
                 break;
             default:
                 continue;
@@ -895,9 +996,9 @@ void WeaponForge_OpenUpgrades(WeaponForgeWork *forge)
     }
     if (forge->upgradeKind == EQUIP_BLADE) {
         if (WeaponForge_IsBow(&gSave.box[i]) == 1) {
-            forge->upgradeEntry = &gGunUpgrades[gSave.box[i].id];
+            forge->upgradeEntry = GUN_UP(gSave.box[i].id);
         } else {
-            forge->upgradeEntry = &gBladeUpgrades[gSave.box[i].id];
+            forge->upgradeEntry = BLADE_UP(gSave.box[i].id);
         }
     }
     WeaponForge_LoadUpgrades(forge);
@@ -1141,6 +1242,22 @@ const char gForgeTextFmt[3] = {
 #include "lobby/0082EA28.inc"
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /*
  * Loads what the box piece under the cursor can become: for a blade or a
  * bow, each next weapon of its upgrade entry that may be forged, with its
@@ -1160,7 +1277,7 @@ void WeaponForge_LoadUpgrades(WeaponForgeWork *forge)
     switch (type) {
     case EQUIP_BLADE:
         forge->upgradeKind = EQUIP_BLADE;
-        forge->upgradeEntry = &gBladeUpgrades[gSave.box[idx].id];
+        forge->upgradeEntry = BLADE_UP(gSave.box[idx].id);
         forge->count = 0;
         for (i = 0; i < FORGE_UPGRADE_LINES; i++) {
             if (forge->upgradeEntry->next[i] != 0 && WeaponForge_IsUnlocked(type, forge->upgradeEntry->next[i]) == 1) {
@@ -1168,7 +1285,10 @@ void WeaponForge_LoadUpgrades(WeaponForgeWork *forge)
                 forge->upgrades[forge->count].type = type;
                 forge->upgrades[forge->count].id = forge->upgradeEntry->next[i];
                 forge->upgradeCost[forge->count] = Equip_ItemHalfPrice(&forge->upgrades[forge->count]);
-                memcpy(&forge->mats[forge->count], &gBladeUpgrades[forge->upgradeEntry->next[i]].mats, sizeof(WeaponMats));
+                memcpy(&forge->mats[forge->count], BLADE_UP_MATS(forge->upgradeEntry->next[i]), sizeof(WeaponMats));
+
+
+
                 forge->count++;
             }
         }
@@ -1177,7 +1297,7 @@ void WeaponForge_LoadUpgrades(WeaponForgeWork *forge)
     case EQUIP_GUN:
         if (WeaponForge_IsBow(&gSave.box[idx]) == 1) {
             forge->upgradeKind = EQUIP_BLADE;
-            forge->upgradeEntry = &gGunUpgrades[gSave.box[idx].id];
+            forge->upgradeEntry = GUN_UP(gSave.box[idx].id);
             forge->count = 0;
             for (i = 0; i < FORGE_UPGRADE_LINES; i++) {
                 if (forge->upgradeEntry->next[i] != 0 && WeaponForge_IsUnlocked(type, forge->upgradeEntry->next[i]) == 1) {
@@ -1185,7 +1305,10 @@ void WeaponForge_LoadUpgrades(WeaponForgeWork *forge)
                     forge->upgrades[forge->count].type = type;
                     forge->upgrades[forge->count].id = forge->upgradeEntry->next[i];
                     forge->upgradeCost[forge->count] = Equip_ItemHalfPrice(&forge->upgrades[forge->count]);
-                    memcpy(&forge->mats[forge->count], &gGunUpgrades[forge->upgradeEntry->next[i]].mats, sizeof(WeaponMats));
+                    memcpy(&forge->mats[forge->count], GUN_UP_MATS(forge->upgradeEntry->next[i]), sizeof(WeaponMats));
+
+
+
                     forge->count++;
                 }
             }
@@ -1821,9 +1944,9 @@ void WeaponForge_DrawUpgradePanel(WeaponForgeWork *forge, s16 x, s16 y)
         switch (forge->upgradeKind) {
         case EQUIP_BLADE:
             if (WeaponForge_IsBow(&gSave.box[idx]) == 1) {
-                forge->upgradeEntry = &gGunUpgrades[gSave.box[idx].id];
+                forge->upgradeEntry = GUN_UP(gSave.box[idx].id);
             } else {
-                forge->upgradeEntry = &gBladeUpgrades[gSave.box[idx].id];
+                forge->upgradeEntry = BLADE_UP(gSave.box[idx].id);
             }
             WeaponForge_DrawUpgrades(forge, x, y);
             shownItem = forge->upgrades[forge->cursor];
@@ -2044,7 +2167,11 @@ void WeaponForge_DrawMake(WeaponForgeWork *forge)
     memset(&item, 0, sizeof(item));
     if (forge->subStep != FORGE_MAKE_TAB) {
         Font_SetSpacing(22, 22);
+
+
+
         Menu_DrawLabelBar(10, 18, 190, 0xFFB0B000, gWeaponClassTexts[forge->row], 2, 1);
+
         Menu_DrawMoney(480, 16, 0);
         recipe = &gWeaponRecipes[forge->makeList[cursorIdx]];
         item.used = 1;
@@ -2056,7 +2183,11 @@ void WeaponForge_DrawMake(WeaponForgeWork *forge)
     switch (forge->subStep) {
     case FORGE_MAKE_TAB:
         Font_SetSpacing(20, 20);
+
+
+
         Menu_DrawLabelList(420, gWeaponClassTexts, WEAPON_TAB_COUNT, forge->row, 0xFFB0B000);
+
         break;
     case FORGE_MAKE_SLIDE_IN:
     case FORGE_MAKE_LIST:

@@ -27,6 +27,7 @@
 #include "engine_math.h"
 #include "vec_math.h"
 #include "cam_helpers.h"
+#include "pal.h"
 
 #pragma optimization_level 4
 
@@ -254,6 +255,9 @@ void CamFollow_Update(CamCtl *ctl, CamView *view)
         } else {
             turnStep = -1150;
         }
+#if PLATFORM_PC
+        PC_CAM_TURN_STEP(ctl, turnStep);
+#endif
         if (work->held & PAD_LEFT) {
             work->yawGoal += turnStep;
         }
@@ -323,6 +327,9 @@ void CamFollow_Update(CamCtl *ctl, CamView *view)
         if (work->dist->atY < 0.0f || work->dist->atY > work->dist->eyeBack) {
         }
         work->atGoal[1] = pl->pos[1] + work->dist->atY;
+#if PLATFORM_PC
+        PC_CAM_BLEND(ctl, work, pl, distKind, &off.y, &off.z);
+#endif
     }
     work->atGoal[0] = pl->pos[0];
     work->atGoal[2] = pl->pos[2];
@@ -573,6 +580,9 @@ void CamCtl_TurnToPlayerFront(u8 *obj)
         work->wallHit = 0;
         work->yawGoal = *(s32 *)(obj + 164) + ANGLE_TURN / 8;
         work->distNo = CAM_DIST_DEFAULT;
+#if PLATFORM_PC
+        PC_CAM_TILT_RESET(work);
+#endif
     }
 }
 
@@ -592,6 +602,9 @@ void CamFollow_GetKeys(CamCtl *ctl, CamFollow *work)
         if (Cam_PlayerFree(pl) == 1) {
             work->held = ctl->padHeld;
             work->pressed = ctl->padPressed;
+#if PLATFORM_PC
+            PC_CAM_KEYS(ctl, work, gScene.camControl);
+#endif
             if (Player_OnMountedGun(pl) == 1 && (pl->input.held & PAD_L1)) {
                 work->held &= (PAD_ALL & ~PAD_DPAD);
                 work->pressed &= (PAD_ALL & ~PAD_DPAD);
@@ -664,6 +677,9 @@ void CamFollow_UpdateBlocked(CamCtl *ctl, CamFollow *work)
             pl = ctl->player;
             work->blockedTimer = CAM_BLOCKED_HOLD;
             work->distNo = 1;
+#if PLATFORM_PC
+            PC_CAM_TILT_RESET(work);
+#endif
             Vec_Diff(delta, pl->prevPos, pl->pos);
             if (work->unk76 == 0) {
                 work->yawGoal = RAD_TO_ANGLE16 * Math_Atan2(delta[0], delta[2]);

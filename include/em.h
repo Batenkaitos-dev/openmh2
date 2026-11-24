@@ -1630,9 +1630,28 @@ void Em_RaisePlayerAreaTrigger(Em *em);
 typedef char Em_size_check[(sizeof(Em) == 0x9D0) ? 1 : -1];
 
 /* The monster slots (gEms): GmEm_Setup and the scene's loops go through all 20. */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #define EM_COUNT 20
 
 extern Em gEms[EM_COUNT];
+
 extern EmKindInfo gEmKindInfo[];
 extern s16 *gEmRequestIds[76];
 extern u8 gEmShowsOnMap[80];

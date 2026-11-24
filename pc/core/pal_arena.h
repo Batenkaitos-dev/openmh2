@@ -11,7 +11,16 @@ void *Pal_ArenaAlloc(unsigned int size);
 void Pal_ArenaFree(void *p);
 
 /* The low pool's two regions in use, for a save state: the bump region (the fibers' stacks) and the arena.
- * Returns the number of regions written (0 before the pool is mapped); lo and hi hold two entries. */
-int Pal_LowRegions(unsigned int lo[2], unsigned int hi[2]);
+ * Returns the number of regions written (PAL_LOW_REGIONS; 0 before the pool is mapped); lo and hi hold that many entries. */
+
+
+
+#define PAL_LOW_REGIONS 2
+
+int Pal_LowRegions(unsigned int lo[PAL_LOW_REGIONS], unsigned int hi[PAL_LOW_REGIONS]);
+
+/* The arena's whole range (what it can hold, not what is used): 1 and *lo, *hi, or 0 before the pool is mapped. The RAM image
+ * (verify) puts a pointer into it in a canonical form: the pool's base differs by system. */
+int Pal_ArenaRange(unsigned int *lo, unsigned int *hi);
 
 #endif

@@ -42,6 +42,11 @@
 #include "town_players.h"
 #include "screen_fade.h"
 #include "libc.h"
+
+
+
+
+
 #pragma optimization_level 4
 
 extern s32 gTownMode;
@@ -87,10 +92,61 @@ void ShipMenu_Open(u8 *npc)
     } else {
         menu->count = 1;
     }
+
+
+
+
+
     LobbyMenu_SetDraw(ShipMenu_Draw, 0, 0, 0);
     gMenuInputLock = 6;
     LobbySe_Play(17);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* Closes the ship menu and gives the camera back. */
 void ShipMenu_Close(void)
@@ -119,6 +175,11 @@ void ShipMenu_Update(void)
     case SHIP_MENU_CHOOSE:
         switch (ShipMenu_Input(menu, pad)) {
         case MENU_DONE:
+
+
+
+
+
             if (menu->cursor == SHIP_CHOICE_BOARD) {
                 menu->state += 1;
                 Talk_Say(3, 1);
@@ -127,6 +188,16 @@ void ShipMenu_Update(void)
             }
             break;
         case MENU_CANCEL:
+
+
+
+
+
+
+
+
+
+
             menu->state = SHIP_MENU_LEAVE;
             Talk_Say(1, 0);
             break;
@@ -178,6 +249,15 @@ void ShipMenu_Update(void)
             gFieldControl = 1;
             gTownMenuOpen = 0;
             gTownMode = 0;
+
+
+
+
+
+
+
+
+
             AreaMenu_Open(AREA_HUB_0x57);
         }
         break;
@@ -201,7 +281,12 @@ s32 ShipMenu_Input(ShipMenu *menu, s32 pad)
 
     btn = pad & PAD_ALL;
     if (btn & PAD_CIRCLE) {
-        if ((menu->cursor == SHIP_CHOICE_BOARD) && (gLobby->questTaken != 0)) {
+        if (((menu->cursor == SHIP_CHOICE_BOARD)
+
+
+
+
+             ) && (gLobby->questTaken != 0)) {
             Menu_PushNoticeOnce(LOBBY_NOTICE_QUEST_TAKEN);
             LobbySe_Play(LOBBY_SE_REFUSE);
             /* a jump to the shared return: a return here compiles as a
@@ -228,6 +313,49 @@ void ShipMenu_Draw(MenuTask *task)
     Text_SetSize(task->textSize);
     switch (menu->state) {
     case SHIP_MENU_CHOOSE:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         Menu_DrawLabelList(460, gShipMenuTexts, menu->count, menu->cursor, 0xFFB0B000);
         break;
     }

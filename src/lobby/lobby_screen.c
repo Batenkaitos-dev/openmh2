@@ -51,6 +51,7 @@
 #include "stream.h"
 #include "text.h"
 #include "lobby_screen.h"
+#include "content_area.h"
 #include "arm_wrestling.h"
 #include "draw_helpers.h"
 #include "elder_forecast.h"
@@ -522,6 +523,11 @@ s32 LobbyScreen_EnterSeq(s32 mode)
             /* the offline hub's return: the town's rules are on before the models load, so the common motions are the town's set (2), not the offline set (1) */
             Game_HubRulesSet(1);
         }
+
+
+
+
+
 #endif
         LobbyScreen_LoadModels();
         gLobby->seqStep++;
@@ -547,12 +553,52 @@ s32 LobbyScreen_EnterSeq(s32 mode)
             if (Game_HubReturnArea() != 0) {
                 /* the offline hub: back from a quest taken in the town, to the area of the desk, with the town's rules and lists */
                 gPlayers[gScene.localPlayer].nextArea = Game_HubReturnArea();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 gQuestReturnArea = 0;
                 Game_HubRulesSet(1);
                 QuestList_Rebuild();
                 break;
             }
 #endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             if (gSave.awayFromVillage != 0) {
                 gPlayers[gScene.localPlayer].nextArea = AREA_HUB_0x57;
             } else {
@@ -1010,7 +1056,7 @@ s32 LobbyScreen_LoadBanks(void)
         Loading_Request();
         gLobbyScreenSubStep++;
         Sound_StopBank(SE_SLOT_SCENE);
-        bank = SND_BANK_FILE(gAreaSeBanks[gScene.area] + SND_BANK_AREAS);
+        bank = SND_BANK_FILE(gAreaSeBanks[AREA_SEBANK_ROW(gScene.area)] + SND_BANK_AREAS);
         FlushCache(0);
         Sound_QueueBank(bank, buf);
         break;

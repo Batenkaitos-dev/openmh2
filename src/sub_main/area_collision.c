@@ -37,6 +37,7 @@
 #include "libc.h"
 #include "cam_areas.h"
 #include "vec_math.h"
+#include "content_area.h"
 
 /* prototypes */
 extern u32 gAreaGrid2CellX;
@@ -108,7 +109,7 @@ void Area_LoadTables(s32 id)
     void *dst;
 
     buf = gLoadBuf;
-    LoadCompressedFile(buf, gAreaTableFiles[id]);
+    LoadCompressedFile(buf, AREA_AT(AT_TABLE, gAreaTableFiles, id));
     dst = gWorkArea;
     memcpy(dst, (void *)Pack_GetPart(buf, 0), Pack_PartSize(buf, 0));
     AreaTable_Relocate(dst);
@@ -278,7 +279,7 @@ void AreaHit_CollideCapsule(SweepCap *seg, u16 mask, Em *em, f32 radius)
             contactYaw = (u16)(Math_Heading(gAreaHitPoints[idx].x, gAreaHitPoints[idx].z, from[0], from[2]) + ANGLE_TURN / 4);
             contactYaw = (u16)(contactYaw - em->rotY);
             gEmWallContacts[em->index][contact].flags = WALL_CONTACT_HIT;
-            if (gAreaTriKindFlags[gScene.area][tri->kind].special) {
+            if (AREA_AT(AT_TRIKIND, gAreaTriKindFlags, gScene.area)[tri->kind].special) {
                 hit = 1;
                 gEmWallContacts[em->index][contact].flags |= WALL_CONTACT_SPECIAL;
             }
@@ -409,7 +410,7 @@ void AreaHit_CollideSweep(SweepCap *seg, u16 mask, s32 em_in, f32 radius)
         hitTri = gAreaHitTris[idx];
         contactYaw = (u16)(Math_Heading(gAreaHitPoints[idx].x, gAreaHitPoints[idx].z, from[0], from[2]) + ANGLE_TURN / 4);
         em->wallHitDirs |= 1 << ((u32)(u16)(contactYaw - em->rotY) >> 11);
-        if (gAreaTriKindFlags[gScene.area][hitTri->kind].emSpecial) {
+        if (AREA_AT(AT_TRIKIND, gAreaTriKindFlags, gScene.area)[hitTri->kind].emSpecial) {
             em->wallHitSpecial = 1;
         }
     }
@@ -1485,7 +1486,7 @@ f32 AreaGrid2_GetFloorYFiltered(f32 *pos)
                 triXZ[2][1] = tri->v[2][2];
                 if (tri->n[1] > 0.0f && Tri_Contains2D((f32 *) triXZ, (f32 *) pointXZ) == 1 && n < AREA_FLOOR_CANDIDATES) {
                     y = -(tri->d + (tri->n[0] * pos[0] + tri->n[2] * pos[2])) / tri->n[1];
-                    kindRow = &gAreaKindFlags[gScene.area][tri->kind];
+                    kindRow = &AREA_AT(AT_KINDFLAGS, gAreaKindFlags, gScene.area)[tri->kind];
                     filtered = kindRow->noLanding;
                     passThrough = kindRow->passThrough;
                     if (!passThrough && !filtered) {
@@ -1585,7 +1586,7 @@ s32 Em_GetFloorY(Em *em, f32 *pos, f32 *out)
                 triXZ[2][1] = tri->v[2][2];
                 if (tri->n[1] > 0.0f && Tri_Contains2D((f32 *) triXZ, (f32 *) pointXZ) == 1 && n < AREA_FLOOR_CANDIDATES) {
                     y = -(tri->d + (tri->n[0] * pos[0] + tri->n[2] * pos[2])) / tri->n[1];
-                    kindRow = &gAreaKindFlags[em->area][tri->kind];
+                    kindRow = &AREA_AT(AT_KINDFLAGS, gAreaKindFlags, em->area)[tri->kind];
                     passThrough = kindRow->passThrough;
                     surface = kindRow->surfaceKind;
                     if (surface) {
@@ -1689,7 +1690,7 @@ s32 Em_GetFloorYAbove(Em *em, f32 *pos, f32 *out)
                 triXZ[2][1] = tri->v[2][2];
                 if (tri->n[1] > 0.0f && Tri_Contains2D((f32 *) triXZ, (f32 *) pointXZ) == 1 && n < AREA_FLOOR_CANDIDATES) {
                     y = -(tri->d + (tri->n[0] * pos[0] + tri->n[2] * pos[2])) / tri->n[1];
-                    kindRow = &gAreaKindFlags[em->area][tri->kind];
+                    kindRow = &AREA_AT(AT_KINDFLAGS, gAreaKindFlags, em->area)[tri->kind];
                     passThrough = kindRow->passThrough;
                     surface = kindRow->surfaceKind;
                     if (surface) {
@@ -1803,7 +1804,7 @@ s32 Em_GetFloorInfo(Em *em, f32 *pos, TriHdr *info, f32 *out, s32 *surfaceY)
                 triXZ[2][1] = tri->v[2][2];
                 if (tri->n[1] > 0.0f && Tri_Contains2D((f32 *) triXZ, (f32 *) pointXZ) == 1 && n < AREA_FLOOR_CANDIDATES) {
                     y = -(tri->d + (tri->n[0] * pos[0] + tri->n[2] * pos[2])) / tri->n[1];
-                    if (gAreaKindFlags[em->area][tri->kind].passThrough == 0) {
+                    if (AREA_AT(AT_KINDFLAGS, gAreaKindFlags, em->area)[tri->kind].passThrough == 0) {
                         n++;
                         *heightPtr++ = y;
                         hdrPtr->kind = tri->kind;
@@ -1970,7 +1971,7 @@ s32 Em_GetFloorInfoEx(Em *em, f32 *pos, TriHdr *info, f32 *out, f32 *depth)
                 triXZ[2][1] = tri->v[2][2];
                 if (tri->n[1] > 0.0f && Tri_Contains2D((f32 *) triXZ, (f32 *) pointXZ) == 1 && n < AREA_FLOOR_CANDIDATES) {
                     y = -(tri->d + (tri->n[0] * pos[0] + tri->n[2] * pos[2])) / tri->n[1];
-                    kindRow = &gAreaKindFlags[em->area][tri->kind];
+                    kindRow = &AREA_AT(AT_KINDFLAGS, gAreaKindFlags, em->area)[tri->kind];
                     passThrough = kindRow->passThrough;
                     surface = kindRow->surfaceKind;
                     if (surface) {
@@ -2125,7 +2126,7 @@ u8 AreaGrid2_GetFloorHeight(f32 *pos, f32 *y)
                 triXZ[2][1] = tri->v[2][2];
                 if (tri->n[1] > 0.0f && Tri_Contains2D((f32 *) triXZ, (f32 *) pointXZ) == 1) {
                     height = -(tri->d + (tri->n[0] * pos[0] + tri->n[2] * pos[2])) / tri->n[1];
-                    if (gAreaKindFlags[gScene.area][tri->kind].passThrough != 0) {
+                    if (AREA_AT(AT_KINDFLAGS, gAreaKindFlags, gScene.area)[tri->kind].passThrough != 0) {
                         *y = height;
                         hit = 1;
                     }
@@ -2210,7 +2211,7 @@ u8 AreaGrid2_OnFlaggedFloor(f32 *pos)
                 triXZ[2][0] = tri->v[2][0];
                 triXZ[2][1] = tri->v[2][2];
                 if (tri->n[1] > 0.0f && Tri_Contains2D((f32 *) triXZ, (f32 *) pointXZ) == 1
-                    && gAreaKindFlags[gScene.area][tri->kind].unk3 != 0) {
+                    && AREA_AT(AT_KINDFLAGS, gAreaKindFlags, gScene.area)[tri->kind].unk3 != 0) {
                     hit = 1;
                 }
                 list++;
@@ -2484,7 +2485,7 @@ s32 AreaGrid_TestSegment(Em *em, f32 *start, f32 *end, f32 *out, u16 mask)
                 if (cell != (s32 *)-1) {
                     for (k = 0; cell[k] != -1; k++) {
                         grid2Tri = (AreaTri *)cell[k];
-                        kindRow = &gAreaKindFlags[em->area][grid2Tri->kind];
+                        kindRow = &AREA_AT(AT_KINDFLAGS, gAreaKindFlags, em->area)[grid2Tri->kind];
                         skip = kindRow->passThrough;
                         if (em->type == EM_KIND_CEPHADROME || em->type == EM_KIND_CEPHALOS
                             || em->type == EM_KIND_DIABLOS || em->type == EM_KIND_MONOBLOS) {
@@ -2906,9 +2907,9 @@ void Obj_UpdateLightColors(u8 floorKind, f32 *pos, ObjHead *obj)
 
     dst = (void **)&obj->lightColors;
     id = obj->area;
-    zone = gAreaKindFlags[id][floorKind].lightZone;
-    zone2 = gAreaKindFlags[id][floorKind].lightZone2;
-    base = gAreaLightColors[id];
+    zone = AREA_AT(AT_KINDFLAGS, gAreaKindFlags, id)[floorKind].lightZone;
+    zone2 = AREA_AT(AT_KINDFLAGS, gAreaKindFlags, id)[floorKind].lightZone2;
+    base = AREA_AT(AT_LCOLORS, gAreaLightColors, id);
 
     if (base == NULL) {
         *dst = NULL;
@@ -2946,7 +2947,7 @@ void Obj_UpdateMustCrouch(u8 floorKind, void *unused, ObjHead *obj)
 {
     u8 *flag = &obj->mustCrouch;
 
-    if (gAreaKindFlags[obj->area][floorKind].mustCrouch == 0) {
+    if (AREA_AT(AT_KINDFLAGS, gAreaKindFlags, obj->area)[floorKind].mustCrouch == 0) {
         *flag = 0;
     } else {
         *flag = 1;
@@ -2957,7 +2958,7 @@ void Obj_UpdateMustCrouch(u8 floorKind, void *unused, ObjHead *obj)
  * gAreaKindFlags in its area. */
 void Obj_UpdateFloorHazard(u8 floorKind, void *unused, ObjHead *obj)
 {
-    obj->floorHazard = gAreaKindFlags[obj->area][floorKind].hazard;
+    obj->floorHazard = AREA_AT(AT_KINDFLAGS, gAreaKindFlags, obj->area)[floorKind].hazard;
 }
 
 /* A player's floor effects, each frame in the current area (Player_Update,
@@ -2984,7 +2985,7 @@ void Em_UpdateLightColors(Em *em)
  * stood on (Em_GetFloorInfo), which effects still use. */
 u8 Obj_OnPassThroughFloor(void *obj)
 {
-    return gAreaKindFlags[((ObjHead *)obj)->area][((ObjHead *)obj)->floorKind].passThrough;
+    return AREA_AT(AT_KINDFLAGS, gAreaKindFlags, ((ObjHead *)obj)->area)[((ObjHead *)obj)->floorKind].passThrough;
 }
 
 /* Collides the body spheres of em (records {x, y, z, r} ended by r == -1:

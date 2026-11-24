@@ -24,6 +24,7 @@
 #include "mem_util.h"
 #include "packs.h"
 #include "tex_files.h"
+#include "content_area.h"
 
 /* prototypes */
 extern s32 gAreaCamDataFiles[];
@@ -72,7 +73,7 @@ void Area_LoadCamData(s32 area)
     s32 id;
     s32 camData;
 
-    id = gAreaCamDataFiles[area];
+    id = AREA_AT(AT_CAM, gAreaCamDataFiles, area);
     camData = 0;
     if (id != 0) {
         LoadCompressedFile(gSysSettings.camData, id);
@@ -112,7 +113,25 @@ typedef struct PlayerLook {
 u8 WeaponClass_IsGunner(u8 cls);
 u8 WeaponType_Flags(u8 cls);
 u8 Equip_GetBladeSpecial(EquipItem *e);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 extern u8 gWeaponKindClass[];
+
 
 /* Puts look l on player p: the equipment, colours and weapon, and what depends on the weapon. */
 void Player_SetLook(Player *pl, PlayerLook *look)
@@ -287,6 +306,13 @@ void Player_ApplyLook(Player *pl)
  * for the file loader, to be read into dst. */
 void FileQueue_AddPlayerFile(s32 id, s32 dst)
 {
+
+
+
+
+
+
+
     FileQueue_AddFile(id | 0x30000, (void *)dst);
 }
 
@@ -320,6 +346,28 @@ s32 Player_QueueLookFiles(Player *pl)
     if (Overlay_IsLoaded(OVERLAY_LOBBY) == 1 && (s8)gLobbyState.lookPending[pl->index] == 0) {
         gLobbyState.lookPending[pl->index] = 1;
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     pl->weaponKind = Equip_GetKind(&pl->equip[6]);
     look->kind = pl->weaponKind;
     look->weapon = pl->equip[6];
@@ -7285,6 +7333,9 @@ u32 gEmSlotTexPacks[76] = {
 u32 gEmSlotModelPacks[76] = {
 #include "sub_main/0042E7C0.inc"
 };
+
+
+
 s32 gModelPackIds[340] = {
 #include "sub_main/0042E8F0.inc"
 };

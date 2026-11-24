@@ -24,12 +24,18 @@ extern u8 *gLoadBuf;
 
 /* Clears every model of the pool at gModels and frees every slot of the
  * material, bone, material set and draw model pools. */
+
+
+
+
+#define MATSET_RESET_COUNT MATSET_POOL_COUNT
+
 void Model_ResetAll(void)
 {
     memset((void *) gModels, 0, MODEL_POOL_COUNT * sizeof(Model));
     Material_Release(0, MATERIAL_POOL_COUNT);
     Bone_Release(0, BONE_POOL_COUNT);
-    MatSet_Release(0, MATSET_POOL_COUNT);
+    MatSet_Release(0, MATSET_RESET_COUNT);
     Model_Release(0, MODEL_POOL_COUNT);
 }
 
@@ -128,7 +134,11 @@ void Model_InitSkeleton(u8 *base, Model *model, s32 kind, s32 alt)
     if (alt != 0) {
         base = (u8 *)base + MODEL_LOAD_ALT_SKEL_OFFSET;
     } else {
+
+
+
         base = (u8 *)base + MODEL_LOAD_SKEL_OFFSET;
+
     }
     model->boneKind = kind;
     switch (kind) {
@@ -366,11 +376,19 @@ void Model_InitMatSetsSlot(Model *model, s32 setupFlags, u8 slot, s32 kind)
     }
     for (i = 0; i < model->matSetCount; i++) {
         for (j = 0; j < 64; j++) {
+
+
+
             gModelPartLists[slot][i][j] = -1;
+
         }
     }
     for (i = 0; i < model->matSetCount; i++) {
+
+
+
         ModelFile_GetPartList(gModelPartLists[slot][i], base, i);
+
     }
     SysHeap_Release(mark);
     Model_InitSkeleton(base, model, kind, 0);

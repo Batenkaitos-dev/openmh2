@@ -21,6 +21,7 @@
 #include "text.h"
 #include "lobby_world.h"
 #include "game_util.h"
+#include "content_area.h"
 
 extern u8 gModelUsed[];
 extern s32 gModelLoadBuf;
@@ -38,7 +39,11 @@ extern s32 gEmSlotModelIds[][2];
  * compiles differently */
 extern s32 gEmSlotModelVars[][2];
 
+
+
+
 void Load_EmSlotModelPack(s32 kind);
+
 void Load_EmModelPack(s32 kind);
 void Load_EmPartModelPack(s32 kind);
 /* unit's own declaration: the texture slot is declared s16, as the callers pass it; with the definition's s32 the calls in EmSlot_LoadModels and Area_LoadSubModels compile differently */
@@ -62,6 +67,58 @@ Model *Model_SetupTexPackEx(s16 idx, s32 work, s16 texSlot, s32 packId, s32 setu
  * - kind points first at the whole emKind array, for the test alone, and only then at the
  *   slot's entry. With one pointer to emKind[slot], the compiler gives it another register.
  */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void EmSlot_LoadModels(s32 slot)
 {
     s32 work;
@@ -115,6 +172,7 @@ void EmSlot_LoadModels(s32 slot)
     scene->partModels[slot] = NULL;
 }
 
+
 /* Loads the model of monster kind `kind`, variant `var`, into monster slot `slot`, unless the
  * slot holds it already (gEmSlotModelIds): the slot's old model is freed first, and its old
  * motions unless it is slot 0. The lobby loads its creatures this way. */
@@ -126,6 +184,15 @@ void EmSlot_LoadModel(s32 kind, s32 var, s32 slot)
     s32 work;
     s32 model;
 
+
+
+
+
+
+
+
+
+
     cur = &gEmSlotModelIds[slot][0];
     scene = &gScene;
     if (kind != *cur || var != gEmSlotModelVars[slot][0]) {
@@ -133,24 +200,57 @@ void EmSlot_LoadModel(s32 kind, s32 var, s32 slot)
             EmSlot_Clear(slot);
         }
         curVar = &gEmSlotModelVars[slot][0];
+
         if (*curVar != -1 && slot != 0) {
             Motion_FreeEmSlot(slot);
         }
         *cur = kind;
         *curVar = var;
+
+
+
         Load_EmSlotModelPack(kind);
+
         work = (*(s32 *)&gSysSettings.dataBuf);
+
+
+
         model = Model_Alloc(1);
         if (model >= 0) {
+
+
+
+
+
             scene->modelFirst[slot] = model;
             scene->modelCount[slot] = 1;
             scene->models[slot] = Model_Get(model);
+
             Model_Reserve(model, 1);
+
+
+
+
             Model_SetupTexPackB(model, work, slot * 20 + 163, gEmSlotTexFiles[kind], 2304);
             if (gEmSlotAnimFiles[kind] != 0) {
+
                 Anim_LoadEmSlot(kind, var, slot);
+
+
+
+
+
+
+
+
+
+
+
             }
         }
+
+
+
     }
 }
 
@@ -158,6 +258,22 @@ void EmSlot_LoadModel(s32 kind, s32 var, s32 slot)
  * loads it again: its kind (which 0), its variant (1) or both (2). */
 void EmSlot_ForgetModel(s16 slot, s8 which)
 {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     switch (which) {
     case 0:
         gEmSlotModelIds[slot][0] = -1;
@@ -170,6 +286,7 @@ void EmSlot_ForgetModel(s16 slot, s8 which)
         gEmSlotModelIds[slot][1] = -1;
         break;
     }
+
 }
 
 /* Forgets monster slot i's kind and frees its models (modelFirst[i], modelCount[i] of them).
@@ -180,8 +297,13 @@ void EmSlot_Clear(s16 i)
     s16 j, first, n;
 
     EmSlot_ForgetModel(i, 0);
+
+
+
+
     first = gScene.modelFirst[i];
     n = gScene.modelCount[i];
+
     for (j = first; j < first + n; j++) {
         Model_Free(j);
         if (gModelUsed[j] != 0) {
@@ -200,6 +322,40 @@ void EmSlot_Clear(s16 i)
  * - the empty test of first, which the compiler removes but which still splits the block
  *   after the first loop in two.
  */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void EmSlot_FreeModels(s16 i)
 {
     SceneState *scene = &gScene;
@@ -235,6 +391,7 @@ void EmSlot_FreeModels(s16 i)
     scene->emKind[i] = 0;
 }
 
+
 /* Frees the area's models (AreaState.modelSlot on, modelCount of them) and its sub-models
  * (gAreaSubModelIds). */
 void Area_FreeModels(void)
@@ -264,6 +421,9 @@ void Area_FreeModels(void)
             }
         }
     }
+
+
+
 }
 
 u8 Village_FacilityLevel(s32 facility);
@@ -293,7 +453,7 @@ void Area_LoadSubModels(u16 id)
     for (i = 0; i < 4; i++) {
         if (i < n) {
             if (i == 0) {
-                if (gAreaSubModelFiles[id] == -1) {
+                if (AREA_AT(AT_SUB, gAreaSubModelFiles, id) == -1) {
                     gAreaSubModelIds[i] = -1;
                     gAreaSubModels[i] = NULL;
                     continue;
@@ -318,7 +478,7 @@ void Area_LoadSubModels(u16 id)
                     }
                     break;
                 default:
-                    tex = gAreaSubModelTexFiles[id];
+                    tex = AREA_AT(AT_SUBTEX, gAreaSubModelTexFiles, id);
                     break;
                 }
             } else {
@@ -340,13 +500,549 @@ void Area_LoadSubModels(u16 id)
             gAreaSubModelIds[i] = model;
             gAreaSubModels[i] = Model_Get(model);
             Model_Reserve(model, 1);
-            Model_SetupWithPack(model, (*(s32 *)&gSysSettings.modelPack), gAreaSubModelKinds[i], tex, 0, 0);
+            Model_SetupWithPack(model, AREA_MODEL_BASE(), gAreaSubModelKinds[i], tex, 0, 0);
         } else {
             gAreaSubModelIds[i] = -1;
             gAreaSubModels[i] = NULL;
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 extern s32 gSubModelPairTexFiles[];
 extern void *gAreaSubModel;

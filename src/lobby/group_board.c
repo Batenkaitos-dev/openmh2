@@ -24,7 +24,7 @@
 #include "lobby_globals.h"
 #include "lobby_text.h"
 #include "lobby_net.h"
-#include "lobby_menu.h"
+#include "lobby_menu_work.h"
 #include "lobby_labels.h"
 #include "lobby_group_board.h"
 #include "screen_fade.h"

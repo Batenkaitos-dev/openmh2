@@ -26,6 +26,7 @@
 #include "cam_areas.h"
 #include "engine_math.h"
 #include "game_util.h"
+#include "pal.h"
 
 /*
  * 1 when the camera may read the pad. 0 offline once the quest is over
@@ -56,6 +57,9 @@ void CamCtl_ReadPad(CamCtl *cam)
         cam->padHeld = 0U;
         cam->padMagR = 0U;
         cam->padDegR = 0U;
+#if PLATFORM_PC
+        PC_CAM_LATCH(cam, 0);
+#endif
         return;
     }
     cam->padHeld = (u16) gPadState->held;
@@ -63,6 +67,9 @@ void CamCtl_ReadPad(CamCtl *cam)
     cam->padDir = (u16) gPadState->dir;
     cam->padDegR = (u16) gPadState->degR;
     cam->padMagR = (u16) gPadState->magR;
+#if PLATFORM_PC
+    PC_CAM_LATCH(cam, 1);
+#endif
 }
 
 /* dst = the default follow settings gCamFollowDefaults. */

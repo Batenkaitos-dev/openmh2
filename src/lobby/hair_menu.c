@@ -17,7 +17,7 @@
 #include "lobby_globals.h"
 #include "save.h"
 #include "em.h"
-#include "lobby_menu.h"
+#include "lobby_menu_work.h"
 #include "lobby_state.h"
 #include "lobby_npc.h"
 #include "npc_motion.h"
@@ -265,7 +265,7 @@ s32 HairMenu_IsUnlocked(s32 id)
 }
 
 extern HairStyle gHairStyles[];
-void *memcpy(void *d, void *s, u32 n);
+void *memcpy(void *d, const void *s, u32 n);
 
 /*
  * Copies page `page` of the listed styles (HairMenu_IsUnlocked) into the

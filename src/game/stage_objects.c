@@ -1185,7 +1185,7 @@ void ThunderSpark_DrawPart(DrawSlot *node)
     obj = node->owner;
     part = (ThunderSparkPart *) obj->buf + node->part;
     kindSlot = EmSlot_FindKind(obj->var2);
-    if (kindSlot != -1 && (models = gScene.partModels[kindSlot]) != NULL && models->active != 0) {
+    if (kindSlot != -1 && (models = SCENE_PART_MODELS(kindSlot)) != NULL && models->active != 0) {
         materials = models->mats;
         scale[0] = part->scale * part->keyScale[0];
         scale[1] = part->scale * part->keyScale[1];
@@ -2517,7 +2517,7 @@ void EmBodyFx_Draw(DrawSlot *node)
         if (slotIdx == -1) {
             return;
         }
-        mdl = gScene.partModels[slotIdx];
+        mdl = SCENE_PART_MODELS(slotIdx);
         break;
     case EMBODYFX_KIND38_CHARGE:
         mdl = gCommonModels[0];
@@ -3106,10 +3106,14 @@ void EmTail_Draw(DrawSlot *node)
             }
             Bone_StoreMatricesTo((struct MtxSlot *) gBoneMatrixBuf, tailBones);
             matSet = &model->matSets[1];
-            Tex_Prepare(10, em->modelSlot * 20 + 163);
+            Tex_Prepare(10, SCENE_EM_TEX(em->modelSlot));
             if (matSet->id != -1) {
                 GmEm_PrepareMeshSet(em, 1, model->matSets);
+
+
+
                 MtxSlot_LoadList((s16 *) (gModelPartLists + em->modelSlot * 1056 + 66), (struct MtxSlot *) gBoneMatrixBuf);
+
                 Draw_ApplyStates(matSet->flags);
                 Model_Draw(matSet->id, 0);
             }

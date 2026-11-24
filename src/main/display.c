@@ -74,6 +74,9 @@ s32 InitDisplay(s32 w, s32 h)
     gSysVblanks = 0;
     Gs_ClearVram();
     Gs_SetupDisplay(4, 4, 1, 0, 1);
+
+
+
     Gs_ShowFrame(0, 1);
     Pad_Init();
     do {
@@ -95,7 +98,21 @@ s32 Sys_InitWork(void)
     Vram_Init();
     LinearHeap_Init((LinearHeap *) gSysHeap, SYS_HEAP_AREA, SYS_HEAP_AREA_SIZE, 64);
     gSysHeapSize = 0xE00000;
+
+
+
+
+
+
+
+
+
+
+
+
+
     heap = SysHeap_AllocTop(gSysHeapSize);
+
     gSysHeapBase = heap;
     Sys_InitHeap(heap, gSysHeapSize, 64);
     D_00219060 = 0;

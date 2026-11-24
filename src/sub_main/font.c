@@ -27,6 +27,9 @@
 #include "file_load.h"
 #include "packet_tim2.h"
 
+
+
+
 #pragma optimization_level 4
 
 /* The glyph cache's sizes. */
@@ -535,6 +538,7 @@ void Font_Printf(char *fmt, ...)
     PC_TEXT(fmt);
     run = Font_NewRun();
     if (run != NULL) {
+        PC_GS_RUN_NEW(run);
         gFontCache->runCount[gFontCache->runPage]++;
         run->x = gFontCache->runX;
         run->y = gFontCache->runY;
@@ -585,11 +589,13 @@ void Font_DrawPage(s32 idx)
             Font_BeginPage();
             run = gFontCache->runs[idx];
             for (k = 0; k < gFontCache->runCount[idx]; k++, run++) {
+                PC_GS_RUN(run);
                 if (run->isGlyphs == 0) {
                     Text_DrawString(run);
                 } else {
                     Text_DrawRun(run);
                 }
+                PC_GS_RUN_END();
             }
             Font_EndFrame();
             gFontCache->pageDone[idx] = 1;
@@ -762,6 +768,25 @@ static void Font_SetTexRegs(u32 key)
     out[3] = 0x50000003;
     ((u64 *)out)[2] = 0x1000000000008002;
     ((u64 *)out)[3] = 14;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     ((u64 *)out)[4] = GS_TEX0(tex->vram, 4, tex->psm, tex->tw, tex->th, 1, 0, clut->vram, clut->psm, 0, 0, 2);
     ((u64 *)out)[5] = GS_REG_TEX0_1;
     ((u64 *)out)[6] = ((u64)gFontCache->keySet << 5) | ((u64)gFontCache->keySet << 6);
@@ -843,7 +868,7 @@ static void Font_AddGlyphSprite(s32 slot, u32 clut, s16 glyphW, s16 glyphH)
     ((u64 *)out)[9] = (u32)right | ((u64)(u32)bottom << 16) | ((u64)0xFFFFFFFF << 32);
     PC_HUD_2D();
     PC_HUD_PACKET(out, gDispWidth);
-    PC_HUD_QUEUED(out);
+    PC_HUD_QUEUED(out, 5);
     gFontCache->pkt += 80;
 }
 

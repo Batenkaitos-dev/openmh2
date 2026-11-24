@@ -16,6 +16,9 @@
 s32 ShipMenu_IsTouring(void);
 s32 ShipMenu_IsOffered(void);
 void ShipMenu_Open(u8 *npc);
+
+
+
 void ShipMenu_Update(void);
 s32 ShipMenu_Input(ShipMenu *menu, s32 pad);
 void ShipMenu_Draw(MenuTask *task);

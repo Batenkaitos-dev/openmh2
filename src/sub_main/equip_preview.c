@@ -141,10 +141,20 @@ extern u16 gFrameTick;
 extern f32 gViewMatrix[];
 extern EquipPreviewEye gEquipPreviewEyes[];
 extern f32 gEquipPreviewWpEyeZ[];
+
+
+
+
+
 extern f32 gEquipPreviewWpPos[][3];
 extern f32 gEquipPreviewSubPos[][3];
 extern f32 gEquipPreviewWpRot[][3];
 extern f32 gEquipPreviewSubRot[][3];
+
+
+
+
+
 extern f32 gEquipPreviewWaistBones[][3];
 extern f32 gEquipPreviewArmsBones[][3];
 extern f32 gEquipPreviewBodyBones[][3];
@@ -591,7 +601,7 @@ void Em_DrawParts(DrawSlot *drawSlot)
     }
     Mtx_Identity(uvMtx);
     Gs_SetState(RS_UV_MTX, (u32)uvMtx);
-    Tex_Prepare(10, em->modelSlot * 20 + 163);
+    Tex_Prepare(10, SCENE_EM_TEX(em->modelSlot));
     for (i = 0; i < setCount; i++) {
         set = sets + i;
         if ((s8)em->meshShown[i] == 0) {
@@ -632,7 +642,11 @@ void Em_DrawParts(DrawSlot *drawSlot)
         }
         Draw_ApplyStates(set->flags);
         if (manyBones == 1) {
+
+
+
             MtxSlot_LoadList((s16 *) (gModelPartLists[em->modelSlot] + i * 66), (struct MtxSlot *) gBoneMatrixBuf);
+
         }
         Model_Draw(set->id, 0);
     }
@@ -656,9 +670,15 @@ f32 gLightSetAmbients[6][3] = {
 EquipPreviewEye gEquipPreviewEyes[6] = {
 #include "sub_main/0043E740.inc"
 };
+
+
+
 f32 gEquipPreviewWpEyeZ[12] = {
 #include "sub_main/0043E790.inc"
 };
+
+
+
 f32 gEquipPreviewWpPos[22][3] = {
 #include "sub_main/0043E7C0.inc"
 };

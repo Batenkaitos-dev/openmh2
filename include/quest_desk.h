@@ -16,6 +16,18 @@
 
 void QuestDesk_Open(u8 *npc);
 void QuestDesk_Close(void);
+
+
+
+
+
+
+
+
+
+#define QUEST_DESK_ENTRY(desk, i) ((desk)->entries[i])
+#define QUEST_DESK_ENTRY_TOTAL(desk) ((desk)->entryCount)
+
 void QuestDesk_Update(void);
 void QuestDesk_Accept(u16 id, s16 money, s32 pay);
 s32 QuestDesk_Greet(void);

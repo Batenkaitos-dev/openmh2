@@ -42,6 +42,13 @@ HOST unsigned int Host_PageSize(void);
 /* Zeroed read/write memory at exactly addr (size bytes, whole pages), or NULL
  * when that range is not free. */
 HOST void *Host_LowMap(unsigned int addr, unsigned int size);
+/* A thread of the process, running FN(ARG) (LOW: below the normal priority), and a counting semaphore to wake it by: for the second pass's threads
+ * (gfx_pass_run.c). Host_ThreadStart returns 1 when the thread runs; Host_SemWait waits up to MS milliseconds and returns 1 when it took a count. */
+typedef void (HOST *HostThreadFn)(void *arg);
+HOST int Host_ThreadStart(HostThreadFn fn, void *arg, int low);
+HOST void *Host_SemNew(void);
+HOST void Host_SemPost(void *sem);
+HOST int Host_SemWait(void *sem, unsigned int ms);
 /* What the host's IPC is told at the end (main.c sets them: Ipc_Fatal and
  * Ipc_Exit, pc/core/ipc/core_ipc.h): Host_Fatal and Host_StubFatal call
  * fatal(msg) before aborting, and Host_ExitHook(code) calls onExit(code). NULL:

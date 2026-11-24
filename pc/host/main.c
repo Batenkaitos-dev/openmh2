@@ -25,6 +25,8 @@
 #include <string.h>
 
 #include "core_args.h"
+#include "core_kind.h"
+#include "hfr.h"
 #include "launcher.h"
 #include "launcher_make.h"
 #include "launcher_text.h"
@@ -283,12 +285,15 @@ int main(int argc, char **argv)
             launcher_core_arg(p ? "--memcard2" : "--memcard1", g_cfg.memcard[p]);
     if (!g_cfg.core_path)
         g_cfg.core_path = process_default_core();
+    if (core_is_content(g_cfg.core_path))   /* the core's own mark: the renderer is made before the core runs */
+        g_cfg.content_core = 1;
     if (launcher_disc() != 0) {
         fatal_box("The game archive was not found. Put mh2-disc.arc next to mh2 or in the user data folder, "
                   "or name it with --archive FILE or archive = FILE in mh2.ini. The launcher can make it from your copy of the game.");
         return 1;
     }
     launcher_widescreen();       /* the core's --widescreen when the setting is on (settings.c) */
+    launcher_smooth_camera();    /* the core's --smooth-camera when the setting and the camera stick are on (settings.c) */
     launcher_offline_hub();      /* the core's --offline-hub when the setting is on (settings.c) */
     launcher_text_pack();        /* the core's --pack when the setting names a text pack (settings.c) */
     {   /* the chosen pack is looked at before the game starts, and what is wrong with it is said */
@@ -303,7 +308,9 @@ int main(int argc, char **argv)
         cards_choose(play, g_cfg.card[0], g_cfg.card[1], g_cfg.old_card[0], g_cfg.old_card[1], g_cfg.cards_dir);
     local_date();
 
-    if (mh2ipc_create(&g_map, MH2IPC_TOTAL_BYTES) != 0) {
+    /* the in-between pictures (60 frames per second and above) are made by the core's second pass, which hands them over in a ring of their own */
+    const int pass_ring = hfr_pass_ring(hfr_rate_rule(g_cfg.fps, SDL_GetNumLogicalCPUCores()));
+    if (mh2ipc_create(&g_map, MH2IPC_TOTAL_BYTES + (pass_ring ? MH2IPC_PASS_BYTES : 0)) != 0) {
         host_log("the shared memory for mh2-core could not be made");
         return 1;
     }
@@ -311,6 +318,8 @@ int main(int argc, char **argv)
     host_log("mh2 started (pid %u)", (unsigned int)mh2ipc_pid());
     g_block = (unsigned char *)g_map.base;
     mh2ipc_layout(g_ipc, mh2ipc_pid());
+    if (pass_ring)
+        mh2ipc_layout_pass(g_ipc);
 
     SDL_InitFlags flags = SDL_INIT_EVENTS | SDL_INIT_GAMEPAD;
     if (!g_cfg.no_window)
@@ -361,6 +370,7 @@ int main(int argc, char **argv)
 
     int code = 0, running = 1;
     uint64_t quit_at = 0;
+    int kind_checked = 0, kind_mismatch = 0;
     while (running) {
         SDL_Event e;
         if (SDL_WaitEventTimeout(&e, present_wait_ms())) {
@@ -406,13 +416,26 @@ int main(int argc, char **argv)
             process_kill();
             quit_at = 0;
         }
+        if (!kind_checked && mh2ipc_load(&g_ipc->core_state) == MH2IPC_STATE_RUNNING) {
+            /* the core tells its kind as it attaches: the renderer's memory was chosen from its file (core_is_content), and a content
+             * core on a 4 MB renderer would wrap the blocks above 16383 and draw wrong pictures without a word */
+            kind_checked = 1;
+            if (g_ipc->core_kind == MH2IPC_CORE_CONTENT && !g_cfg.content_core && !g_cfg.gs_off) {
+                host_log("mh2-core is the content core, but the renderer was made with the base game's 4 MB: stopping");
+                kind_mismatch = 1;
+                process_kill();
+            }
+        }
         if (!process_running(&code))
             running = 0;
     }
     /* the core has ended: the GS thread shows what is left in the ring */
     gs_stop();
     unsigned int state = mh2ipc_load(&g_ipc->core_state);
-    if (state == MH2IPC_STATE_FATAL) {
+    if (kind_mismatch) {
+        fatal_box("The game and its graphics memory do not agree, so it was stopped. Please report this.");
+        code = 1;
+    } else if (state == MH2IPC_STATE_FATAL) {
         g_ipc->fatal_message[sizeof(g_ipc->fatal_message) - 1] = 0;
         char msg[600];
         if (code == MH2IPC_EXIT_REFUSED) {   /* the core would not run with what it was given: its message, as it is */

@@ -21,6 +21,9 @@
 #include "my_house.h"
 #include "town_players.h"
 
+
+
+
 extern NpcRouteEnt gLessonRouteBHome[];
 extern NpcRouteEnt gLessonRouteB1[];
 extern NpcJumpRoute4End gLessonRouteB2;
@@ -123,6 +126,11 @@ s32 Npc_HasSecondHead(Em *npc)
 {
     NpcWork *npcWork = (NpcWork *)&npc->work;
 
+
+
+
+
+
     switch (npcWork->bodyKind) {
     case 1:
         switch (npcWork->look) {
@@ -193,6 +201,11 @@ s32 Npc_IsFreeAct29or2A(Em *npc)
 s32 Npc_IsFree(Em *npc)
 {
     NpcWork *npcWork = (NpcWork *)&npc->work;
+
+
+
+
+
 
     switch (npc->npcLook) {
     case 77:

@@ -21,6 +21,9 @@
 #include "vu0ops.h"
 #endif
 
+
+
+
 /* The VU1 programs' descriptors (60 of them). */
 extern Vu1ProgInfo gVu1ProgInfo00;
 extern Vu1ProgInfo gVu1ProgInfo01;
@@ -82,6 +85,11 @@ extern Vu1ProgInfo gVu1ProgInfo56;
 extern Vu1ProgInfo gVu1ProgInfo57;
 extern Vu1ProgInfo gVu1ProgInfo58;
 extern Vu1ProgInfo gVu1ProgInfo59;
+
+
+
+
+
 
 /*
  * Picks entry's VU1 program: entry->prog (0..59) and its descriptor entry->progInfo
@@ -618,6 +626,11 @@ void Vu1_SelectProgram(ModelEntry *entry, MeshDesc *mesh)
             }
         break;
     }
+
+
+
+
+
 }
 
 /* dst = a * b (4x4), as Mtx_Mul. */
@@ -2402,3 +2415,7 @@ Vu1ProgInfo gVu1ProgInfo58 = {
 Vu1ProgInfo gVu1ProgInfo59 = {
 #include "sub_main/00403110.inc"
 };
+
+
+
+

@@ -31,6 +31,12 @@
     X(T_SSAA_RULE, "1 (off), 2, 4, 8 or 16") \
     X(T_HIRES, "High resolution") \
     X(T_HIRES_H, "Draws the game at twice its original resolution (1280x896). Uses at least 4x anti-aliasing.") \
+    X(T_SCALING, "Picture scaling") \
+    X(T_SCALING_H, "How the picture is stretched to your screen. Smooth: soft, fills the window. Sharp: crisper detail. Whole numbers: no blur, at a whole multiple of the original size, with borders.") \
+    X(T_SCALING_SHOWN, "Smooth|Sharp|Whole numbers") \
+    X(T_SHARPNESS, "Sharpness") \
+    X(T_SHARPNESS_H, "How crisp the Sharp scaling is. Higher is crisper, and may show a thin halo along hard edges. Only Sharp uses it.") \
+    X(T_SHARPNESS_SHOWN, "Low|Medium|High") \
     X(T_WIDESCREEN, "Widescreen") \
     X(T_WIDESCREEN_H, "Shows the game in 16:9, with a camera view 33% wider. The HUD, menus and text keep their shape. Movies stay 4:3.") \
     X(T_OFFLINE_HUB, "Offline Dundorma") \
@@ -131,7 +137,7 @@
     X(T_FCOTHER_H, "W A S D move, Q E go down and up, Shift is faster, Ctrl slower, Z X zoom, R resets, Tab gives the controller back to the game, Esc leaves, the mouse looks and its wheel sets the speed. Change the keys in mh2.ini, for example freecam_key_forward = I.") \
     /* the content page */ \
     X(T_CONTENT, "Content") \
-    X(T_CONTENT_H, "Texture packs that replace the game's textures.") \
+    X(T_CONTENT_H, "Texture packs that replace the game's textures, and a translation pack that replaces its text.") \
     X(T_HEAD_CONTENT, "CONTENT") \
     X(T_CONTENT_SUM_OFF, "texture packs off") \
     X(T_CONTENT_SUM_NONE, "no texture packs") \
@@ -160,6 +166,23 @@
     X(T_OPEN_PACKS, "Open the packs folder") \
     X(T_OPEN_PACKS_H, "Opens the folder where texture packs go, in your file manager. It is created if it does not exist.") \
     X(T_PACKS_NOFOLDER, "(no folder)") \
+    X(T_TP_OFF, "Off") \
+    X(T_TP_NONE, "none installed") \
+    X(T_TP_NONE_H, "OpenMH2 comes with no translation. A translation pack is a folder in the text_packs folder of the user data folder (Open the translation packs folder, below). To make one, see \"Making a translation pack\" in the guide.") \
+    X(T_TP_H, "Left and Right choose a translation pack from the text_packs folder, or Off for the game's own text. It is used when you press Play. A save state made with a pack loads only with that pack.") \
+    X(T_TP_CHECK, "This pack") \
+    X(T_TP_OKV, "the game accepts it") \
+    X(T_TP_BADV, "the game refuses it") \
+    X(T_TP_OK_H, "The game looked at this pack's pack.ini, character map, text table and files, as it does when it starts, and found nothing to refuse.") \
+    X(T_TP_BAD_H, "%s Choose another pack, or Off.") \
+    X(T_TP_SKIP, "Folders not listed") \
+    X(T_TP_SKIPV, "%d: rename them") \
+    X(T_TP_SKIP_H, "These folders in text_packs have names that mh2.ini can't hold (a # or ; in the name, or spaces at either end). Rename them to choose them.") \
+    X(T_OPEN_TPACKS, "Open the translation packs folder") \
+    X(T_OPEN_TPACKS_H, "Opens the text_packs folder of the user data folder, where translation packs go, in your file manager. It is created if it does not exist.") \
+    X(T_CONTENT_SUM_TP, "translation on") \
+    X(T_CONTENT_SUM_TPBAD, "translation refused") \
+    X(T_PLAY_TPBAD, "%s Choose another pack, or Off, on the Content page.") \
     X(T_FCIN, "Game input in the freecam") \
     X(T_FCIN_H, "neutral: while you control the free camera, the game receives a controller with nothing pressed, and the keyboard and gamepad move the camera. pad: the gamepad keeps playing the game, and the keyboard and mouse move the camera.") \
     X(T_FCSPEED, "Freecam speed") \
@@ -168,6 +191,9 @@
     X(T_FCPAD_H, "off (default): the sticks work as in the game. on: pressing both sticks in together (L3 and R3) turns the free camera on and off. The game never sees both presses at once, and a single stick press reaches it 60 ms late, in case the other stick joins.") \
     X(T_CAMSTICK, "Camera on the right stick") \
     X(T_CAMSTICK_H, "The right stick turns and tilts the game's camera, as the D-pad does. The game uses that stick to attack, so hold: it is the camera only while you hold L3, and on: it is the camera always. More keys in mh2.ini: camera_stick_button, _which, _invert, _speed.") \
+    X(T_CAMSMOOTH, "Modern camera") \
+    X(T_CAMPAGE, "Camera settings") \
+    X(T_HEAD_CAMSTICK, "CAMERA SETTINGS") \
     X(T_CAMSTICK_BTN, "Camera stick button") \
     X(T_CAMSTICK_BTN_H, "The button you hold in hold mode (l3, select, l2 or r2). The game does not receive it. L3 is a button the game does not use while you play. Change it in mh2.ini.") \
     X(T_CAMSTICK_WHICH, "Camera stick") \
@@ -204,6 +230,8 @@
     X(T_SUM_SSAA, "anti-aliasing %s") \
     X(T_SUM_HIRES, "high resolution") \
     X(T_SUM_FULLSCREEN, "fullscreen") \
+    X(T_SUM_SHARP, "sharp scaling") \
+    X(T_SUM_WHOLE, "whole-number scaling") \
     X(T_SUM_WIDE_ON, "widescreen on") \
     X(T_SUM_WIDE_OFF, "widescreen off") \
     X(T_SUM_KEYBOARD, "keyboard typing on") \
@@ -371,7 +399,12 @@
     X(T_O_REST, "Everything after -- is passed to the game program (mh2-core).") \
     X(T_O_MEMCARD1, "Use this memory card file in slot 1 (an option of mh2-core).") \
     X(T_O_MEMCARD2, "Use this memory card file in slot 2 (an option of mh2-core).") \
-    X(T_O_ARCHIVE, "The game archive file.")
+    X(T_O_ARCHIVE, "The game archive file.") \
+    /* the frame rate (the picture page's row) */ \
+    X(T_FPS, "Frames per second") \
+    X(T_FPS_H, "The renderer outputs 30, 60, 120 or 144 frames per second without changing the underlying game systems. Texture packs work with it. 120 and 144 run at 60 on a PC with fewer than 8 processor threads, and the rate steps down by itself if a PC ever falls behind.") \
+    X(T_FPS_RULE, "30, 60, 120 or 144") \
+    X(T_SUM_FPS, "%s frames per second")
 
 
 enum {

@@ -502,6 +502,7 @@ struct Active
 struct Textures::Impl
 {
     Vulkan::Device *device;
+    const RegisterState *regs = nullptr;
     uint32_t vram_size, num_pages, page_mask;
     Options opt;
     Counters c;
@@ -711,7 +712,15 @@ struct Textures::Impl
             csa &= 15;
         bool index4 = psm == PSMT4 || psm == PSMT4HH || psm == PSMT4HL;
         bool csm2 = uint32_t(t.CSM) != 0;
+        /* the palette's block pointer: TEX0's 14 bits and the bank in TEX1 of the same context. The call passes the
+         * register itself, so its address says which context it is. */
         uint32_t cbp = uint32_t(t.CBP);
+        if (regs)
+        {
+            for (uint32_t c = 0; c < 2; c++)
+                if (&t == &regs->ctx[c].tex0.desc)
+                    cbp = tex_cbp(t, regs->ctx[c].tex1.desc);
+        }
         uint32_t cbw = csm2 ? uint32_t(tc.CBW) : 0;
         uint32_t cou = csm2 ? uint32_t(tc.COU) : 0, cov = csm2 ? uint32_t(tc.COV) : 0;
 
@@ -791,7 +800,7 @@ struct Textures::Impl
         if (!tag)
             return false;
         uint32_t W = 1u << uint32_t(desc.tex0.desc.TW), H = 1u << uint32_t(desc.tex0.desc.TH);
-        uint32_t tbp = uint32_t(desc.tex0.desc.TBP0), tbw = uint32_t(desc.tex0.desc.TBW);
+        uint32_t tbp = tex_tbp0(desc.tex0.desc, desc.tex1.desc), tbw = uint32_t(desc.tex0.desc.TBW);
         PageRect pr = compute_page_rect(tbp, 0, 0, W, H, tbw, psm);
         bool ok = true;
         uint64_t gens = 0x51ED270B;
@@ -887,7 +896,7 @@ struct Textures::Impl
         job.texa = k.texa;
         job.palette = k.palette;
         job.texels.resize(size_t(k.W) * k.H);
-        if (!read_region(shadow.data(), k.psm, uint32_t(desc.tex0.desc.TBP0), uint32_t(desc.tex0.desc.TBW), k.W, k.H,
+        if (!read_region(shadow.data(), k.psm, tex_tbp0(desc.tex0.desc, desc.tex1.desc), uint32_t(desc.tex0.desc.TBW), k.W, k.H,
                          vram_size - 1, job.texels.data()))
             return;
         {
@@ -1138,13 +1147,20 @@ struct Textures::Impl
                     return;
                 PackFile *f = order[i];
                 uint64_t sz = decoded_size(f);
-                if (sz && reserved.load() + sz > budget_bytes)
+                /* The budget is tested and reserved in one step: two threads that read the same reserved bytes
+                 * cannot both take the last room (tested and added in two steps, each could, and the preload kept
+                 * a file more than the budget for each other thread). */
+                uint64_t cur = reserved.load();
+                bool fits;
+                do
+                    fits = !(sz && cur + sz > budget_bytes);
+                while (fits && !reserved.compare_exchange_weak(cur, cur + sz));
+                if (!fits)
                 {
                     left_out++;
                 }
                 else
                 {
-                    reserved += sz;
                     f->state.store(LOADING, std::memory_order_relaxed);
                     load_file(f);
                     if (f->state.load(std::memory_order_acquire) == READY)
@@ -1487,6 +1503,11 @@ void Textures::on_host_upload(const CopyDescriptor &copy)
     uint64_t ns = ns_since(t0);
     impl->c.upload_ns += ns;
     impl->c.upload_max_ns = std::max(impl->c.upload_max_ns, ns);
+}
+
+void Textures::set_registers(const RegisterState *regs)
+{
+    impl->regs = regs;
 }
 
 void Textures::on_vram_damage(const PageRect &rect)

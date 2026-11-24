@@ -40,11 +40,11 @@ typedef int mh2ipc_s32;
 typedef unsigned long long mh2ipc_u64;
 
 #define MH2IPC_MAGIC 0x3243504Du   /* "MPC2", little-endian */
-#define MH2IPC_VERSION 7u
+#define MH2IPC_VERSION 11u
 /* The release build (MH2_RELEASE) leaves out some of the host's features, so its header lacks the development
  * build's two blocks (Mh2IpcPlay, Mh2IpcWatch) and the words that answer them. Every other field is at the same
- * offset in both, and the blocks that only the development build has are last (or in reserved space): the release
- * header is a prefix of the development one. The same version number serves both. A release core runs under a
+ * offset in both: the blocks that only the development build has are in reserved space in a release header (the
+ * pass's ring and the live plans follow the watch's place in both). The same version number serves both. A release core runs under a
  * development host. The header's size (header_bytes) is the same constant
  * in both, and the core refuses a smaller one than its own. */
 #define MH2IPC_ENV "MH2_IPC"         /* the block's name, in mh2-core's environment */
@@ -54,8 +54,11 @@ typedef unsigned long long mh2ipc_u64;
 #define MH2IPC_GS_BYTES (32u << 20)        /* about ten frames of the busiest scenes */
 #define MH2IPC_AUDIO_BYTES (256u << 10)    /* 65536 frames, 1.37 s */
 #define MH2IPC_RB_BYTES (4u << 20)         /* the GS's whole memory */
-#define MH2IPC_STATE_BYTES (8u << 20)      /* the window for the renderer's part of a save state (4.2 MB today) */
+#define MH2IPC_STATE_BYTES (20u << 20)     /* the window for the renderer's part of a save state: the local memory and 16 KB (4.2 MB at 4 MB, 8.2 at 8, 16.2 at 16) */
 #define MH2IPC_TOTAL_BYTES (MH2IPC_HEADER_BYTES + MH2IPC_GS_BYTES + MH2IPC_AUDIO_BYTES + MH2IPC_RB_BYTES + MH2IPC_STATE_BYTES)
+/* The second ring (development builds, the pass on a thread of its own: MH2_PASS_THREAD=1): the block is this much larger then, and only then; the ring's size
+ * is in the header (pass.size, 0: no ring). */
+#define MH2IPC_PASS_BYTES (16u << 20)
 
 /* The largest payload of one record; GIF data and readbacks are split. */
 #define MH2IPC_REC_MAX (1u << 20)
@@ -74,6 +77,8 @@ enum {
  * state made with another pack): core_state is MH2IPC_STATE_FATAL with the message to show, and nothing is wrong with the
  * program. The core's host.h has the same number (HOST_EXIT_REFUSED). */
 #define MH2IPC_EXIT_REFUSED 2
+#define MH2IPC_CORE_BASE 0u      /* core_kind: the base core (it does not write the word) */
+#define MH2IPC_CORE_CONTENT 1u   /* the content core: its renderer has 8 MB */
 
 /* Mh2IpcHeader.host_flags: what the host has (logs only: never game-visible). */
 enum {
@@ -116,7 +121,9 @@ enum {
     MH2IPC_EV_RB_DONE = 2,    /* the core waits for a readback (word: rb_done_seq) */
     MH2IPC_EV_CONTROL = 3,    /* the host waits for the core's state (word: core_state) */
     MH2IPC_EV_SCHED = 4,      /* the core waits for the pad schedule (word: sched.horizon) */
-    MH2IPC_EV_COUNT = 5
+    MH2IPC_EV_PASS_DATA = 5,  /* the host's reader waits for the pass thread's records (word: pass.head; development builds) */
+    MH2IPC_EV_PASS_SPACE = 6, /* the pass thread waits for room in its ring (word: pass.tail) */
+    MH2IPC_EV_COUNT = 7
 };
 
 /* GS ring records (Mh2IpcRec.type). */
@@ -134,7 +141,36 @@ enum {
     MH2IPC_REC_STATE_SET = 8,    /* arg0 = the block's bytes in the state window; arg1 = sequence number: the renderer takes it (gs_result) */
     MH2IPC_REC_CAMERA = 9,       /* payload: 32 floats, the view and the projection (gMtxView, gMtxProjClip) a model is drawn with; the renderer's
                                   * in-between pictures use it, nothing else: it is not part of the picture's stream (the ring's hash skips it) */
+    MH2IPC_REC_MODEL = 10,       /* payload: Mh2IpcModel. The DMA chain of a Model_Draw starts here: the GIF data (path 1) that follows, up to the next
+                                  * MODEL record, is what that draw made. arg0 = the model's handle (0: the end of the draw's chain, where the data that
+                                  * follows is nobody's; no payload), arg1 = the draw's flags. Like the camera, it is not part of
+                                  * the picture's stream (the ring's hash skips it) */
+    MH2IPC_REC_ANCHOR = 11,      /* payload: Mh2IpcAnchor. A 2D packet that an element placed from a 3D point queued starts here (PC_GS_ANCHOR): the GIF
+                                  * data (path 2) that follows, up to the next ANCHOR record, is that element's. arg0 = the anchor's id (0: the end of the
+                                  * packet, no payload). Not part of the picture's stream (the ring's hash skips it) */
+    MH2IPC_REC_PASS = 12,        /* The second pass (development builds). arg0 = the kind: 0 and 1 bracket the real records of a DMA window (a transfer to
+                                  * VIF1), 2 begins the pass's stream for it (arg1 = the alpha in 1/256), 3 is GIF data of the pass (arg1 = the path; payload:
+                                  * whole qwords), 4 ends it, 5 says that no pass was run for the window. On the pass thread's ring: 6 says that all of a window's
+                                  * records are sent; 7 is a whole moment in one record (arg1 as kind 2's; the data: a qword with the number of qwords that follow, then
+                                  * for each piece of kind 3 a qword (path, qwords, 0, 0) and its data), 8 the continuation of a kind 7 that was too long for one record.
+                                  * Not part of the picture's stream (the ring's hash skips it) */
+    MH2IPC_REC_STAMP = 13,       /* Development builds, with the second pass on: before each VSync record, the time the core reached the VSync, payload: u64 mh2ipc_time_ns(), then a u64 with the pacing's timeline at this VBlank (0: the VBlank was not paced, 1: on the timeline, 2: the timeline began or broke here).
+                                  * The host's clock uses it in place of the time its reader took the record up. arg0 = the live plan's VBlank number the step's moments were made at (0: none; plan 11's step 5a). Not part of the picture's stream (the ring's hash skips it) */
 };
+
+typedef struct Mh2IpcModel {
+    mh2ipc_u32 prog;        /* the model's VU1 program */
+    mh2ipc_u32 top;         /* the chain's first tag (the guest address the draw's packets start at) */
+    mh2ipc_u32 last;        /* its last tag */
+    float world[16];        /* gMtxSlots[0], the model's matrix (the game's row-major layout: a row vector times the matrix) at the draw */
+    float cam[32];          /* the view and the projection the draw was made with (as MH2IPC_REC_CAMERA: gMtxView, gMtxProjClip) */
+    mh2ipc_u32 site;        /* the return address of Model_Draw: where in the game the draw was called from (a diagnostic; development builds) */
+} Mh2IpcModel;
+
+typedef struct Mh2IpcAnchor {
+    float point[3];         /* the world point the 2D element is placed from */
+    float cam[32];          /* the view and the projection of the game at the call (gMtxView, gMtxProjClip) */
+} Mh2IpcAnchor;
 
 typedef struct Mh2IpcRec {
     mh2ipc_u32 type;
@@ -162,7 +198,7 @@ typedef struct Mh2IpcPad {
     mh2ipc_u16 buttons;
     mh2ipc_u8 rx, ry, lx, ly;
     mh2ipc_u8 pressure[12];
-    mh2ipc_u8 reserved[2];
+    mh2ipc_u8 camTurn, camTilt;   /* the modern camera's stick, each a signed byte (0: no push; an older writer left zeros) */
 } Mh2IpcPad;
 
 /* A USB keyboard: the keys down, as a bitmap of their HID usage IDs
@@ -187,6 +223,21 @@ typedef struct Mh2IpcInput {
 } Mh2IpcInput;
 
 
+/* The watch's size: a release header reserves its place, so that the pass's ring and the live plans are at the same offsets in both builds. */
+#define MH2IPC_WATCH_BYTES 1204u
+
+/* The live plan (the pass on; plan 11's step 5a), host -> core, a sequence lock as the input mailbox's: at each anchor the host writes the plan it predicts for the step two steps on
+ * (hfr.h, hfr_predict), in the slot its number names, so that it is there before the core's first window of that step; the core's first window of a step reads the slot of the VBlank number the step's VSync record is expected to have (mh2ipc_liveplan_read)
+ * and makes its moments at the alphas when the plan's `vblank` is that number. */
+#define MH2IPC_LIVE_MAX 6u
+typedef struct Mh2IpcLivePlan {
+    mh2ipc_u32 seq;                       /* the host's: odd while it writes, 0 until the first write */
+    mh2ipc_u32 vblank;                    /* the VBlank number (the VSync record's, low 32 bits) the step's VSync record is expected to have */
+    mh2ipc_u32 n;                         /* the moments, rising: 0 to MH2IPC_LIVE_MAX */
+    mh2ipc_u32 fb;                        /* when the plan is not in time: the moments of a step the pass makes by itself (60: one, at 128; above 60: none) */
+    mh2ipc_u32 alpha[8];                  /* in 1/256 */
+    mh2ipc_u32 reserved[4];
+} Mh2IpcLivePlan;
 
 /* The USB keyboard's key events, host -> core (MH2IPC_HOST_USB_KEYBOARD). One event a key going down or up, in the
  * order the player made them: the host's window sends a key press (its HID usage ID: SDL's scancodes are the
@@ -417,7 +468,11 @@ typedef struct Mh2IpcHeader {
     mh2ipc_u32 reserved3a[(0x140 - 0x0C0 - sizeof(Mh2IpcInput)) / 4];   /* where the development build has its injections */
     /* 0x140, both builds: the freecam's mailbox, reserved and unused until the host's freecam */
     Mh2IpcFreecam freecam;
-    mh2ipc_u32 reserved3[(0x200 - 0x140 - sizeof(Mh2IpcFreecam)) / 4];
+    /* core -> host, written once as the core attaches: the kind of core (MH2IPC_CORE_*). The base core writes nothing, so it stays 0. The host
+     * has already chosen the renderer's memory from the core's file (main.c, core_is_content); this word is the check that the
+     * choice was right (the content core's textures reach blocks above 16383, which a 4 MB renderer would wrap). */
+    mh2ipc_u32 core_kind;
+    mh2ipc_u32 reserved3[(0x200 - 0x140 - sizeof(Mh2IpcFreecam)) / 4 - 1];
     /* 0x200: core -> host, with core_state = FATAL */
     char fatal_message[512];
     /* 0x400 */
@@ -429,6 +484,11 @@ typedef struct Mh2IpcHeader {
     Mh2IpcSched sched;
     /* save states: the requests, the answers, the renderer's block window (both builds) */
     Mh2IpcState state;
+    mh2ipc_u8 watch_reserved[MH2IPC_WATCH_BYTES];   /* where the development build has its telemetry */
+    /* core -> host, the pass thread's records (MH2IPC_REC_PASS only); the ring's offset and size are written by the host when the block is made (mh2ipc_layout_pass) */
+    Mh2IpcRing pass;
+    /* host -> core, the live alphas (plan 11's step 5a): after the pass ring, so that the older fields keep their places */
+    Mh2IpcLivePlan live[2];               /* the plans for the two steps ahead: the slot of a plan is (its VBlank number / 2) & 1 (the pass on) */
 } Mh2IpcHeader;
 
 #define MH2IPC_ASSERT(c, m) _Static_assert(c, m)
@@ -448,8 +508,11 @@ MH2IPC_ASSERT(__builtin_offsetof(Mh2IpcHeader, gs) == 0x400, "Mh2IpcHeader");
 MH2IPC_ASSERT(__builtin_offsetof(Mh2IpcHeader, keys) == 0x400 + 2 * 192, "Mh2IpcHeader");
 MH2IPC_ASSERT(sizeof(Mh2IpcSchedEntry) == 32 && __builtin_offsetof(Mh2IpcSched, head) == 64 && __builtin_offsetof(Mh2IpcSched, tail) == 128 && __builtin_offsetof(Mh2IpcSched, entries) == 192, "Mh2IpcSched");
 MH2IPC_ASSERT(__builtin_offsetof(Mh2IpcHeader, sched) == 0x400 + 2 * 192 + sizeof(Mh2IpcKeys), "Mh2IpcHeader");
+MH2IPC_ASSERT(sizeof(Mh2IpcLivePlan) == 64, "Mh2IpcLivePlan");
+MH2IPC_ASSERT(__builtin_offsetof(Mh2IpcHeader, pass) == 0x400 + 2 * 192 + sizeof(Mh2IpcKeys) + sizeof(Mh2IpcSched) + sizeof(Mh2IpcState) + MH2IPC_WATCH_BYTES, "Mh2IpcHeader");
+MH2IPC_ASSERT(__builtin_offsetof(Mh2IpcHeader, live) == __builtin_offsetof(Mh2IpcHeader, pass) + sizeof(Mh2IpcRing), "Mh2IpcHeader");
 MH2IPC_ASSERT(sizeof(Mh2IpcKeys) == 128 + 4 * MH2IPC_KEY_RING && __builtin_offsetof(Mh2IpcKeys, tail) == 64 && __builtin_offsetof(Mh2IpcKeys, events) == 128, "Mh2IpcKeys");
-MH2IPC_ASSERT(sizeof(Mh2IpcHeader) == 0x400 + 2 * 192 + sizeof(Mh2IpcKeys) + sizeof(Mh2IpcSched) + sizeof(Mh2IpcState), "Mh2IpcHeader");
+MH2IPC_ASSERT(sizeof(Mh2IpcHeader) == 0x400 + 2 * 192 + sizeof(Mh2IpcKeys) + sizeof(Mh2IpcSched) + sizeof(Mh2IpcState) + MH2IPC_WATCH_BYTES + sizeof(Mh2IpcRing) + 2 * sizeof(Mh2IpcLivePlan), "Mh2IpcHeader");
 MH2IPC_ASSERT(sizeof(Mh2IpcHeader) <= MH2IPC_HEADER_BYTES, "Mh2IpcHeader");
 MH2IPC_ASSERT(sizeof(Mh2IpcFreecam) == 160 && __builtin_offsetof(Mh2IpcHeader, freecam) == 0x140, "Mh2IpcFreecam");
 MH2IPC_ASSERT(__builtin_offsetof(Mh2IpcHeader, state) == 0x400 + 2 * 192 + sizeof(Mh2IpcKeys) + sizeof(Mh2IpcSched), "Mh2IpcState");
@@ -498,6 +561,14 @@ static inline void mh2ipc_layout(Mh2IpcHeader *h, mh2ipc_u32 host_pid)
     h->host_state = MH2IPC_STATE_RUNNING;
     mh2ipc_fence();
     mh2ipc_store(&h->magic, MH2IPC_MAGIC);
+}
+
+/* The second ring's place (the host, after mh2ipc_layout and before it starts the core; the block was made MH2IPC_PASS_BYTES larger). */
+static inline void mh2ipc_layout_pass(Mh2IpcHeader *h)
+{
+    h->pass.offset = MH2IPC_TOTAL_BYTES;
+    h->pass.size = MH2IPC_PASS_BYTES;
+    h->total_bytes = MH2IPC_TOTAL_BYTES + MH2IPC_PASS_BYTES;
 }
 
 /* Producer: the place of a record with `payload` bytes, or 0 when the ring
@@ -632,6 +703,46 @@ static inline void mh2ipc_input_read(Mh2IpcInput *in, Mh2IpcPad *pads, Mh2IpcKey
         if (__atomic_load_n(&in->seq, __ATOMIC_RELAXED) == s)
             return;
     }
+}
+
+/* The host's: the plan for the step after the one whose anchor this is. */
+static inline void mh2ipc_liveplan_write(Mh2IpcLivePlan *lp, mh2ipc_u32 vblank, mh2ipc_u32 n, const mh2ipc_u32 *alpha, mh2ipc_u32 fb)
+{
+    mh2ipc_u32 s = lp->seq;
+    s += s & 1u;
+    mh2ipc_store(&lp->seq, s + 1u);
+    mh2ipc_fence();
+    if (n > MH2IPC_LIVE_MAX)
+        n = MH2IPC_LIVE_MAX;
+    __atomic_store_n(&lp->vblank, vblank, __ATOMIC_RELAXED);
+    __atomic_store_n(&lp->n, n, __ATOMIC_RELAXED);
+    __atomic_store_n(&lp->fb, fb, __ATOMIC_RELAXED);
+    for (mh2ipc_u32 i = 0; i < 8u; i++)
+        __atomic_store_n(&lp->alpha[i], i < n ? alpha[i] : 0u, __ATOMIC_RELAXED);
+    mh2ipc_store(&lp->seq, s + 2u);
+}
+
+/* The core's: a consistent copy of the plan, or 0 (none written yet, or the host was writing on each of a few tries: the core never waits for the host). */
+static inline int mh2ipc_liveplan_read(Mh2IpcLivePlan *lp, Mh2IpcLivePlan *out)
+{
+    for (int tries = 0; tries < 4; tries++) {
+        mh2ipc_u32 s = mh2ipc_load(&lp->seq);
+        if ((s & 1u) || !s)
+            continue;
+        out->vblank = __atomic_load_n(&lp->vblank, __ATOMIC_RELAXED);
+        out->n = __atomic_load_n(&lp->n, __ATOMIC_RELAXED);
+        out->fb = __atomic_load_n(&lp->fb, __ATOMIC_RELAXED);
+        for (mh2ipc_u32 i = 0; i < 8u; i++)
+            out->alpha[i] = __atomic_load_n(&lp->alpha[i], __ATOMIC_RELAXED);
+        __atomic_thread_fence(__ATOMIC_ACQUIRE);
+        if (__atomic_load_n(&lp->seq, __ATOMIC_RELAXED) == s) {
+            out->seq = s;
+            if (out->n > MH2IPC_LIVE_MAX)
+                out->n = MH2IPC_LIVE_MAX;
+            return 1;
+        }
+    }
+    return 0;
 }
 
 /* ---- the keyboard's key events ---- */

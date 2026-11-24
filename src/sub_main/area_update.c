@@ -53,6 +53,7 @@
 #include "libc.h"
 #include "ambient_life.h"
 #include "ram_areas.h"   /* RAM_AREA: the rows of gAreaKindFlags in an overlay window */
+#include "content_area.h"
 
 /* The objects of other files and modules this file's tables point to
  */
@@ -514,17 +515,17 @@ void Area_StartObjects(u16 area)
             state->band.c[6] = state->band.c[7] = 0xFFFFFF;
     }
     Area_ResetFade();
-    if (gAreaInfo[area].atmosType != 255) {
-        AreaAtmos_Spawn(gAreaInfo[area].atmosType);
+    if (AREA_AT(AT_INFO, gAreaInfo, area).atmosType != 255) {
+        AreaAtmos_Spawn(AREA_AT(AT_INFO, gAreaInfo, area).atmosType);
     }
-    if (gAreaInfo[area].lifeSet != 255) {
-        AmbientLife_Create(gAreaInfo[area].lifeSet);
+    if (AREA_AT(AT_INFO, gAreaInfo, area).lifeSet != 255) {
+        AmbientLife_Create(AREA_AT(AT_INFO, gAreaInfo, area).lifeSet);
     }
-    if (gAreaInfo[area].scenerySet != 255) {
-        AnimatedScenery_Create(gAreaInfo[area].scenerySet);
+    if (AREA_AT(AT_INFO, gAreaInfo, area).scenerySet != 255) {
+        AnimatedScenery_Create(AREA_AT(AT_INFO, gAreaInfo, area).scenerySet);
     }
-    if (gAreaInfo[area].flyerPoint != 255) {
-        AreaFlyer_Create(gAreaInfo[area].flyerPoint);
+    if (AREA_AT(AT_INFO, gAreaInfo, area).flyerPoint != 255) {
+        AreaFlyer_Create(AREA_AT(AT_INFO, gAreaInfo, area).flyerPoint);
     } else {
         state->flyer = 0;
     }
@@ -902,7 +903,7 @@ s16 Area_MonsterState(u16 area)
     AreaState *state = &gAreaState;
     s16 i;
 
-    switch (gAreaInfo[area].atmosType) {
+    switch (AREA_AT(AT_INFO, gAreaInfo, area).atmosType) {
     case 8:
     case 13:
     case 14:
@@ -1102,7 +1103,7 @@ s32 Area_HasFlyer(void)
  * in gAreaInfo; out is left as it is otherwise. */
 void Area_GetFlyerPos(f32 *out, u16 area)
 {
-    if (gAreaInfo[area].flyerPoint != 255) {
+    if (AREA_AT(AT_INFO, gAreaInfo, area).flyerPoint != 255) {
         Vec_Copy(out, gAreaState.flyerPos);
     }
 }

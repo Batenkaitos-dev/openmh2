@@ -403,7 +403,7 @@ void PlayerHitBurst_Draw(DrawSlot *node)
         if (kushalaSlot == -1) {
             return;
         }
-        kushalaSet = gScene.partModels[kushalaSlot];
+        kushalaSet = SCENE_PART_MODELS(kushalaSlot);
         kushalaFrame = (s16) (burstFrame - 4);
         kushalaMats = kushalaSet->mats;
         kushalaModel = &kushalaSet->matSets[9];
@@ -5326,7 +5326,7 @@ void AttackBurst_DrawPart(DrawSlot *node)
         if (emSlot == -1) {
             goto end;
         }
-        set = gScene.partModels[emSlot];
+        set = SCENE_PART_MODELS(emSlot);
         if (set == NULL || !set->active) {
             goto end;
         }
@@ -5350,7 +5350,7 @@ void AttackBurst_DrawPart(DrawSlot *node)
         if (emSlot == -1) {
             goto end;
         }
-        set = gScene.partModels[emSlot];
+        set = SCENE_PART_MODELS(emSlot);
         if (set == NULL || !set->active) {
             goto end;
         }
@@ -5386,7 +5386,7 @@ void AttackBurst_DrawPart(DrawSlot *node)
             if (emSlot == -1) {
                 goto end;
             }
-            set = gScene.partModels[emSlot];
+            set = SCENE_PART_MODELS(emSlot);
             if (set == NULL || !set->active) {
                 goto end;
             }
@@ -5444,7 +5444,7 @@ void AttackBurst_DrawPart(DrawSlot *node)
         if (emSlot == -1) {
             goto end;
         }
-        set = gScene.partModels[emSlot];
+        set = SCENE_PART_MODELS(emSlot);
         if (set == NULL || !set->active) {
             goto end;
         }
@@ -5467,7 +5467,7 @@ void AttackBurst_DrawPart(DrawSlot *node)
         if (emSlot == -1) {
             goto end;
         }
-        set = gScene.partModels[emSlot];
+        set = SCENE_PART_MODELS(emSlot);
         if (set == NULL || !set->active) {
             goto end;
         }
@@ -5524,7 +5524,7 @@ void AttackBurst_DrawPart(DrawSlot *node)
         if (emSlot == -1) {
             goto end;
         }
-        set = gScene.partModels[emSlot];
+        set = SCENE_PART_MODELS(emSlot);
         if (set == NULL || !set->active) {
             goto end;
         }
@@ -5549,7 +5549,7 @@ void AttackBurst_DrawPart(DrawSlot *node)
         if (emSlot == -1) {
             goto end;
         }
-        set = gScene.partModels[emSlot];
+        set = SCENE_PART_MODELS(emSlot);
         if (set == NULL || !set->active) {
             goto end;
         }
@@ -5573,7 +5573,7 @@ void AttackBurst_DrawPart(DrawSlot *node)
         if (emSlot == -1) {
             goto end;
         }
-        set = gScene.partModels[emSlot];
+        set = SCENE_PART_MODELS(emSlot);
         if (set == NULL || !set->active) {
             goto end;
         }
@@ -5591,7 +5591,7 @@ void AttackBurst_DrawPart(DrawSlot *node)
         if (emSlot == -1) {
             goto end;
         }
-        set = gScene.partModels[emSlot];
+        set = SCENE_PART_MODELS(emSlot);
         if (set == NULL || !set->active) {
             goto end;
         }
@@ -5632,7 +5632,7 @@ void AttackBurst_DrawPart(DrawSlot *node)
         if (emSlot == -1) {
             goto end;
         }
-        set = gScene.partModels[emSlot];
+        set = SCENE_PART_MODELS(emSlot);
         if (set == NULL || !set->active) {
             goto end;
         }

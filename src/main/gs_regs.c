@@ -17,6 +17,9 @@
 #include "gs_regs.h"
 #include "packet_tim2.h"
 
+
+
+
 extern DmaQueue gDmaQueue;
 extern s32 gSysZPsm;
 extern u32 gSysZBlock;
@@ -654,6 +657,11 @@ s32 Gs_SetTexFilter(u32 flags, s32 ctx)
     } else {
         pktCursor[0] = TEX1_MMAG_LINEAR | TEX1_MMIN(TEX1_MIN_LINEAR);
     }
+
+
+
+
+
     if (ctx == GS_CTX_1) {
         pktCursor[1] = GS_REG_TEX1_1;
     } else {

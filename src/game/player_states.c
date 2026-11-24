@@ -37,6 +37,9 @@
 #include "place_rules.h"
 #include "camera.h"
 #include "capsule.h"
+
+
+
 #include "card.h"
 #include "fishing.h"
 #include "hud.h"
@@ -81,6 +84,65 @@ extern WeaponMotion gDrawMotions[];
 extern WeaponMotion gSheatheMotions[];
 extern WeaponMotion gSheatheMovingMotions[];
 extern WeaponMotion gDrawMovingMotions[];
+
+/*
+ * The rows of Dos's draw, sheathe, moving-sheathe and moving-draw tables and
+ * of the drawn walk's stop (gDrawnWalkStopIdle) are indexed by the weapon
+ * type, 0 to 10. The content core's three more types (11 to 13) read their own
+ * rows, from the platform layer (Pal_ContentWpnMotionRow: the values the
+ * Frontier client's per-class records give for the same fields; the same
+ * records for the types 0 to 10 are Dos's tables to the value). With
+ * the content core off every macro is the table's own element.
+ */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#define WEAPON_ROW_DRAW(pl) (gDrawMotions[(pl)->weaponType])
+#define WEAPON_ROW_SHEATHE(pl) (gSheatheMotions[(pl)->weaponType])
+#define WEAPON_ROW_SHEATHE_MOVING(pl) (gSheatheMovingMotions[(pl)->weaponType])
+#define WEAPON_ROW_DRAW_MOVING(pl) (gDrawMovingMotions[(pl)->weaponType])
+#define WEAPON_WALK_STOP(pl) (gDrawnWalkStopIdle[(pl)->weaponType])
+
 u16 Pouch_NextSelectable(Player *pl, u16 cur, u8 dir);
 s16 Player_IsState(void *obj, u8 state, u8 sub);
 void Item_UseMisc(Player *pl);
@@ -1162,6 +1224,93 @@ s32 Player_CrouchInput(Player *pl)
     return 0;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* The weapons input checks (the states cancel into another action), for the local player or a human one
  * when input is allowed. */
 void Player_WeaponAttackInput(Player *pl, s32 arg)
@@ -1200,6 +1349,11 @@ void Player_WeaponAttackInput(Player *pl, s32 arg)
         case WEAPON_DUAL_SWORDS:
             DualSwords_AttackInput(pl);
             return;
+
+
+
+
+
         }
     }
 }
@@ -2080,6 +2234,11 @@ void Player_IdleActions(Player *pl, s32 arg)
             if ((drew == 0 ? pl->input.pressed : pl->input.held) & 0x20) {
                 Player_CheckClimb(pl);
             }
+
+
+
+
+
             if (pl->input.stickDirPressed & PL_RSTICK_ANY) {
                 if (Player_TestFlag(pl, 0x2000600) == 0) {
                     if (pl->weaponType == WEAPON_HEAVY_BOWGUN || pl->weaponType == WEAPON_LIGHT_BOWGUN) {
@@ -2600,7 +2759,7 @@ void Player_StateMove(Player *pl, s32 variant)
             if (variant == 9) {
                 Player_SetState(pl, PL_GROUP_WEAPON, BOW_AIM_RESUME, PL_SET_SNAP_POS);
             } else {
-                Player_ReturnToIdle(pl, 0, gDrawnWalkStopIdle[pl->weaponType], 0);
+                Player_ReturnToIdle(pl, 0, WEAPON_WALK_STOP(pl), 0);
             }
         } else if (pl->motionId[0] == 3 || pl->motionId[0] == 4) {
             if (pl->stateVar1 == 0) {
@@ -2701,27 +2860,27 @@ void Player_StateDrawSheathe(Player *pl, u32 variant)
         Player_SetPosture(pl, PL_POSTURE_STANDING, 0, 0);
         switch (variant) {
         case 0:
-            pl->weaponOut = gDrawMotions[pl->weaponType].flag;
-            Player_SetMotionPair(pl, gDrawMotions[pl->weaponType].motion, gDrawMotions[pl->weaponType].blend, 0);
+            pl->weaponOut = WEAPON_ROW_DRAW(pl).flag;
+            Player_SetMotionPair(pl, WEAPON_ROW_DRAW(pl).motion, WEAPON_ROW_DRAW(pl).blend, 0);
             break;
         case 1:
         case 3:
         case 4:
-            pl->weaponOut = gSheatheMotions[pl->weaponType].flag;
-            Player_SetMotionPair(pl, gSheatheMotions[pl->weaponType].motion, gSheatheMotions[pl->weaponType].blend, 0);
+            pl->weaponOut = WEAPON_ROW_SHEATHE(pl).flag;
+            Player_SetMotionPair(pl, WEAPON_ROW_SHEATHE(pl).motion, WEAPON_ROW_SHEATHE(pl).blend, 0);
             break;
         case 2:
             Player_SetFlag(pl, 0x1000);
-            pl->weaponOut = gSheatheMovingMotions[pl->weaponType].flag;
+            pl->weaponOut = WEAPON_ROW_SHEATHE_MOVING(pl).flag;
             if (pl->weaponType == WEAPON_HUNTING_HORN) {
-                Player_SetMotionPair(pl, gSheatheMovingMotions[pl->weaponType].motion, gSheatheMovingMotions[pl->weaponType].blend, 10);
+                Player_SetMotionPair(pl, WEAPON_ROW_SHEATHE_MOVING(pl).motion, WEAPON_ROW_SHEATHE_MOVING(pl).blend, 10);
             } else {
-                Player_SetMotionPair(pl, gSheatheMovingMotions[pl->weaponType].motion, gSheatheMovingMotions[pl->weaponType].blend, 0);
+                Player_SetMotionPair(pl, WEAPON_ROW_SHEATHE_MOVING(pl).motion, WEAPON_ROW_SHEATHE_MOVING(pl).blend, 0);
             }
             break;
         case 5:
-            pl->weaponOut = gDrawMovingMotions[pl->weaponType].flag;
-            Player_SetMotionPair(pl, gDrawMovingMotions[pl->weaponType].motion, gDrawMovingMotions[pl->weaponType].blend, 0);
+            pl->weaponOut = WEAPON_ROW_DRAW_MOVING(pl).flag;
+            Player_SetMotionPair(pl, WEAPON_ROW_DRAW_MOVING(pl).motion, WEAPON_ROW_DRAW_MOVING(pl).blend, 0);
             break;
         }
         if (pl->carry & PL_CARRY_HOLD_MASK) {
@@ -2733,13 +2892,13 @@ void Player_StateDrawSheathe(Player *pl, u32 variant)
         if (pl->motion[0].playing == 0) {
             switch (variant) {
             case 0:
-                Player_ReturnToIdle(pl, 0, gDrawMotions[pl->weaponType].next, 0);
+                Player_ReturnToIdle(pl, 0, WEAPON_ROW_DRAW(pl).next, 0);
                 break;
             case 1:
-                Player_ReturnToIdle(pl, 0, gSheatheMotions[pl->weaponType].next, 0);
+                Player_ReturnToIdle(pl, 0, WEAPON_ROW_SHEATHE(pl).next, 0);
                 break;
             case 2:
-                Player_ReturnToIdle(pl, 0, gSheatheMovingMotions[pl->weaponType].next, 0);
+                Player_ReturnToIdle(pl, 0, WEAPON_ROW_SHEATHE_MOVING(pl).next, 0);
                 break;
             case 3:
                 Player_RequestState(pl, PL_GROUP_ACTION, PL_ACT_CROUCH, PL_SET_NO_SYNC);
@@ -2750,10 +2909,10 @@ void Player_StateDrawSheathe(Player *pl, u32 variant)
                     pl->pouchHudFlags |= 1;
                     break;
                 }
-                Player_ReturnToIdle(pl, 0, gDrawMotions[pl->weaponType].next, 0);
+                Player_ReturnToIdle(pl, 0, WEAPON_ROW_DRAW(pl).next, 0);
                 break;
             case 5:
-                Player_ReturnToIdle(pl, 0, gDrawMovingMotions[pl->weaponType].next, 0);
+                Player_ReturnToIdle(pl, 0, WEAPON_ROW_DRAW_MOVING(pl).next, 0);
                 break;
             }
         }
@@ -3481,6 +3640,13 @@ void Player_StateRoll(Player *pl, s32 variant)
                     Hammer_ChargeFromRoll(pl);
                 }
                 break;
+
+
+
+
+
+
+
             }
         }
         break;
@@ -6886,6 +7052,177 @@ void Player_StateSharedAttack(Player *pl, s32 unused)
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /*
  * Runs the handler of the player's state in PL_GROUP_WEAPON:
  * PL_WPN_SHARED_ATTACK goes to Player_StateSharedAttack, any other state to
@@ -6930,6 +7267,13 @@ void Player_RunWeaponState(Player *pl)
         case WEAPON_DUAL_SWORDS:
             DualSwords_RunState(pl);
             return;
+
+
+
+
+
+
+
         }
     }
 }
@@ -7008,6 +7352,9 @@ void Player_StateGuardRecoil(Player *pl, s32 variant)
                 case WEAPON_GREAT_SWORD:
                 case WEAPON_LONG_SWORD:
                 case WEAPON_SWORD_SHIELD:
+
+
+
                     slideLocal[2] = -20.0f * Math_Cos(6.2831855f * (90.0f * (pl->motion[0].frame / 32.0f)) / 360.0f);
                     break;
                 }
@@ -7033,6 +7380,9 @@ void Player_StateGuardRecoil(Player *pl, s32 variant)
                 }
                 break;
             case WEAPON_SWORD_SHIELD:
+
+
+
                 if (Motion_ReachedFrame(pl, 0, 94.0f) == 0) {
                     slideLocal[2] = -18.0f * Math_Cos(6.2831855f * (90.0f * (pl->motion[0].frame / 94.0f)) / 360.0f);
                 }
@@ -7049,6 +7399,9 @@ void Player_StateGuardRecoil(Player *pl, s32 variant)
                 Player_RequestState(pl, PL_GROUP_REACT, PL_REACT_GUARD_HOLD, 0);
                 break;
             case WEAPON_SWORD_SHIELD:
+
+
+
                 Player_ReturnToIdle(pl, 0, 6, 0);
                 break;
             case WEAPON_GREAT_SWORD:
@@ -8794,10 +9147,10 @@ void Player_StateCart(Player *pl, s32 variant)
         pl->step++;
         kind = -1;
         pl->stateVar0 = 0;
-        for (i = 0; i < 4; i++) {
-            if (gScene.emKind[i] == EM_KIND_FELYNE_CART && (cartEm = EmSlot_Alloc()) != NULL) {
+        for (i = 0; i < SCENE_EM_KIND_N; i++) {
+            if (SCENE_EM_KIND(i) == EM_KIND_FELYNE_CART && (cartEm = EmSlot_Alloc()) != NULL) {
                 cartEm->modelSlot = i;
-                cartEm->type = gScene.emKind[i];
+                cartEm->type = SCENE_EM_KIND(i);
                 cartEm->area = gScene.area;
                 cartEm->variant = 0;
                 cartEm->variant = 255;
@@ -8808,7 +9161,7 @@ void Player_StateCart(Player *pl, s32 variant)
                 cartEm->posZ = pl->pos[2];
                 cartEm->rotY = pl->rot[1];
                 pl->cart = cartEm;
-                kind = gScene.emKind[i];
+                kind = SCENE_EM_KIND(i);
                 break;
             }
         }
@@ -10243,6 +10596,12 @@ void Player_Update(Player *pl)
     Player_CalcResists(pl);
     if (pl->hitStop == 0) {
         Player_UpdateEnvironment(pl);
+
+
+
+
+
+
         Player_RunState(pl);
         if (pl->stateRequest != 0) {
             Player_RunState(pl);
@@ -10253,6 +10612,12 @@ void Player_Update(Player *pl)
         if (pl->stateGroup != PL_GROUP_EVENT) {
             Player_UpdateMoveTo(pl);
         }
+
+
+
+
+
+
     }
     Player_CheckPointMessages((u8 *) pl);
     pl->prevFreeState = pl->freeState;

@@ -64,6 +64,7 @@
 #include "screen_fade.h"
 #include "libkernl.h"
 #include "tex_files.h"
+#include "content_area.h"
 
 /* prototypes */
 void * memset(void *p, s32 c, u32 n);
@@ -223,6 +224,14 @@ void Scene_StartQuest(void)
     if (gScene.allLocal != 0) {
         return;
     }
+
+
+
+
+
+
+
+
     soundLoading = gSoundLoading;
     Game_ResetSubsystems();
     Gfx_ClearModelBuffers();
@@ -352,7 +361,7 @@ void Scene_LoadQuestSounds(void)
         return;
     case 3:
         Sound_StopBank(7);
-        bank = (gAreaSeBanks[gScene.area] + 11) | 0x10000;
+        bank = (gAreaSeBanks[AREA_SEBANK_ROW(gScene.area)] + 11) | 0x10000;
         FlushCache(0);
         Sound_QueueBank(bank, buf);
         gScene.subStep++;
@@ -395,7 +404,11 @@ void Scene_LoadQuestSounds(void)
         if (!Sound_CheckTransfer()) {
             if (gScene.subStep == 17) {
                 Sound_StopBank(6);
+
+
+
                 SndLoad_Init(4);
+
             }
             gScene.subStep++;
         }
@@ -597,7 +610,11 @@ void Scene_UpdateQuest(void)
         Em_RunAll();
         QuestEm_SpawnArea(gScene.area);
         Sound_StopBank(6);
+
+
+
         SndLoad_Init(4);
+
         gSoundLoading = 0;
         gScene.step++;
         Loading_Request();
@@ -618,7 +635,7 @@ void Scene_UpdateQuest(void)
         if (!Sound_CheckTransfer()) {
             gScene.step++;
             Sound_StopBank(7);
-            bank = (gAreaSeBanks[gScene.area] + 11) | 0x10000;
+            bank = (gAreaSeBanks[AREA_SEBANK_ROW(gScene.area)] + 11) | 0x10000;
             FlushCache(0);
             Sound_QueueBank(bank, (*(u8 * *)&gSysSettings.dataBuf));
         }
@@ -1318,8 +1335,22 @@ void Area_Load(s32 area)
     s32 slot;
     s32 tex;
 
+
+
+
+
+
+
+
     gScene.area = area;
     areaState->area = area;
+
+
+
+
+
+
+
     Load_AreaPack(gScene.area);
     Area_LoadTables(gScene.area);
     slot = Model_Alloc(1);
@@ -1344,13 +1375,30 @@ void Area_Load(s32 area)
             }
             break;
         default:
-            tex = gAreaTexFiles[gScene.area];
+            tex = AREA_AT(AT_TEX, gAreaTexFiles, gScene.area);
             break;
         }
-        Model_SetupTexPack(slot, (*(s32 *)&gSysSettings.modelPack), 264, tex, 256);
+
+
+
+
+
+        Model_SetupTexPack(slot, AREA_MODEL_BASE(), 264, tex, 256);
         Area_LoadSubModels(gScene.area);
+
+
+
+
+
         Area_LoadCamData(gScene.area);
     }
+
+
+
+
+
+
+
 }
 
 /* Loads and sets up the common animations (set `set`). */

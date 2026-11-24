@@ -15,7 +15,7 @@ set_source_files_properties("${CMAKE_CURRENT_LIST_DIR}/host_state.c" PROPERTIES
   INCLUDE_DIRECTORIES "${_zdir}" COMPILE_DEFINITIONS "Z_PREFIX=1")
 target_compile_options(pal_host PRIVATE -include "${CMAKE_CURRENT_LIST_DIR}/hostsec.h")
 foreach(_f IN LISTS MH2_PAL_SOURCES)
-  if(_f MATCHES "/core/verify/")
+  if(_f MATCHES "/core/verify/" OR _f MATCHES "/core/gfx/gfx_pass[^/]*[.]c$")
     set_property(SOURCE "${_f}" APPEND PROPERTY COMPILE_OPTIONS -include "${CMAKE_CURRENT_LIST_DIR}/hostsec.h")
   endif()
 endforeach()

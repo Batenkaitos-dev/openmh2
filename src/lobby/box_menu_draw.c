@@ -64,6 +64,21 @@ extern ListPanel gEquipNonePanel;
 extern Panel gEquipDetailWin[4];
 #include "box_menu.h"
 #include "lobby_labels.h"
+
+/* The name of a piece of equipment in the box: the table of name tables is the game's own, so the content core asks for the name through the platform layer (the pack's weapons have names of their own). */
+
+
+
+#define EQUIP_NAME(item) gEquipNameTables[(item)->type][(item)->id]
+
+/* The draw of an equipment icon's sprite, its corners from Equip_GetIconUV: the content core draws a weapon class above the game's eleven from the pack's own picture (Equip_IconDraw,
+ * which draws every other sprite as Sprite_Draw does); the game itself, Sprite_Draw. */
+
+
+
+
+#define EQUIP_ICON_DRAW(spr) Sprite_Draw(spr)
+
 extern ListPanel gBoxActionsPanel;
 extern ListPanel gBoxListHeaders[2];
 
@@ -128,7 +143,9 @@ u32 Equip_Color(u8 rarity, s32 alpha, u8 alt); /* unit's own declaration: the de
 char *Equip_GetName(u8 type, u16 id);
 extern u32 gBoxPageColors[];
 extern u32 gItemColors[];
+
 extern char *gItemNames[];
+
 
 /* Draws page cur / 100 of the item box, or of the equipment box with BOX_LIST_EQUIP, at x
  * listX: a cell per slot in the page's colour (gBoxPageColors; a worn item's cell in another),
@@ -264,7 +281,7 @@ void BoxMenu_DrawItemList(s16 cur, u32 flags, f32 listX)
                 if (flags & BOX_LIST_WORN_ALT) {
                     if (Equip_IsSlotEquipped(save, iconSlot) == 1) {
                         sprite.color = Equip_Color(rare, alpha, 1);
-                        Sprite_Draw(&sprite);
+                        EQUIP_ICON_DRAW(&sprite);
                         *(u32 *)&sprite.u0 = 0x01200060;
                         *(u32 *)&sprite.u1 = 0x01400080;
                         sprite.color = ((u8)alpha << 24) | 0x909010;
@@ -278,7 +295,7 @@ void BoxMenu_DrawItemList(s16 cur, u32 flags, f32 listX)
                     }
                     sprite.color = Equip_Color(rare, alpha, alt);
                     if (Equip_IsSlotEquipped(save, iconSlot) == 1) {
-                        Sprite_Draw(&sprite);
+                        EQUIP_ICON_DRAW(&sprite);
                         *(u32 *)&sprite.u0 = 0x01200060;
                         *(u32 *)&sprite.u1 = 0x01400080;
                         if (alt == 0) {
@@ -294,7 +311,7 @@ void BoxMenu_DrawItemList(s16 cur, u32 flags, f32 listX)
                     }
                     sprite.color = Equip_Color(rare, alpha, alt);
                     if (Equip_IsSlotEquipped(save, iconSlot) == 1) {
-                        Sprite_Draw(&sprite);
+                        EQUIP_ICON_DRAW(&sprite);
                         *(u32 *)&sprite.u0 = 0x01200060;
                         *(u32 *)&sprite.u1 = 0x01400080;
                         if (alt == 0) {
@@ -306,13 +323,13 @@ void BoxMenu_DrawItemList(s16 cur, u32 flags, f32 listX)
                 } else {
                     sprite.color = Equip_Color(rare, alpha, 0);
                     if (!(flags & BOX_LIST_SORTED) && Equip_IsSlotEquipped(save, iconSlot) == 1) {
-                        Sprite_Draw(&sprite);
+                        EQUIP_ICON_DRAW(&sprite);
                         *(u32 *)&sprite.u0 = 0x01200060;
                         *(u32 *)&sprite.u1 = 0x01400080;
                         sprite.color = ((u8)alpha << 24) | 0xFFFF00;
                     }
                 }
-                Sprite_Draw(&sprite);
+                EQUIP_ICON_DRAW(&sprite);
             }
         }
     }
@@ -533,10 +550,10 @@ void BoxMenu_DrawEquipGrid(f32 gridX, s16 y, s16 cur, u32 flags)
                 if (List6_Contains(equipped, iconSlot) == 1) {
                     if (eqItem->type == EQUIP_BLADE || eqItem->type == EQUIP_GUN) {
                         sprite.color = Equip_Color(rare, alpha, 1);
-                        Sprite_Draw(&sprite);
+                        EQUIP_ICON_DRAW(&sprite);
                         sprite.color = ((u8)alpha << 24) | 0x808010;
                     } else {
-                        Sprite_Draw(&sprite);
+                        EQUIP_ICON_DRAW(&sprite);
                         sprite.color = ((u8)alpha << 24) | 0xFFFF00;
                     }
                     *(u32 *)&sprite.u0 = 0x01290061;
@@ -547,13 +564,13 @@ void BoxMenu_DrawEquipGrid(f32 gridX, s16 y, s16 cur, u32 flags)
             } else {
                 sprite.color = Equip_Color(rare, alpha, 0);
                 if (!(flags & BOX_LIST_SORTED) && List6_Contains(equipped, iconSlot) == 1) {
-                    Sprite_Draw(&sprite);
+                    EQUIP_ICON_DRAW(&sprite);
                     *(u32 *)&sprite.u0 = 0x01290061;
                     *uvEnd = 0x013F007F;
                     sprite.color = ((u8)alpha << 24) | 0xFFFF00;
                 }
             }
-            Sprite_Draw(&sprite);
+            EQUIP_ICON_DRAW(&sprite);
         }
     }
     if (cur >= 0) {
@@ -1398,7 +1415,7 @@ u8 BoxMenu_DrawEquipList(u16 *slot, s32 part, s32 flags)
         spr.color = Equip_Color(0, 255, 1);
         name = Equip_GetName(0, 0);
     }
-    Sprite_Draw((struct Sprite *)&spr);
+    EQUIP_ICON_DRAW((struct Sprite *)&spr);
     armor[0] = &gArmorHeadData[armorIds[0]];
     armor[1] = &gArmorBodyData[armorIds[1]];
     armor[2] = &gArmorArmsData[armorIds[2]];
@@ -1603,7 +1620,7 @@ void BoxMenu_DrawEquipPick(EquipIdx *cur, s8 sel, u32 flags)
                 spr.y = y;
                 Equip_GetIconUV(item, (struct Pt *)&spr.u0, (struct Pt *)&spr.u1);
                 spr.color = Equip_Color(Equip_GetRarity(item->type, item->id), alpha, 0);
-                Sprite_Draw((struct Sprite *)&spr);
+                EQUIP_ICON_DRAW((struct Sprite *)&spr);
                 if (*entry == wornSlots[SAVE_EQUIP_WEAPON]) {
                     *(u32 *)&spr.u0 = TEX_UV(96, 288);
                     *(u32 *)&spr.u1 = TEX_UV(128, 320);
@@ -1621,7 +1638,7 @@ void BoxMenu_DrawEquipPick(EquipIdx *cur, s8 sel, u32 flags)
                 }
                 Text_SetColor(rowCol);
                 Font_SetPos(66, y);
-                Text_PrintfColored(gEquipNameTables[item->type][item->id]);
+                Text_PrintfColored(EQUIP_NAME(item));
                 y += 20;
                 entry++;
             }
@@ -1675,7 +1692,7 @@ void BoxMenu_DrawEquipPick(EquipIdx *cur, s8 sel, u32 flags)
             }
             Text_SetColor((armor->flags & mask) == 0 ? 10 : baseCol);
             Font_SetPos(66, y);
-            Text_PrintfColored(gEquipNameTables[item->type][item->id]);
+            Text_PrintfColored(EQUIP_NAME(item));
             y += 20;
             entry++;
         }

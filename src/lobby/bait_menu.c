@@ -408,7 +408,9 @@ void BaitMenu_DrawList(s16 x, s16 y)
     Win_DrawText(280, 350, 340, 80, 0xBDB59F6C, 0xC0101010, gTownLabels[TOWN_LABEL_BAIT_HELP]);
 }
 
+
 extern char *gItemNames[];
+
 extern char gBaitHintFmt[];
 
 /* Draws, before a cast, the two bars at the left: the bait in use with how

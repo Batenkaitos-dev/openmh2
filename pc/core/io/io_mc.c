@@ -18,6 +18,9 @@ typedef struct Card {
 } Card;
 
 static Card g_card[2];
+
+
+
 static McDirInfo *g_snap;   /* the GetDir listing in progress */
 static int g_snapN, g_snapPos, g_snapCap;
 
@@ -303,6 +306,16 @@ int IoMc_Load(int port, const char *path)
         return 0;
     }
     g_card[port].fs = mcfs_load(path, 1);
+
+
+
+
+
+
+
+
+
+
     if (!g_card[port].fs) {
         Io_Log("mc: memory card %u: cannot use %s; the slot stays empty", (u32)port + 1, (u32)path);
         return -1;
@@ -310,6 +323,13 @@ int IoMc_Load(int port, const char *path)
     Io_Log("mc: memory card %u: %s", (u32)port + 1, (u32)path);
     return 0;
 }
+
+
+
+
+
+
+
 
 int IoMc_SaveCopy(int port, const char *path)
 {

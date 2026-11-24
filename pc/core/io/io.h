@@ -119,6 +119,10 @@ void IoMc_Register(void);         /* mcserv 0x80000400: io_mc.c */
  * formatted card), or none (NULL). 0, or -1 (logged; the slot stays empty). */
 int IoMc_Load(int port, const char *path);
 /* The card in port as it is now, to another file. */
+
+
+
+
 int IoMc_SaveCopy(int port, const char *path);      /* the CD/DVD services 0x80000592-0x8000059C: io_cdvd.c */
 
 #endif

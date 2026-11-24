@@ -326,7 +326,8 @@ def main():
     # include/pal.h is the one list of the hardware hooks: a Pal_ prototype per line
     pal = Path(a.headers) / "pal.h"
     if pal.exists():
-        for m in re.finditer(r"^[A-Za-z0-9_ *]+?[ *](Pal_[A-Za-z0-9_]+)[(]", pal.read_text(), re.M):
+        text = pal.read_text()
+        for m in re.finditer(r"^[A-Za-z0-9_ *]+?[ *](Pal_[A-Za-z0-9_]+)[(]", text, re.M):
             funcs.add(m.group(1))
     funcs = {f for f in funcs if MANGLE + f not in defined}
     variad -= defined

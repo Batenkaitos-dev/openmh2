@@ -9,10 +9,14 @@
 #include "common.h"
 #include "lobby_globals.h"
 #include "save.h"
-#include "lobby_menu.h"
+#include "lobby_menu_work.h"
 #include "place_info_draw.h"
 #include "font.h"
 #include "game_util.h"
+
+
+
+
 
 /* unit's own declaration: as the caller uses it; with the definition's s16 (s16 x, s16 y, s32 h), the call in PlaceInfo_DrawAt compiles differently */
 #if PLATFORM_PC
@@ -43,6 +47,12 @@ void PlaceInfo_DrawAt(s32 x, s32 y)
         PlaceInfo_DrawPlace(x, y, PLACE_INFO_H_PLACE);
         return;
     }
+
+
+
+
+
+
     PlaceInfo_DrawVillage(x, y);
 }
 

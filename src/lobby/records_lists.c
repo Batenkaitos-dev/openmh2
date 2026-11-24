@@ -23,6 +23,9 @@
 #include "save.h"
 #include "pad.h"
 #include "lobby_vobj.h"
+
+
+
 #include "lobby_globals.h"
 #include "lobby_menu.h"
 #include "area.h"
@@ -66,6 +69,12 @@ void Records_RecvEquipBits(void *from, s32 equipType, void *bits)
  * the records genre (enum RecordsGenre); else 0. */
 s32 Weapon_IsInGenre(EquipItem *item, s16 genre)
 {
+
+
+
+
+
+
     switch ((u8)Weapon_GetClass(item->type, item->id)) {
     case WEAPON_GREAT_SWORD:
     case WEAPON_LONG_SWORD:
@@ -289,6 +298,25 @@ void Records_SetEquipPage(RecordMenu *menu, s16 page)
     shown = 0;
     first = page * RECORDS_PAGE_ROWS;
     last = first + RECORDS_PAGE_ROWS - 1;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     for (i = 0; i < count; i++) {
         item.id = i;
         if (Records_OwnerCanWear(&item) && Bits_Test(menu->equipBits, item.id) == 1 && Records_IsInGenre(menu, &item) == 1) {

@@ -21,6 +21,10 @@
  * the town's areas.
  */
 #include "common.h"
+
+
+
+
 #include "sprite.h"
 #include "syssettings.h"
 #include "item.h"
@@ -236,6 +240,10 @@ void Town_Frame(void)
         TownPc_SyncMembers();
     }
     Npc_SpawnArea();
+
+
+
+
     memset(gLobby->hostId, 0, LOBBY_USER_ID_LEN);
     gScene.playerCount = 0;
     for (i = 0, user = gNetUsers, pl = gPlayers; i < LOBBY_MEMBER_COUNT; i++, user++, pl++) {
@@ -528,6 +536,17 @@ void Town_UpdateMode(void)
                 gMemberNamesOff ^= 1;
                 gMemberNamesOffSaved = gMemberNamesOff;
                 LobbySe_Play(LOBBY_SE_SCROLL);
+
+
+
+
+
+
+
+
+
+
+
             }
         }
         break;

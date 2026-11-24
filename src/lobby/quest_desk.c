@@ -35,6 +35,9 @@
 #include "quest_desk.h"
 #include "chat_send.h"
 #include "game_util.h"
+
+
+
 #include "hunter_card.h"
 #include "item_shop.h"
 #include "lobby_dialog_box.h"
@@ -44,6 +47,10 @@
 #include "menu_steps.h"
 #include "quest_desk_draw.h"
 #include "quest_offers.h"
+#include "quest_desk.h"
+
+
+
 #include "quest_order_terms.h"
 #include "rand.h"
 #include "talk.h"
@@ -81,6 +88,23 @@ extern s8 gTalkMode;
  * QuestDesk_HasEntry offers (of the five) and puts the cursor on the quest
  * board (QUEST_DESK_BOARD). Returns nothing.
  */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void QuestDesk_Open(u8 *npc)
 {
     QuestDesk *desk;
@@ -99,6 +123,13 @@ void QuestDesk_Open(u8 *npc)
     if (Equip_GunHasNoAmmo(&gPlayers[gScene.localPlayer], &gSave) == 1) {
         Menu_PushNoticeOnce(LOBBY_NOTICE_GUN_NO_AMMO);
     }
+
+
+
+
+
+
+
     switch (npcWork->id) {
     case NPC_QUEST_DESK_2:
         desk->questSet = 1;
@@ -107,6 +138,11 @@ void QuestDesk_Open(u8 *npc)
         desk->questSet = 0;
         break;
     }
+
+
+
+
+
     desk->entryCount = 0;
     for (i = 0; i < QUEST_DESK_ENTRY_COUNT; i++) {
         if (QuestDesk_HasEntry(i) == 1) {
@@ -286,7 +322,7 @@ void QuestDesk_Update(void)
     case QUEST_DESK_STEP_TOP_MENU:
         switch (QuestDesk_TopMenu(pad)) {
         case MENU_DONE:
-            entry = desk->entries[desk->entrySel];
+            entry = QUEST_DESK_ENTRY(desk, desk->entrySel);
             switch (entry) {
             case QUEST_DESK_BY_TYPE:
             case QUEST_DESK_BY_MAP:
@@ -295,6 +331,19 @@ void QuestDesk_Update(void)
                 desk->sel = 0;
                 QuestDesk_BuildLists();
                 break;
+
+
+
+
+
+
+
+
+
+
+
+
+
             case QUEST_DESK_BOARD:
                 QuestDesk_BuildLists();
             case QUEST_DESK_GUIDE:
@@ -330,7 +379,7 @@ void QuestDesk_Update(void)
     case QUEST_DESK_STEP_SLIDE_OUT:
         switch (WinSlide_Step(&desk->win, QUEST_DESK_WIN_X, QUEST_DESK_WIN_X_OUT)) {
         case MENU_DONE:
-            switch (desk->entries[desk->entrySel]) {
+            switch (QUEST_DESK_ENTRY(desk, desk->entrySel)) {
             case QUEST_DESK_BY_TYPE:
             case QUEST_DESK_BY_MAP:
                 desk->step++;
@@ -344,6 +393,11 @@ void QuestDesk_Update(void)
             case QUEST_DESK_BOARD:
                 desk->step++;
                 break;
+
+
+
+
+
             }
             break;
         }
@@ -468,7 +522,7 @@ void QuestDesk_Update(void)
     case QUEST_DESK_STEP_SLIDE_BACK:
         switch (WinSlide_Step(&desk->win, QUEST_DESK_WIN_X_OUT, QUEST_DESK_WIN_X)) {
         case MENU_DONE:
-            switch (desk->entries[desk->entrySel]) {
+            switch (QUEST_DESK_ENTRY(desk, desk->entrySel)) {
             case QUEST_DESK_BY_TYPE:
             case QUEST_DESK_BY_MAP:
                 desk->step = QUEST_DESK_STEP_CHOOSE_LIST;
@@ -616,7 +670,7 @@ s32 QuestDesk_TopMenu(u16 pad)
     QuestDesk *desk = (QuestDesk *)gMenuWork;
 
     if (pad & PAD_CIRCLE) {
-        switch (desk->entries[desk->entrySel]) {
+        switch (QUEST_DESK_ENTRY(desk, desk->entrySel)) {
         case QUEST_DESK_GUIDE:
             desk->groupCount = QuestDesk_CountOpenGroups(desk);
             if (desk->groupCount == 0) {
@@ -627,6 +681,16 @@ s32 QuestDesk_TopMenu(u16 pad)
             }
             break;
         case QUEST_DESK_BOARD:
+
+
+
+
+
+
+
+
+
+
             switch (gScene.area) {
             case AREA_ELDER_HALL:
                 if (gQuestDeskShown[1][0] == 0) {
@@ -649,6 +713,16 @@ s32 QuestDesk_TopMenu(u16 pad)
         case QUEST_DESK_FORECAST:
             LobbySe_Play(LOBBY_SE_WINDOW_SLIDE);
             return MENU_DONE;
+
+
+
+
+
+
+
+
+
+
         default:
             LobbySe_Play(LOBBY_SE_CONFIRM);
             return MENU_DONE;
@@ -657,7 +731,7 @@ s32 QuestDesk_TopMenu(u16 pad)
         LobbySe_Play(LOBBY_SE_CANCEL);
         return MENU_CANCEL;
     } else {
-        desk->entrySel = Menu_WrapUpDown(desk->entrySel, desk->entryCount);
+        desk->entrySel = Menu_WrapUpDown(desk->entrySel, QUEST_DESK_ENTRY_TOTAL(desk));
     }
     return MENU_RUNNING;
 }
@@ -778,6 +852,18 @@ s32 QuestDesk_ChooseQuest(u16 pad)
             desk->quest = NULL;
             LobbySe_Play(LOBBY_SE_WINDOW_SLIDE);
             return MENU_CANCEL;
+
+
+
+
+
+
+
+
+
+
+
+
         } else {
             desk->sel = Menu_WrapUpDownSe(desk->sel, count, LOBBY_SE_WINDOW_SLIDE);
             desk->page = Menu_WrapLeftRight(desk->page, QUEST_SHEET_PAGES);
@@ -855,7 +941,14 @@ s32 QuestDesk_CheckFee(u16 pad)
 
     switch (desk->subStep) {
     case 0:
+
+
+
+
+
+
         if (Quest_CheckOrderTerms(desk->quest->terms, 0) == 0) {
+
             desk->subStep = 2;
             LobbyText_Open(LOBBY_TEXT_ORDER_TERMS);
             LobbyDialog_Grow();
@@ -1141,7 +1234,7 @@ void QuestDesk_BuildLists(void)
     s32 group;
 
     memset(desk->lists, 0, sizeof(desk->lists));
-    switch (desk->entries[desk->entrySel]) {
+    switch (QUEST_DESK_ENTRY(desk, desk->entrySel)) {
     case QUEST_DESK_BY_TYPE:
         for (i = 1; i < 7; i++) {
             n = 0;
@@ -1173,6 +1266,12 @@ void QuestDesk_BuildLists(void)
         break;
     case QUEST_DESK_BOARD:
         desk->list = 0;
+
+
+
+
+
+
         switch (gScene.area) {
         case AREA_ELDER_HALL:
             memcpy(desk->lists[desk->list], gQuestDeskShown[1], sizeof(desk->lists[0]));

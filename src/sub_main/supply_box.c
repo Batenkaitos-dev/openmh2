@@ -23,7 +23,9 @@
 #include "engine_math.h"
 #include "game_util.h"
 #include "msg_event.h"
+
 extern Em gEms[];
+
 u8 Pouch_Add(Player *pl, u16 item, s16 n);
 /* end of prototypes */
 

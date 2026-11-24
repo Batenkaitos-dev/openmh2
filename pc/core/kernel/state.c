@@ -31,6 +31,7 @@
 #include "pal_core.h"
 #include "pal_fpmodel.h"
 #include "pal_freecam.h"
+#include "pal_modcam.h"
 #include "io/io.h"
 
 #define PAGE 4096u
@@ -58,7 +59,7 @@ typedef struct StHeader {
     u64 codeHash;
     u64 vblank, now, calendar;
     u32 sp;                    /* the suspended context */
-    u32 lowLo[2], lowHi[2];    /* the low pool's regions in use */
+    u32 lowLo[PAL_LOW_REGIONS], lowHi[PAL_LOW_REGIONS];    /* the low pool's regions in use */
     char hostId[32];
     u32 nSettings, nSections;
     StSetting settings[MAX_SETTINGS];
@@ -221,14 +222,14 @@ static void BuildExclusions(void)
 }
 
 /* The spans a state covers, page-aligned: the image's data and the low pool's regions (extended to lowHi). */
-static int BuildSpans(Span *out, const u32 lowLo[2], const u32 lowHi[2])
+static int BuildSpans(Span *out, const u32 lowLo[PAL_LOW_REGIONS], const u32 lowHi[PAL_LOW_REGIONS])
 {
     int n = 0, i;
     for (i = 0; i < sLay.nData; i++) {
         out[n].lo = sLay.dataLo[i] & ~(PAGE - 1);
         out[n++].hi = (sLay.dataHi[i] + PAGE - 1) & ~(PAGE - 1);
     }
-    for (i = 0; i < 2; i++) {
+    for (i = 0; i < PAL_LOW_REGIONS; i++) {
         if (lowHi[i] > lowLo[i]) {
             out[n].lo = lowLo[i] & ~(PAGE - 1);
             out[n++].hi = (lowHi[i] + PAGE - 1) & ~(PAGE - 1);
@@ -348,6 +349,9 @@ static void Settings(StHeader *h)
     if (Pal_OfflineHub()) {   /* only when on, so a state made without it is as it was */
         AddSetting(h, "hub", 1u);
     }
+    if (Pal_SmoothCamera()) {   /* the same: the modern camera's state is in the game's memory, so a state made with it needs it */
+        AddSetting(h, "camera", 1u);
+    }
     {   /* a text pack's hash, as eight words (none: no setting, so a state without a pack is as it was) */
         char hex[65];
         if (Io_DiscPackHash(hex) == 0) {
@@ -363,6 +367,18 @@ static void Settings(StHeader *h)
             }
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
     for (i = 0; i < sNumOwners; i++) {
         if (sOwners[i]->setting) {
             AddSetting(h, sOwners[i]->tag, sOwners[i]->setting());
@@ -458,7 +474,7 @@ static void SaveMain(void *arg)
     const char *path = (const char *)arg;
     StHeader *h = &sHdr;
     HostBuf file = {0, 0, 0}, raw = {0, 0, 0};
-    u32 t0 = HostState_Ms(), pages = 0, lowLo[2], lowHi[2], i;
+    u32 t0 = HostState_Ms(), pages = 0, lowLo[PAL_LOW_REGIONS], lowHi[PAL_LOW_REGIONS], i;
     Span spans[MAX_SPANS];
     int nSpans;
     sFail = 0;
@@ -476,11 +492,11 @@ static void SaveMain(void *arg)
     if (sHost && sHost->identity) {
         StrNCopy(h->hostId, sHost->identity(), 32);
     }
-    if (Pal_LowRegions(lowLo, lowHi) != 2) {
+    if (Pal_LowRegions(lowLo, lowHi) != PAL_LOW_REGIONS) {
         sFail = "the low pool is not mapped";
         return;
     }
-    for (i = 0; i < 2; i++) {
+    for (i = 0; i < PAL_LOW_REGIONS; i++) {
         h->lowLo[i] = lowLo[i];
         h->lowHi[i] = lowHi[i];
     }
@@ -588,11 +604,17 @@ static const char *CheckHeader(const StHeader *h, u32 fileSize)
             if (!StrNCmp(cur.settings[i].tag, "tpack", 5)) {
                 return "made with another translation pack";
             }
+            if (!StrNCmp(cur.settings[i].tag, "cpack", 5)) {
+                return "made with another content pack, or with none";
+            }
             if (!StrNCmp(cur.settings[i].tag, "fpu", 8)) {
                 return "made with the other float model (the console's arithmetic, or the older one)";
             }
             if (!StrNCmp(cur.settings[i].tag, "hub", 8)) {
                 return "made without the offline hub";
+            }
+            if (!StrNCmp(cur.settings[i].tag, "camera", 8)) {
+                return "made without the smooth camera";
             }
             return "made with other settings";
         }
@@ -602,8 +624,14 @@ static const char *CheckHeader(const StHeader *h, u32 fileSize)
             if (!StrNCmp(h->settings[j].tag, "tpack", 5)) {
                 return "made with a translation pack";
             }
+            if (!StrNCmp(h->settings[j].tag, "cpack", 5)) {
+                return "made with a content pack";
+            }
             if (!StrNCmp(h->settings[j].tag, "hub", 8)) {
                 return "made with the offline hub";
+            }
+            if (!StrNCmp(h->settings[j].tag, "camera", 8)) {
+                return "made with the smooth camera";
             }
         }
         return "made with other settings";
@@ -632,8 +660,8 @@ static const char *CheckHeader(const StHeader *h, u32 fileSize)
         }
     }
     {
-        u32 lowLo[2], lowHi[2];
-        if (Pal_LowRegions(lowLo, lowHi) != 2 || lowLo[0] != h->lowLo[0] || lowLo[1] != h->lowLo[1]) {
+        u32 lowLo[PAL_LOW_REGIONS], lowHi[PAL_LOW_REGIONS];
+        if (Pal_LowRegions(lowLo, lowHi) != PAL_LOW_REGIONS || lowLo[0] != h->lowLo[0] || lowLo[1] != h->lowLo[1]) {
             return "made with the low pool elsewhere";
         }
     }
@@ -733,7 +761,7 @@ static void LoadMain(void *arg)
 {
     const char *path = (const char *)arg;
     StHeader *h = &sHdr;
-    u32 t0 = HostState_Ms(), i, lowLo[2], lowHi[2];
+    u32 t0 = HostState_Ms(), i, lowLo[PAL_LOW_REGIONS], lowHi[PAL_LOW_REGIONS];
     Span spans[MAX_SPANS];
     int nSpans;
     u8 *mem;
@@ -762,13 +790,13 @@ static void LoadMain(void *arg)
         HostBuf_Free(&sFileIn);
         return;
     }
-    if (Pal_LowRegions(lowLo, lowHi) != 2) {
+    if (Pal_LowRegions(lowLo, lowHi) != PAL_LOW_REGIONS) {
         sFail = "the low pool is not mapped";
         Host_Free(mem);
         HostBuf_Free(&sFileIn);
         return;
     }
-    for (i = 0; i < 2; i++) {      /* the pages of either process */
+    for (i = 0; i < PAL_LOW_REGIONS; i++) {      /* the pages of either process */
         lowHi[i] = lowHi[i] > h->lowHi[i] ? lowHi[i] : h->lowHi[i];
     }
     nSpans = BuildSpans(spans, lowLo, lowHi);
@@ -849,8 +877,8 @@ static HostBuf sMem KERN_HOSTBSS;          /* the records of CopyMemory */
 static HostBuf sMemGs KERN_HOSTBSS;        /* the renderer's block, when the host side gives one */
 static u32 sMemSp KERN_HOSTBSS;
 static int sMemHave KERN_HOSTBSS;
-static u32 sMemLowHi[2] KERN_HOSTBSS;
-static u32 sMemLowLo[2] KERN_HOSTBSS;
+static u32 sMemLowHi[PAL_LOW_REGIONS] KERN_HOSTBSS;
+static u32 sMemLowLo[PAL_LOW_REGIONS] KERN_HOSTBSS;
 static const char *sMemFail KERN_HOSTBSS;
 static int sMemWithGs KERN_HOSTBSS;        /* the restore in progress puts the renderer back too */
 
@@ -865,7 +893,7 @@ static void MemSaveMain(void *arg)
     HostBuf_Free(&sMem);
     HostBuf_Free(&sMemGs);
     BuildExclusions();
-    if (Pal_LowRegions(sMemLowLo, sMemLowHi) != 2) {
+    if (Pal_LowRegions(sMemLowLo, sMemLowHi) != PAL_LOW_REGIONS) {
         sMemFail = "the low pool is not mapped";
         return;
     }
@@ -897,14 +925,14 @@ static void MemLoadMain(void *arg)
 {
     Span spans[MAX_SPANS];
     int nSpans, i;
-    u32 lowLo[2], lowHi[2];
+    u32 lowLo[PAL_LOW_REGIONS], lowHi[PAL_LOW_REGIONS];
     const char *why;
     (void)arg;
     BuildExclusions();
-    if (!sMemHave || Pal_LowRegions(lowLo, lowHi) != 2) {
+    if (!sMemHave || Pal_LowRegions(lowLo, lowHi) != PAL_LOW_REGIONS) {
         return;
     }
-    for (i = 0; i < 2; i++) {      /* the pages of either moment */
+    for (i = 0; i < PAL_LOW_REGIONS; i++) {      /* the pages of either moment */
         lowHi[i] = lowHi[i] > sMemLowHi[i] ? lowHi[i] : sMemLowHi[i];
     }
     nSpans = BuildSpans(spans, lowLo, lowHi);

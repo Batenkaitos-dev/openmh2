@@ -114,9 +114,71 @@ int main(int argc, char **argv)
     SDL_CreateDirectory(sub);
     Check(textpack_check(sub, why, sizeof(why)) != 0 && strstr(why, "no pack.ini"), "a folder with no pack.ini");
 
+    /* the text table, read by the core's own code */
+    put(dir, "pack.ini", "name = Placeholder\ncharmap = charmap.txt\n");
+    put(dir, "charmap.txt", "\xC3\xA9\n");   /* (one letter a line, as the game reads it) */
+    put(dir, "text.tsv", "# a comment\n0123456789abcdef\t-\tHello\n");
+    Check(textpack_check(dir, why, sizeof(why)) == 0, "a pack with a good text table");
+    put(dir, "text.tsv", "0123456789abcdef\t-\tHello\nnot a table line\n");
+    Check(textpack_check(dir, why, sizeof(why)) != 0 && strstr(why, "text.tsv, line 2") && strstr(why, "Placeholder"),
+          "a bad line of the text table, named with its line");
+    put(dir, "text.tsv", "0123456789abcdef\t-\tHello\n0123456789abcdef\t-\tAgain\n");
+    Check(textpack_check(dir, why, sizeof(why)) != 0 && strstr(why, "line 2") && strstr(why, "twice"), "a key given twice");
+    put(dir, "text.tsv", "0123456789abcdef\t%d\tHello\n");
+    Check(textpack_check(dir, why, sizeof(why)) != 0 && strstr(why, "conversions"), "a replacement with other conversions than the original");
+
+    /* the launcher's check names the pack as it is shown, and no path of this machine */
+    {
+        char shown[1300];
+        snprintf(shown, sizeof(shown), "%s/%s", root, "empty");
+        Check(textpack_check_as(shown, "empty", why, sizeof(why)) != 0 && strstr(why, "folder empty has no pack.ini") && !strstr(why, root),
+              "the check as shown: a folder with no pack.ini");
+        Check(textpack_check_as(dir, "Test", why, sizeof(why)) != 0 && strstr(why, "text.tsv, line 1") && !strstr(why, root),
+              "the check as shown: the text table's line, no path");
+        put(dir, "pack.ini", "name = Placeholder\ncharmap = nothere.txt\n");
+        Check(textpack_check_as(dir, "Test", why, sizeof(why)) != 0 && strstr(why, "character map nothere.txt") && !strstr(why, root),
+              "the check as shown: a character map that is not there");
+    }
+
+    /* the list of a text_packs folder: folders by name, the name in pack.ini or the folder's, no file and no hidden folder */
+    {
+        TextPackInfo list[8];
+        char listroot[1300], p[1500];
+        int n;
+        snprintf(listroot, sizeof(listroot), "%s/list", root);
+        SDL_CreateDirectory(listroot);
+        snprintf(p, sizeof(p), "%s/zeta", listroot);
+        SDL_CreateDirectory(p);
+        put(p, "pack.ini", "name = First one\n");
+        snprintf(p, sizeof(p), "%s/alpha", listroot);
+        SDL_CreateDirectory(p);
+        put(p, "pack.ini", "name = A\nbogus line\n");
+        snprintf(p, sizeof(p), "%s/Mid", listroot);
+        SDL_CreateDirectory(p);
+        snprintf(p, sizeof(p), "%s/.hidden", listroot);
+        SDL_CreateDirectory(p);
+        put(listroot, "afile.txt", "placeholder");
+        n = textpack_list(listroot, list, 8);
+        Check(n == 3, "three folders are listed");
+        Check(n == 3 && !strcmp(list[0].folder, "Mid") && !strcmp(list[1].folder, "alpha") && !strcmp(list[2].folder, "zeta"),
+              "in the byte order of the folders' names");
+        Check(n == 3 && !strcmp(list[0].name, "Mid") && !list[0].named && !strcmp(list[1].name, "alpha") && !list[1].named,
+              "no pack.ini, or a bad one: the folder's name");
+        Check(n == 3 && !strcmp(list[2].name, "First one") && list[2].named, "the name in pack.ini");
+        Check(textpack_list(listroot, list, 2) == 2, "at most max");
+        snprintf(p, sizeof(p), "%s/none-here", root);
+        Check(textpack_list(p, list, 8) == 0, "a folder that is not there lists nothing");
+        snprintf(p, sizeof(p), "%s/zeta/pack.ini", listroot);
+        hfs_remove(p);
+        snprintf(p, sizeof(p), "%s/alpha/pack.ini", listroot);
+        hfs_remove(p);
+        snprintf(p, sizeof(p), "%s/afile.txt", listroot);
+        hfs_remove(p);
+    }
+
     {   /* (the test's files are left in the temporary folder: they hold placeholder words only) */
         char path[1400];
-        const char *files[] = {"pack.ini", "charmap.txt", "files/DATA.BIN/x"};
+        const char *files[] = {"pack.ini", "charmap.txt", "text.tsv", "files/DATA.BIN/x"};
         for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); i++) {
             snprintf(path, sizeof(path), "%s/%s", dir, files[i]);
             hfs_remove(path);

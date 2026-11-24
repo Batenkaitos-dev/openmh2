@@ -58,6 +58,9 @@
 #include "screen_fade.h"
 #include "libc.h"
 #include "vec_math.h"
+
+
+
 /* Built at optimisation level 4: the compiler gives the target's draw the
  * game's code only at this level (the others match at either). */
 #pragma optimization_level 4
@@ -1471,6 +1474,11 @@ u8 Area_GetSetIndex(u16 id);
 void Actor_MoveToSceneSpot(Player *actor, s16 id)
 {
     ActionSpot *spot = gAreaActionSpots[(u8)Area_GetSetIndex(gScene.area)];
+
+
+
+
+
 
     while (spot->kind != 0) {
         if (spot->kind == 10 && spot->type == id) {

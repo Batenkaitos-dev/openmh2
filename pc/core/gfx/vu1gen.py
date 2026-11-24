@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """VU1's microprograms as C, from the decomp's own source (a build step of the graphics front).
 
-    python3 pc/core/gfx/vu1gen.py SRC.vsm OUT.c
+    python3 pc/core/gfx/vu1gen.py SRC.vsm OUT.c [--extra EXTRA.vsm --array ARRAY.c]
 
 Assembles SRC with tools/vu1as.py (our assembler) into the block's bytes,
 finds the DMA packets of microcode in them as tools/pc/vu1rec.py finds
@@ -14,11 +14,19 @@ compute (ESIN, EATAN, EATANxy, EATANxz, EEXP: the original game takes them from
 the host's libm, which the core can't match bit for bit; the game's microcode
 uses ERSQRT and ERLENG only; the n2 review's ruling).
 
+With --extra the content core's own microcode (pc/core/content/vu1_content.vsm)
+is assembled too and compiled with the game's, so that the content core's VU1
+runs it as compiled code like the game's own; with --array its packets are also
+written to ARRAY.c as arrays, one for each program, named as the program is
+(Vu1Prog60 ...), 16-byte aligned, for the content core's descriptors to point
+at. Without --extra the output is the game's alone.
+
 The output is derived from the game's microcode: it stays under build/.
 """
 from __future__ import annotations
 
 import importlib.util
+import re
 import struct
 import subprocess
 import sys
@@ -51,17 +59,59 @@ def unused_efu(vu1rec, packets) -> list[str]:
     return found
 
 
+def packet_arrays(src: Path, blob: bytes) -> str:
+    """The DMA packets of blob (the programs of src, in order) as C arrays named by src's .program lines."""
+    names = re.findall(r"^\.program\s+(\w+)", src.read_text(encoding="utf-8"), re.M)
+    lines = ["/* The content core's VU1 programs: the packets of " + src.name + ", assembled by tools/vu1as.py. Generated; not edited by hand. */", ""]
+    pos = 0
+    for name in names:
+        size = 16 * ((struct.unpack_from("<I", blob, pos)[0] & 0xFFFF) + 1)
+        words = struct.unpack_from(f"<{size // 4}I", blob, pos)
+        pos += size
+        lines.append(f"unsigned int {name}[{size // 4}] __attribute__((aligned(16))) = {{")
+        for k in range(0, len(words), 4):
+            lines.append("    " + ", ".join(f"0x{w:08X}u" for w in words[k:k + 4]) + ",")
+        lines.append("};")
+        lines.append(f"const unsigned int {name}_bytes = {size};")
+    if pos != len(blob):
+        raise SystemExit(f"vu1gen: {src}: the packets end at {pos}, the code is {len(blob)} bytes")
+    return "\n".join(lines) + "\n"
+
+
 def main() -> int:
-    if len(sys.argv) != 3:
+    args = sys.argv[1:]
+    extra = array = None
+    for opt in ("--extra", "--array"):
+        if opt in args:
+            k = args.index(opt)
+            val = Path(args[k + 1])
+            del args[k:k + 2]
+            if opt == "--extra":
+                extra = val
+            else:
+                array = val
+    if len(args) != 2 or (array and not extra):
         print(__doc__.strip().splitlines()[2].strip(), file=sys.stderr)
         return 2
-    src, out = Path(sys.argv[1]), Path(sys.argv[2])
+    src, out = Path(args[0]), Path(args[1])
     out.parent.mkdir(parents=True, exist_ok=True)
     asm, binary = out.with_suffix(".s"), out.with_suffix(".bin")
     subprocess.run([sys.executable, str(ROOT / "tools" / "vu1as.py"), str(src), str(asm), "--bin", str(binary)],
                    check=True, stdout=subprocess.DEVNULL)
     vu1rec = load("vu1rec", ROOT / "tools" / "pc" / "vu1rec.py")
-    packets = vu1rec.find_packets(binary.read_bytes(), src.name)
+    blob = binary.read_bytes()
+    if extra:
+        xbin = out.with_name(out.stem + "_extra.bin")
+        subprocess.run([sys.executable, str(ROOT / "tools" / "vu1as.py"), str(extra), str(out.with_name(out.stem + "_extra.s")), "--bin", str(xbin)],
+                       check=True, stdout=subprocess.DEVNULL)
+        xblob = xbin.read_bytes()
+        if array:
+            text = packet_arrays(extra, xblob)
+            array.parent.mkdir(parents=True, exist_ok=True)
+            if not array.exists() or array.read_text(encoding="utf-8") != text:
+                array.write_text(text, encoding="utf-8", newline="\n")
+        blob += xblob
+    packets = vu1rec.find_packets(blob, src.name)
     if not packets:
         print(f"vu1gen: no microcode packets in {src}", file=sys.stderr)
         return 1

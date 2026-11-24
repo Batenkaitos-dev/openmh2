@@ -1828,7 +1828,7 @@ void EmEffectAttack_DrawChain(DrawSlot *d)
         if (slot == -1) {
             return;
         }
-        mdl = gScene.partModels[slot];
+        mdl = SCENE_PART_MODELS(slot);
     }
     if (mdl == NULL) {
         return;
@@ -1932,7 +1932,7 @@ void EmEffectAttack_DrawPart(DrawSlot *d)
         if (slot == -1) {
             return;
         }
-        mdl = gScene.partModels[slot];
+        mdl = SCENE_PART_MODELS(slot);
     }
     if (mdl == NULL) {
         return;

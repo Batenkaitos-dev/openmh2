@@ -40,6 +40,12 @@
 #include "packet_tim2.h"
 #include "packs.h"
 #include "libkernl.h"
+#include "content_area.h"
+#include "content_wpn.h"
+#include "content_wtype.h"
+#include "motion.h"
+#include "anim_file.h"
+#include "mem_util.h"
 
 #pragma opt_lifetimes off
 
@@ -313,6 +319,15 @@ s32 LoadCompressedFile(u8 *dst, s32 id)
     if (id < 0) {
         return -1;
     }
+
+
+
+
+
+
+
+
+
     size = Afs_ReadId(id | AFS_DATA_FILES, gReadBuf);
     if (size != 0) {
         size = LzDecompress(gReadBuf, dst);
@@ -332,9 +347,101 @@ s32 LoadFile(u8 *dst, s32 id)
     return Afs_ReadId(id | AFS_DATA_FILES, dst);
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* Loads the player's animation set for weapon type weaponType into gLoadBuf. */
 void Load_PlayerAnim(s32 unusedIdx, s32 weaponType)
 {
+
+
+
+
+
+
+
     LoadCompressedFile(gLoadBuf, gPlayerAnimFiles[weaponType]);
 }
 
@@ -357,7 +464,11 @@ void Load_EmAnim(s32 unusedIdx, s32 kind)
  */
 void Load_EmSlotAnim(s32 slot, s32 set)
 {
+
+
+
     s32 *files = gEmSlotAnimFiles[slot];
+
     u8 *buf = gLoadBuf;
 
     if (files != NULL) {
@@ -394,10 +505,16 @@ void Load_AreaPack(s32 area)
         }
         break;
     default:
-        file = gAreaPackFiles[area];
+        file = AREA_AT(AT_PACK, gAreaPackFiles, area);
         break;
     }
     LoadCompressedFile(gLoadBuf, file);
+
+
+
+
+
+
     Pack_CopyParts01(gLoadBuf, base, end);
     AreaPack_ReadPart2((s32 *) gLoadBuf);
 }
@@ -474,12 +591,41 @@ void Load_EmPartModelPack(s32 kind)
  * Loads the model pack of a monster slot's kind kind and copies its model
  * file and skeleton to the model load buffer.
  */
+
+
+
 void Load_EmSlotModelPack(s32 kind)
+
 {
     u8 *base = (*(u8 * *)&gSysSettings.dataBuf);
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     LoadCompressedFile(gLoadBuf, gEmSlotModelPackFiles[kind]);
     Pack_CopyParts01(gLoadBuf, base, base + MODEL_LOAD_SKEL_OFFSET);
+
 }
 
 /*
@@ -532,7 +678,7 @@ void Load_AreaSubModelPack(s32 area, s32 sub)
             }
             break;
         default:
-            file = gAreaSubModelFiles[area];
+            file = AREA_AT(AT_SUB, gAreaSubModelFiles, area);
             break;
         }
     } else {
@@ -546,6 +692,13 @@ void Load_AreaSubModelPack(s32 area, s32 sub)
     }
     base = (*(u8 * *)&gSysSettings.modelPack);
     LoadCompressedFile(gLoadBuf, file);
+
+
+
+
+
+
+
     Pack_CopyParts01(gLoadBuf, base, base + MODEL_LOAD_SKEL_OFFSET);
 }
 
@@ -642,6 +795,9 @@ s32 *gPartModelFilesFemale[8] = {
  * Capcom: weapon/weNNN.bin, NNN the slot: the slot's file is in it for 332
  * of 337 slots, part of it for 1, and 4 have no file in A (sure).
  */
+
+
+
 s32 gWeaponModelPackFiles[340] = {
 #include "sub_main/004211A0.inc"
 };

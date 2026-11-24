@@ -16,7 +16,7 @@
 #include "lobby_text.h"
 #include "lobby_globals.h"
 #include "save.h"
-#include "lobby_menu.h"
+#include "lobby_menu_work.h"
 #include "lobby_labels.h"
 #include "quest.h"
 #include "menu_task.h"

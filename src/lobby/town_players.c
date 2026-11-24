@@ -46,6 +46,10 @@
 #include "vec_math.h"
 #include "libc.h"
 
+
+
+
+
 /* Starts motion on layer 0 of obj (a Player or an Em) and, unless it has
  * exactly one motion layer, motion + 100 on layer 1, each with blend
  * frames blend and start frame startFrame; Player.unk771 is cleared first, as
@@ -739,6 +743,11 @@ void Actor_SetFlag(void *obj, u32 flag)
  */
 u8 *ActSpot_GetList(u16 area)
 {
+
+
+
+
+
     return *(u8 **)((u8 *)gAreaActionSpots + ((Area_GetSetIndex(area) & 0xFF) * 4));
 }
 

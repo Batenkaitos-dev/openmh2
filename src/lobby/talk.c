@@ -280,7 +280,7 @@ void Npc_ResetTalked(void)
     s32 i;
 
     i = 0;
-    em = (Em *) &gEms;
+    em = (Em *) gEms;
     do {
         if (em->active != 0) {
             ((NpcWork *) &em->work)->talked = 0;

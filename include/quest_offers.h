@@ -26,4 +26,10 @@ s32 QuestList_CountGroup(s32 group, s8 set);
 void QuestList_DropGroup(s32 group, s32 keep, s8 set);
 void QuestList_DropRandom(s8 set);
 
+
+
+
+
+
+
 #endif

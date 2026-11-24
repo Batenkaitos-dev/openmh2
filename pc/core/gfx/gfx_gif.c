@@ -24,7 +24,8 @@ typedef struct PathAsm {
     u32 pos;      /* qwords of buf already scanned */
     u32 need;     /* qwords left in the tag being scanned (0 = next qword is a tag) */
 } PathAsm;
-static PathAsm g_asm[4];
+static PathAsm g_asm_real[4];
+static PathAsm *g_asm = g_asm_real;   /* the second pass's own set while it runs (gif_sandbox) */
 
 int gif_path3_masked(void)
 {
@@ -60,8 +61,14 @@ static u32 scan(PathAsm *a, const u8 *buf, u32 n)
     return last;
 }
 
+static int sSandbox, sSandboxOverflow;
+
 static void keep(PathAsm *a, const u8 *src, u32 qwords)
 {
+    if (sSandbox && a->n + qwords > a->cap) {   /* the pass's buffers are fixed: a tag this long ends the pass (it is not equal) */
+        sSandboxOverflow = 1;
+        return;
+    }
     if (a->n + qwords > a->cap) {
         u32 cap = a->cap ? a->cap : 1024;
         while (cap < a->n + qwords)
@@ -161,4 +168,103 @@ void gif_reset_all(void)
         g_asm[p].n = g_asm[p].pos = g_asm[p].need = 0;
     g_gif_ctrl = g_gif_mode = 0;
     g_path3_vif_mask = 0;
+}
+
+/* The second pass (gfx_pass.c): its own path buffers (`bufs`: 4 x GFX_PASS_SB_QW qwords, the pass's own memory). */
+static PathAsm sSb[4];
+
+void gif_sandbox(int on, void *bufs)
+{
+    if (on) {
+        for (int p = 0; p < 4; p++) {
+            sSb[p].buf = (u8 *)bufs + (size_t)p * GFX_PASS_SB_QW * 16;
+            sSb[p].cap = GFX_PASS_SB_QW;
+            sSb[p].n = sSb[p].pos = sSb[p].need = 0;
+        }
+        g_asm = sSb;
+        sSandbox = 1;
+        sSandboxOverflow = 0;
+    } else {
+        g_asm = g_asm_real;
+        sSandbox = 0;
+    }
+}
+
+/* 1 when the pass's path buffers hold what the real ones do (the stream ended in the same place); 0 after an overflow. */
+int gif_sandbox_same(void)
+{
+    if (sSandboxOverflow)
+        return 0;
+    for (int p = 0; p < 4; p++)
+        if (sSb[p].n != g_asm_real[p].n || (sSb[p].n && memcmp(sSb[p].buf, g_asm_real[p].buf, (size_t)sSb[p].n * 16)))
+            return 0;
+    return 1;
+}
+
+void gif_sandbox_clear(void)
+{
+    for (int p = 0; p < 4; p++)
+        sSb[p].buf = 0, sSb[p].cap = sSb[p].n = sSb[p].pos = sSb[p].need = 0;
+}
+
+int gif_pending(void)
+{
+    for (int p = 0; p < 4; p++)
+        if (g_asm_real[p].n)
+            return 1;
+    return 0;
+}
+
+u32 gif_state(void *buf, int load)
+{
+    int *s = buf;
+    if (s) {
+        if (load) {
+            g_path3_vif_mask = s[0];
+            g_gif_mode = (u32)s[1];
+        } else {
+            s[0] = g_path3_vif_mask;
+            s[1] = (int)g_gif_mode;
+        }
+    }
+    return 2 * sizeof(int);
+}
+
+/* The real path buffers as a window left them, for the pass that runs on a thread of its own (gfx_pass_run.c): its sandbox is compared with them at the end.
+ * gif_real_export writes, for each path, n, pos and need and then n qwords, into DST (CAP bytes) and returns the bytes, or 0 when they do not fit;
+ * gif_real_import puts such a record into this copy's real buffers. */
+u32 gif_real_export(u8 *dst, u32 cap)
+{
+    u32 off = 0;
+    for (int p = 0; p < 4; p++) {
+        const PathAsm *a = &g_asm_real[p];
+        u32 need = 12 + a->n * 16;
+        if (off + need > cap)
+            return 0;
+        memcpy(dst + off, &a->n, 4);
+        memcpy(dst + off + 4, &a->pos, 4);
+        memcpy(dst + off + 8, &a->need, 4);
+        if (a->n)
+            memcpy(dst + off + 12, a->buf, (size_t)a->n * 16);
+        off += need;
+    }
+    return off;
+}
+
+void gif_real_import(const u8 *src)
+{
+    u32 off = 0;
+    for (int p = 0; p < 4; p++) {
+        PathAsm *a = &g_asm_real[p];
+        u32 n, pos, need;
+        memcpy(&n, src + off, 4);
+        memcpy(&pos, src + off + 4, 4);
+        memcpy(&need, src + off + 8, 4);
+        a->n = a->pos = a->need = 0;
+        if (n)
+            keep(a, src + off + 12, n);
+        a->pos = pos;
+        a->need = need;
+        off += 12 + n * 16;
+    }
 }

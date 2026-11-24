@@ -7,6 +7,9 @@
 #include "player.h"
 #include "em.h"
 #include "draw_slots.h"
+
+
+
 extern u8 gModelUsed[];
 void *memset(void *p, s32 c, u32 n);
 void *memcpy(void *dst, void *src, u32 n);
@@ -77,7 +80,11 @@ void EmSlot_SetupModel(Em *em)
         em->model = Model_Get(modelIndex);
         Model_Reserve(modelIndex, 1);
         emModel = Model_Get(modelIndex);
+
+
+
         memcpy(emModel, scene->models[em->modelSlot], sizeof(Model));
+
         emModel->active = 1;
         emModel->boneKind = 2;
         emModel->isCopy = 1;

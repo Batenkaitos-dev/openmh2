@@ -24,6 +24,13 @@ void Pal_CheckLowMemory(void);
 void *Pal_LowAlloc(unsigned int size, const char *what);
 void Pal_RegisterLowRange(const char *what, const void *lo, unsigned int size);
 
+
+
+
+
+
+
+
 /*
  * An overlay was loaded (Overlay_Relocate, src/main/main.c, after its copy of
  * the image to PAL_RAM(load)): its address words get the PC's values, its .bss

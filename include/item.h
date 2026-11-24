@@ -27,6 +27,19 @@ typedef struct ItemData {
 
 extern ItemData gItemData[];
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* ItemData.max: no limit on the stack (Pouch_AddEx; the save's pouch and item box, SavePouch_*
  * and ItemBox_*). */
 #define ITEM_MAX_UNLIMITED      0xFF

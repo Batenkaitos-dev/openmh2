@@ -43,6 +43,7 @@
 #include "card.h"
 #include "lobby_forge.h"
 #include "text.h"
+#include "pal.h"
 #include "name_tags.h"
 #include "menu_sheets.h"
 #include "draw_slots.h"
@@ -294,6 +295,7 @@ void NameTags_Draw(MenuTask *task)
                     scr[0] -= (f32)(nameLen / 2 * 8);
                     tagX = 1.25f * scr[0];
                     tagY = scr[1];
+                    PC_GS_ANCHOR(0x40000 + i, pos);
                     Font_SetSpacing(16, 16);
                     card = LOBBY_MEMBER_CARD_AT(memberOff);
                     if (card->hr >= 51) {
@@ -331,6 +333,7 @@ void NameTags_Draw(MenuTask *task)
                             Icon_Draw((s16)(tagX + nameLen * 8 + 6), (s16)(tagY - 4), 20, 20, gPlayerColorWords[symbolColor], ICON_SYMBOL_COLOR);
                         }
                     }
+                    PC_GS_ANCHOR_END();
                 }
             }
             pl++;
@@ -350,7 +353,9 @@ void NameTags_Draw(MenuTask *task)
                     tagX = 1.25f * scr[0];
                     tagY = scr[1];
                     Font_SetSpacing(16, 16);
+                    PC_GS_ANCHOR(0x50000, pos);
                     Text_DrawShadow(tagX, tagY, 1, 5, (char *)save->poogieName);
+                    PC_GS_ANCHOR_END();
                 }
             }
             i++;
@@ -465,7 +470,9 @@ void NameTags_DrawNpcs(void)
                 } else {
                     color = (alpha << 24) | 0x80C0C0;
                 }
+                PC_GS_ANCHOR(0x60000 + i, markPos);
                 Icon_Draw((s32)scr[0], (s32)scr[1], markW, markH, color, ICON_OFFER_MARK);
+                PC_GS_ANCHOR_END();
             }
         }
         i++;
@@ -716,6 +723,39 @@ void Icon_Draw(s32, s32, s32, s32, s32, s32); /* unit's own declaration: with s3
  * 1.2 times as wide. */
 void Icon_DrawWeaponClass(s32 x, s32 y, s32 size, s32 color, s16 weaponClass, s8 wide)
 {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     if (wide != 0) {
         Icon_Draw(x, y, (s32)(1.2f * size), size, color, weaponClass + ICON_WEAPON_CLASS_WIDE);
     } else {
@@ -759,6 +799,38 @@ void Lobby_DrawEquipIcon(s32 x, s32 y, s32 width, s32 height, EquipItem *item)
             color = Equip_Color(Equip_GetRarity(item->type, item->id), 255, 0);
             spr = Weapon_GetClass(item->type, item->id);
             spr += 5;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         }
     } else {
         switch (kind) {

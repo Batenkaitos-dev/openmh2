@@ -27,6 +27,7 @@
 #include "objhead.h"
 #include "capsule.h"
 #include "objattach.h"
+#include "content_wpn.h"
 #include "area.h"
 #include "bgm.h"
 #include "engine_math.h"
@@ -47,7 +48,9 @@ static void Player_AddResists(f32 bonus, Player *p, s16 elem, f32 v);
 static void Player_ApplyResistSkills(Player *p);
 static void Player_ClampResists(Player *p);
 
+
 extern Em gEms[EM_COUNT];
+
 void Player_BodyCapsule(Player *p, HitCapsule *cap, f32 r);
 
 /* Sets Player.nearLargeMonster: 1 while a large monster (pushPriority 3 or
@@ -999,6 +1002,11 @@ s32 Player_CanGuard(Player *pl)
             return 1;
         }
     default:
+
+
+
+
+
         return 0;
     }
 }

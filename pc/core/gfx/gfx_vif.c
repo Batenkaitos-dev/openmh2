@@ -107,6 +107,13 @@ static void image_pages_init(void)
     image_pages_ready = 1;
 }
 
+/* The table, once the unit has built it (at the first tag that needs it, and never again), or 0: the second pass's copy of this unit reads it through a
+ * pointer, which each job of the pass carries (the game's thread asks when it queues the window). */
+const u16 *vif_image_pages(void)
+{
+    return image_pages_ready ? image_page : 0;
+}
+
 static inline void tag_pair(u32 *a, u32 *b)
 {
     if ((*a & 0x0FFF0000u) != 0)
@@ -448,3 +455,21 @@ void vif_init(void)
     vu1_reset();
 }
 
+/* The second pass's snapshot (gfx_pass.c): VIF1's registers and the command in progress. */
+u32 vif_state(void *buf, int load)
+{
+    if (buf) {
+        if (load) {
+            u8 *data = g_vif[1].data, *micro = g_vif[1].micro;   /* the unit's own memory: a snapshot holds the pointers of the unit that made it (the copy of this unit in the second pass thread has its own) */
+            memcpy(&g_vif[1], buf, sizeof(Vif));
+            g_vif[1].data = data;
+            g_vif[1].micro = micro;
+        } else {
+            Vif *o = buf;
+            memcpy(buf, &g_vif[1], sizeof(Vif));
+            o->data = (u8 *)(size_t)(g_vif[1].data - (u8 *)g_vu_mem);     /* the pointers as offsets into VU memory, so that two units' snapshots can be compared */
+            o->micro = (u8 *)(size_t)(g_vif[1].micro - (u8 *)g_vu_mem);
+        }
+    }
+    return sizeof(Vif);
+}

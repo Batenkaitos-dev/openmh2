@@ -312,10 +312,17 @@ u32 MovieSfd_FramePacket(u32 packet, s32 x, s32 y, s32 z, s32 width, s32 height)
     *reg++ = GS_REG_CLAMP_1;
     *reg++ = 0;
     *reg++ = GS_REG_TEXFLUSH;
+
+
+
+
+
+
     *reg++ = (u64)gMovieWork->tbp | ((u64)(gMovieTexWidth / 64) << 14) | ((u64)texWidthLog2 << 26)
         | ((u64)texHeightLog2 << 30) | ((u64)1 << 35);
     *reg++ = GS_REG_TEX0_1;
     *reg++ = TEX1_MMAG_LINEAR | TEX1_MMIN(TEX1_MIN_LINEAR);
+
     *reg++ = GS_REG_TEX1_1;
     *reg++ = 0x6400000000008001; /* the sprite: PRIM, RGBAQ, UV, XYZ2, UV, XYZ2 */
     *reg++ = 0x535310;

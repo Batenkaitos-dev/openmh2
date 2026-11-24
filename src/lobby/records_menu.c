@@ -19,6 +19,9 @@
 #include "save.h"
 #include "pad.h"
 #include "lobby_vobj.h"
+
+
+
 #include "lobby_state.h"
 #include "lobby_text.h"
 #include "lobby_globals.h"
@@ -107,6 +110,9 @@ void Records_Update(void)
                     menu->eventMark = 1;
                 }
                 Records_EquipInit(menu);
+
+
+
                 break;
             case RECORD_KIND_ARMOR:
                 if (gSave.recordCounts[RECORD_EVENT_ARMOR] == 1) {

@@ -25,6 +25,9 @@
  * runs the monsters, the players and the stage objects that call in here.
  */
 #include "common.h"
+
+
+
 #include "em.h"
 #include "player.h"
 #include "scene.h"
@@ -57,6 +60,11 @@
 #include "libc.h"
 #include "msg_event.h"
 #include "em_melynx.h"
+
+
+
+
+
 
 /* One of the game's source files (it calls the static Quest_DeliveredCount,
  * defined further down). The game's compiler built it at optimization level
@@ -102,7 +110,9 @@ s32 Em_PartBroken(Em *em, u16 part); /* unit's own declaration: the definition (
 void Em_PartBreakEffect(Em *em, s32 part);
 static s16 Quest_FindReward(u16 id);
 extern s8 gRewardGiveRolls[];
+
 extern Em gEms[];
+
 extern char *gReturn20sVillageText;
 extern char *gReturn1mVillageText;
 extern char *gReturn10sVillageText;
@@ -156,7 +166,12 @@ void Quest_Clear(void)
  */
 void Quest_Init(void)
 {
+
+
+
+
     s16 *tbl = gQuestGroupLastIds;
+
     s32 i;
     u8 season;
     u8 daytimeRow;
@@ -225,8 +240,8 @@ void Quest_Init(void)
     gQuest.anyFainted = 0;
     gQuest.hunterRank[gScene.localPlayer][1] = Save_RankFromPoints(&gSave);
     gQuest.unk096 = 1;
-    for (i = 0; i < SCENE_EM_KINDS; i++) {
-        gScene.emKind[i] = 0;
+    for (i = 0; i < SCENE_EM_KIND_MAX; i++) {
+        SCENE_EM_KIND(i) = 0;
     }
     for (i = 0; i < QUEST_REWARD_SLOTS; i++) {
         gQuest.rewards[i].id = 0;
@@ -248,6 +263,15 @@ void Quest_Init(void)
         if (gQuest.stage < QUEST_ID_DOWNLOADED) {
             /* the group of stage ids the quest falls in (each bound is the
              * group's last id), then its file in the group's table */
+
+
+
+
+
+
+
+
+
             for (i = 0; *tbl != 0; i++) {
                 if (*tbl >= gQuest.stage) {
                     break;
@@ -255,6 +279,7 @@ void Quest_Init(void)
                 tbl++;
             }
             tbl = gStageFileTbls[i];
+
             tbl += gQuest.stage % 100;
             file = *tbl;
             if (Quest_IsVersus() == 0) {
@@ -301,7 +326,14 @@ void Quest_Init(void)
                 Quest_SetSeason(SEASON_BREEDING);
                 break;
             }
+
+
+
+
+
+
             Mib_Read(file, (void *)gStageFile);
+
         } else {
             gQuest.info = (QuestInfo *)(((StageHeader *)gStageFile)->info + gStageFile);
             if (gQuest.info->flags & QUEST_FLAG_BREEDING) {
@@ -1362,12 +1394,12 @@ Em *QuestEm_Spawn(QuestEm *qem)
     Em *em;
     s32 i;
 
-    for (i = 0; i < SCENE_EM_KINDS; i++) {
-        if (qem->kind == gScene.emKind[i]) {
+    for (i = 0; i < SCENE_EM_KIND_N; i++) {
+        if (qem->kind == SCENE_EM_KIND(i)) {
             break;
         }
     }
-    if (i >= 4) {
+    if (i >= SCENE_EM_KIND_N) {
         return NULL;
     }
     if ((em = EmSlot_Alloc()) != NULL) {
@@ -1482,8 +1514,8 @@ void QuestEm_LeaveArea(s32 fromArea, s32 toArea)
         }
     }
     QuestEm_ResetArea(fromArea);
-    for (i = 0; i < SCENE_EM_KINDS; i++) {
-        if (gScene.emKind[i] <= 0) {
+    for (i = 0; i < SCENE_EM_KIND_N; i++) {
+        if (SCENE_EM_KIND(i) <= 0) {
             continue;
         }
         ids = StageEntry_GetData(gQuest.stageEntry, 0);
@@ -1493,7 +1525,7 @@ void QuestEm_LeaveArea(s32 fromArea, s32 toArea)
                     found = 0;
                     goto searched;
                 }
-                if (gScene.emKind[i] == ids[j]) {
+                if (SCENE_EM_KIND(i) == ids[j]) {
                     found = 1;
                     goto searched;
                 }
@@ -1512,7 +1544,7 @@ void QuestEm_LeaveArea(s32 fromArea, s32 toArea)
                     found = 0;
                     break;
                 }
-                if (gScene.emKind[i] == *ids) {
+                if (SCENE_EM_KIND(i) == *ids) {
                     found = 1;
                     break;
                 }
@@ -1527,7 +1559,7 @@ void QuestEm_LeaveArea(s32 fromArea, s32 toArea)
             }
         }
         EmSlot_FreeModels(i);
-        gScene.emKind[i] = 0;
+        SCENE_EM_KIND(i) = 0;
     }
 }
 
@@ -1544,16 +1576,18 @@ void QuestEm_SpawnArea(s32 area)
     s32 i;
     s32 *ids;
     s32 addYama;
+
     u8 *kindPtr;
+
     s32 k;
     s32 id;
 
     Effect17_SpawnArea(area);
     if (area == gScene.campArea) {
-        for (i = 0; i < SCENE_EM_KINDS; i++) {
-            if (gScene.emKind[i] <= 0) {
-                gScene.emKind[i] = EM_KIND_FELYNE_CART;
-                GmLoad_LoadEmData(gScene.map, gScene.emKind[i]);
+        for (i = 0; i < SCENE_EM_KIND_N; i++) {
+            if (SCENE_EM_KIND(i) <= 0) {
+                SCENE_EM_KIND(i) = EM_KIND_FELYNE_CART;
+                GmLoad_LoadEmData(gScene.map, SCENE_EM_KIND(i));
                 EmSlot_LoadModels(i);
                 break;
             }
@@ -1561,10 +1595,10 @@ void QuestEm_SpawnArea(s32 area)
     }
     addYama = (s8)QuestEm_RollYamaTsukamiB(area);
     if (addYama != 0) {
-        for (i = 0; i < SCENE_EM_KINDS; i++) {
-            if (gScene.emKind[i] <= 0) {
-                gScene.emKind[i] = EM_KIND_YAMA_TSUKAMI_B;
-                GmLoad_LoadEmData(gScene.map, gScene.emKind[i]);
+        for (i = 0; i < SCENE_EM_KIND_N; i++) {
+            if (SCENE_EM_KIND(i) <= 0) {
+                SCENE_EM_KIND(i) = EM_KIND_YAMA_TSUKAMI_B;
+                GmLoad_LoadEmData(gScene.map, SCENE_EM_KIND(i));
                 EmSlot_LoadModels(i);
                 break;
             }
@@ -1579,6 +1613,14 @@ void QuestEm_SpawnArea(s32 area)
                 break;
             }
             /* the kind's model slot, if loaded (gScene.emKind read through a byte pointer, as the game does) */
+
+
+
+
+
+
+
+
             kindPtr = (u8 *)&gScene;
             for (k = 0; k < 4; k++, kindPtr++) {
                 if (((SceneState *)kindPtr)->emKind[0] == id) {
@@ -1586,13 +1628,14 @@ void QuestEm_SpawnArea(s32 area)
                 }
             }
             if (k < 4) {
+
                 ids++;
                 continue;
             }
-            for (i = 0; i < SCENE_EM_KINDS; i++) {
-                if (gScene.emKind[i] <= 0) {
-                    gScene.emKind[i] = id;
-                    GmLoad_LoadEmData(gScene.map, gScene.emKind[i]);
+            for (i = 0; i < SCENE_EM_KIND_N; i++) {
+                if (SCENE_EM_KIND(i) <= 0) {
+                    SCENE_EM_KIND(i) = id;
+                    GmLoad_LoadEmData(gScene.map, SCENE_EM_KIND(i));
                     EmSlot_LoadModels(i);
                     break;
                 }
@@ -1626,6 +1669,11 @@ void QuestEm_SpawnArea(s32 area)
     if ((s8)addYama != 0) {
         QuestEm_SpawnYamaTsukamiB();
     }
+
+
+
+
+
     if (gQuest.specialMineArea == area) {
         FireBlast_CreateAt(gQuest.specialMinePos, 10);
     }
@@ -3342,19 +3390,19 @@ void QuestEm_SpawnAll(void)
             if (*ids <= 0) {
                 break;
             }
-            for (i = 0; i < SCENE_EM_KINDS; i++) {
-                if (gScene.emKind[i] == *ids) {
+            for (i = 0; i < SCENE_EM_KIND_N; i++) {
+                if (SCENE_EM_KIND(i) == *ids) {
                     break;
                 }
             }
-            if (i < 4) {
+            if (i < SCENE_EM_KIND_N) {
                 ids++;
                 continue;
             }
-            for (j = 0; j < SCENE_EM_KINDS; j++) {
-                if (gScene.emKind[j] <= 0) {
-                    gScene.emKind[j] = *ids;
-                    GmLoad_LoadEmData(gScene.map, gScene.emKind[j]);
+            for (j = 0; j < SCENE_EM_KIND_N; j++) {
+                if (SCENE_EM_KIND(j) <= 0) {
+                    SCENE_EM_KIND(j) = *ids;
+                    GmLoad_LoadEmData(gScene.map, SCENE_EM_KIND(j));
                     EmSlot_LoadModels(j);
                     break;
                 }

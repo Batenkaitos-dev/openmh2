@@ -156,6 +156,26 @@ typedef char AnimSet_size_check[(sizeof(AnimSet) == 0x20) ? 1 : -1];
 #define MOTIONS_EM_SLOTS 4
 #define MOTIONS_TOTAL (MOTIONS_EM_FIRST + MOTIONS_EM_SLOTS * MOTIONS_PER_EM) /* gMotions' entries */
 
+/*
+ * What the motion code reads (Anim_SetupPlayer, the motion lookups, Motion_Free*): the game's own constants and tables, and in the content
+ * core the platform layer's (include/content_wpn.h), which are these unless a weapon type needs a larger player stride. GM and GF are
+ * gMotions and gPlayerMotionGroupFirst, which each file declares.
+ */
+
+
+
+
+
+
+
+
+#define MOTION_PLAYER_STRIDE MOTIONS_PER_PLAYER
+#define MOTION_EM_FIRST MOTIONS_EM_FIRST
+#define MOTION_TOTAL MOTIONS_TOTAL
+#define MOTION_TABLE gMotions
+#define MOTION_GROUP_FIRST(slot) gPlayerMotionGroupFirst[slot]
+
+
 /* Keyframe tracks (Key1_Eval, Key2_Eval, Key3_Eval): a time in frames
  * and a value of one to three floats per key, ended by a time of -1; from
  * the last key on, its value is used as it is. */

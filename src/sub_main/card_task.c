@@ -998,6 +998,12 @@ void CardTask_SaveStep(CardTask *task)
     case 7:
         switch (Card_WriteFile(task)) {
         case CARD_CALL_DONE:
+
+
+
+
+
+
         next:
             if (++task->fileNo < CARD_OP_FILES) {
                 task->step = 3;

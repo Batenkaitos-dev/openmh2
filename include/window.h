@@ -213,6 +213,11 @@ void EquipWindow_DrawMarks(EquipItem *item, s16 x, s16 y);
 void EquipWindow_DrawRow(Player *pl, EquipItem *item, s16 x, s16 y);
 void EquipWindow_DrawItemList(GunData *gun, s16 x, s16 y);
 extern s32 gWeaponClassMultipliers[12];
+
+
+
+
+
 extern u32 gHornNoteColors[8];
 extern u8 gChatTextSizes[8]; /* the chat's text sizes, by gSysSave.options.chatSize (sub_main) */
 extern u32 gEquipColors[10];

@@ -287,6 +287,51 @@ int main()
         CHECK((atc(200, 1, 0) & 0xFFFF) == 0x8100 + 16 + 600);
     }
 
+    /* the end of a labelled run (handle 0): the draws after it carry no model label (the chain's last label does not go on) */
+    {
+        Capture capm;
+        Stream sm1, sm2, sm3;
+        strip(sm1, 6, 0x8100, 0x8100, 2.0f, 0);
+        strip(sm2, 6, 0x8100, 0x8100, 2.0f, 0);
+        strip(sm3, 6, 0x8100, 0x8100, 2.0f, 0);
+        float world[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 5, 6, 7, 1}, cam[32] = {0};
+        Step am;
+        capm.gif(3, env.b.data(), env.b.size());
+        capm.model(7, 0, 5, world, cam, 0x1234);
+        capm.gif(1, sm1.b.data(), sm1.b.size());
+        capm.model(0, 0, 0, NULL, NULL, 0);
+        capm.gif(1, sm2.b.data(), sm2.b.size());
+        capm.model(8, 0, 5, world, cam, 0x1238);
+        capm.gif(1, sm3.b.data(), sm3.b.size());
+        capm.model(0, 0, 0, NULL, NULL, 0);
+        capm.finish(am);
+        CHECK(am.kicks.size() == 3 && am.models.size() == 2);
+        if (am.kicks.size() == 3)
+        {
+            CHECK(am.kicks[0].model == 0 && am.kicks[1].model == -1 && am.kicks[2].model == 1);
+            CHECK(am.models[0].handle == 7 && am.models[0].site == 0x1234 && am.models[1].handle == 8);
+        }
+        /* the control: without the end records (the host did not forward them) the data after a draw keeps its label */
+        Capture capn;
+        Step an;
+        capn.gif(3, env.b.data(), env.b.size());
+        capn.model(7, 0, 5, world, cam, 0x1234);
+        capn.gif(1, sm1.b.data(), sm1.b.size());
+        capn.gif(1, sm2.b.data(), sm2.b.size());
+        capn.finish(an);
+        CHECK(an.kicks.size() == 2 && an.kicks[1].model == 0);
+    }
+
+    /* the moments of a step (the pass's records): a moment above 0 needs the streams moment 0 made; control: the same record after moment 0 is taken */
+    {
+        CHECK(Mh2Interp::moment_ok(0, 1, 0) && Mh2Interp::moment_ok(0, 3, 0) && Mh2Interp::moment_ok(0, 3, 2));
+        CHECK(!Mh2Interp::moment_ok(1, 3, 0));   /* no moment 0 before it: the streams are empty */
+        CHECK(!Mh2Interp::moment_ok(2, 3, 0));
+        CHECK(!Mh2Interp::moment_ok(1, 3, 1));   /* the streams of another count */
+        CHECK(!Mh2Interp::moment_ok(3, 3, 2) && !Mh2Interp::moment_ok(1, 1, 0));
+        CHECK(Mh2Interp::moment_ok(1, 3, 2) && Mh2Interp::moment_ok(2, 3, 2));   /* the control: after moment 0 */
+    }
+
     printf(failures ? "mh2interp_test: %d FAILED\n" : "mh2interp_test: all passed\n", failures);
     return failures ? 1 : 0;
 }

@@ -13,6 +13,16 @@ if(MH2_PLATFORM STREQUAL "linux")
 endif()
 mh2_add_exe_test(ipc_protocol mh2_ipc_test)
 
+# The pass's ring, the labels and the live plans (host_ipc.c) with and without the ring; the control runs the checks of a block
+# without the ring on one that has it, and must fail.
+add_executable(mh2_ipc_pass_test ipc_pass_test.c ${_ipc_core})
+target_include_directories(mh2_ipc_pass_test PRIVATE ${_ipc_inc})
+target_compile_options(mh2_ipc_pass_test PRIVATE ${MH2_HOST_FLAGS} -Wall -Wextra -Werror)
+mh2_add_exe_test(ipc_pass_ring mh2_ipc_pass_test ring)
+mh2_add_exe_test(ipc_pass_noring mh2_ipc_pass_test noring)
+mh2_add_exe_test(ipc_pass_control mh2_ipc_pass_test control)
+set_tests_properties(ipc_pass_control PROPERTIES WILL_FAIL TRUE)
+
 add_executable(mh2-fake-core fake_core.c ${_ipc_core})
 target_include_directories(mh2-fake-core PRIVATE ${_ipc_inc})
 target_compile_options(mh2-fake-core PRIVATE ${MH2_HOST_FLAGS} -Wall -Wextra -Werror)

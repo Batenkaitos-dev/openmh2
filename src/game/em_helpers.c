@@ -171,6 +171,12 @@ void Em_SetHitReactMode(Em *em, u8 mode)
     em->hitReactMode = mode;
 }
 
+
+
+
+
+
+
 /*
  * Returns the monster's maximum hp: the kind's base hp gEmBaseHp[type][idx]
  * times the hp scale of its level row (gEmScaleRows). In a versus quest it is
@@ -197,9 +203,19 @@ s32 Em_ComputeMaxHp(Em *em, s16 idx)
     } else {
         baseHp += idx;
         hp = *baseHp;
+
+
+
         rows += em->level;
+
         hp *= rows->hpScale;
     }
+
+
+
+
+
+
     return hp;
 }
 
@@ -214,7 +230,11 @@ f32 Em_LevelAttackFactor(Em *em)
     f32 factor;
 
     row = gEmScaleRows[em->type];
+
+
+
     row += em->level;
+
     factor = row->attackFactor;
     if (Quest_IsVersus() == 1) {
         factor *= gQuest.teams[Versus_Team(em->side)].rageScale1 / 100.0f;
@@ -232,7 +252,11 @@ f32 Em_LevelDamageFactor(Em *em)
     f32 factor;
 
     row = gEmScaleRows[em->type];
+
+
+
     row += em->level;
+
     factor = row->damageFactor;
     if (Quest_IsVersus() == 1) {
         factor *= gQuest.teams[Versus_Team(em->side)].rageScale2 / 100.0f;

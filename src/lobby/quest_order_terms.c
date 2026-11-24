@@ -28,6 +28,9 @@
 #include "lobby_labels.h"
 #include "window.h"
 #include "quest_order_terms.h"
+
+
+
 #include "game_util.h"
 #include "item_shop.h"
 #include "lobby_dialog_box.h"
@@ -727,6 +730,21 @@ s32 Quest_CheckOrderTerms(u8 id, u8 ordering)
     }
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* 1 for the quests the quest list marks (Quest_GetListFlags' 8): a fixed
  * list of disc and event quest ids. */

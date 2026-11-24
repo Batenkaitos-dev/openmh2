@@ -93,4 +93,7 @@ u64 Gfx_Vu1CheckCounts(u64 *differ);
  * game is not known to use): their count, and the first one's tag and key. */
 u32 Gfx_Oddities(const char **firstTag, u32 *firstKey);
 
+/* The second pass (gfx_pass.c; MH2_PASS in a development build, the ring in a release): its counts, as one log line at the run's end (a development log; a release only drains the pass thread). */
+void Gfx_PassFinish(void);
+
 #endif

@@ -1878,7 +1878,7 @@ void EmRangedAttack_DrawParts(DrawSlot *slot)
         if (k == -1) {
             goto end;
         }
-        emModel = gScene.partModels[k];
+        emModel = SCENE_PART_MODELS(k);
         if (emModel == NULL || !emModel->active) {
             goto end;
         }

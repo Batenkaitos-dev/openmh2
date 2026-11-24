@@ -49,6 +49,7 @@
 #include "sound.h"
 #include "area.h"
 #include "texture.h"
+#include "content_wtype.h"   /* the content core's accessors (a header of its own) */
 #include "lobby_labels.h"
 #include "area_draw.h"
 #include "bgm.h"
@@ -11753,6 +11754,7 @@ void Hud_DrawTargetMarker(f32 *pos)
         return;
     }
     PC_HUD_PIVOT(x);   /* placed from a 3D point: the widescreen shape is taken about it */
+    PC_GS_ANCHOR(0x10000, pos);   /* ...and the in-between pictures of a higher frame rate move it with the point */
     Gfx_SetTexFilter(GFX_TEX_BILINEAR);
     Tex_Prepare(1, 326);
     Tex_Bind(326);
@@ -11776,6 +11778,7 @@ void Hud_DrawTargetMarker(f32 *pos)
         piece++;
     }
     PC_HUD_PIVOT_END();
+    PC_GS_ANCHOR_END();
 }
 
 /* Sets up a grid over the items Recipe_IsListedFor lists for filter (items 1 to 920), for
@@ -12069,6 +12072,9 @@ void HelpWindow_Draw(u8 page, u16 line, s8 column)
             spr.u1 = spr.u0 + 30;
             spr.v1 = spr.v0 + 30;
             spr.color = gItemColors[data->color];
+
+
+
             Sprite_Draw(&spr);
             if (data->flags2 & 1) {
                 *(u32 *)&spr.u0 = TEX_UV(128, 224);
@@ -12141,7 +12147,12 @@ void Deco_DrawDetails(u16 item, s16 x, s16 y, s8 view, u8 pal)
         Font_SetSpacing(18, 18);
         Font_SetPos(x, y);
         Font_SetColor(colors[0]);
+
+
+
+
         Text_Printf(gHelpTexts[HELP_PAGE_ITEMS][HELP_ITEM_LINE(item)]);
+
         break;
     case 1:
         Font_SetColor(colors[1]);
@@ -13661,6 +13672,31 @@ s16 StatusPage_DrawRank(s16 x, s16 y)
         }
         y += 40;
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     return y;
 }
 
@@ -13873,7 +13909,14 @@ void StatusPage_DrawEquipment(EquipItem *weapon, EquipItem *equip)
     spr.y = y;
     Equip_GetIconUV(weapon, (struct Pt *)&spr.u0, (struct Pt *)&spr.u1);
     spr.color = Equip_Color(Equip_GetRarity(weapon->type, weapon->id), 255, 0);
+
+
+
+
+
+
     Sprite_Draw(&spr);
+
     spr.v0 = 289;
     spr.v1 = 319;
     for (i = 0; i < 5; i++) {
@@ -14372,7 +14415,11 @@ u16 Equip_Code(EquipItem *item, EquipItem *other)
     if (item->id == 0) {
         return 0;
     }
+
+
+
     if (item->id >= 900) {
+
         return 1;
     }
     deco = 0;
@@ -14544,7 +14591,11 @@ void EquipWindow_Draw(Player *pl, EquipItem *item, s16 x, s16 y, u8 flags, Equip
     pos[1] = y;
     lvl = frame & 7;
     Window_DrawText(&gEquipWindowBox, pos, (u8 *)0);
+
+
+
     if (item != NULL && item->id >= 900) {
+
         Text_SetColor(col);
         Font_SetPos(x + 54, y + 10);
         Text_Draw(gUnknownEquipText[0]);
@@ -14712,7 +14763,14 @@ void Equip_DrawIcon(EquipItem *item, s16 x, s16 y, u8 flags)
     } else {
         spr.color = 0xFF808080;
     }
+
+
+
+
+
+
     Sprite_Draw(&spr);
+
 }
 
 void EquipMenu_DrawSkills(EquipItem *e, s16 x, s32 y, EquipItem *cmp, u8 flags); /* unit's own declaration: declared here as EquipWindow_DrawDetails calls it; with the definition's void (EquipItem *e, s16 x, s32 y, EquipItem *cmp, u8 flags), the call compiles differently */
@@ -15088,11 +15146,19 @@ void EquipWindow_DrawDetails(Player *pl, EquipItem *item, s16 x, s16 y, u8 flags
         switch (item->type) {
         case 7:
             Text_DrawLines(x, y + 60, gHunterTypeLabels, 20);
+
+
+
             names = gGunDescTexts[id];
+
             break;
         case 6:
             Text_DrawLines(x, y + 60, gHunterTypeLabels, 20);
+
+
+
             names = gBladeDescTexts[id];
+
             break;
         case 0:
             id += 237;
@@ -15343,7 +15409,9 @@ s32 Decoration_SkillRows(u16 item)
 }
 
 extern u8 gDecoRowLayouts[];
+
 extern char *gItemNames[];
+
 extern char *gDecoNameFmt;
 
 /* The decorations of a piece of equipment and their skills: the combination of its decoration sizes
@@ -15510,6 +15578,9 @@ void EquipWindow_DrawItemList(GunData *gun, s16 x, s16 y)
 u8 gStatusEquipIconU[8] = {
 #include "sub_main/004326B8.inc"
 };
+
+
+
 s32 gWeaponClassMultipliers[12] = {
 #include "sub_main/004326C0.inc"
 };

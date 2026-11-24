@@ -185,6 +185,12 @@ static void FindEvents(const u8 *p, u32 qwords)
 
 void gs_gif(int path, const void *data, u32 qwords)
 {
+    if (gGfxPassRun) {   /* the second pass's stream: nothing of the game's GS sees it */
+        Pass_Out(path, data, qwords);
+        return;
+    }
+    if (gGfxPassOpen)
+        Pass_Real(path, data, qwords);
     Record(GFX_GS_GIF, (u32)path, data, qwords * 16);
     FindEvents(data, qwords);
 }
@@ -210,7 +216,8 @@ int gs_read_fifo(void *dst, u32 qwords)
 
 void Gfx_VBlankStart(u64 vblank)
 {
-    (void)vblank;
+    (void)vblank;   /* (the release build's Pass_VBlankStart does not use it) */
+    Pass_VBlankStart(vblank);
     sField ^= 1;
     sGs.csr |= 0x8; /* VSINT */
     if (!(sGs.imr & 0x800))
@@ -227,6 +234,7 @@ __attribute__((weak)) u64 Pal_FreezeBias(void)   /* pal_freecam.c's: the pause's
 
 void Gfx_VBlankEnd(u64 vblank)
 {
+    Pass_StepEnd(vblank);
     if (sSink) {
         sSink(GFX_GS_VBLANK, (u32)vblank, &sField, 4);
         return;
@@ -360,4 +368,22 @@ void gs_init(void)
     memset(&sGs, 0, sizeof(sGs));
     sGs.imr = 0x7F00;
     sField = 0;
+}
+
+/* The second pass's snapshot (gfx_pass.c): the anomaly counters, which the pass must not move. */
+u32 gs_state(void *buf, int load)
+{
+    u32 *w = buf;
+    if (w) {
+        if (load) {
+            sOddities = w[0];
+            sOddityKey = w[1];
+            sNSeen = w[2];
+        } else {
+            w[0] = sOddities;
+            w[1] = sOddityKey;
+            w[2] = sNSeen;
+        }
+    }
+    return 3 * sizeof(u32);
 }

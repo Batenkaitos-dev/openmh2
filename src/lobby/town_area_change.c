@@ -24,6 +24,9 @@
 #include "objhead.h"
 #include "save.h"
 #include "pad.h"
+
+
+
 #include "lobby_state.h"
 #include "lobby_globals.h"
 #include "lobby_npc.h"
@@ -175,7 +178,11 @@ void Town_LoadAreaFile(u16 area)
     s32 file;
 
     if (area != 0) {
+
+
+
         file = gAreaFiles[Area_GetSetIndex(area)];
+
         if (file != -1) {
             LoadCompressedFile(gLbguildFree, file);
         }
@@ -215,6 +222,10 @@ u8 Town_EnterArea(u16 area, s32 newDrawSlots)
     s8 i;
     s16 setIndex;
     u8 outfit;
+
+
+
+
     Player *pl;
 
     if (gScene.area == AREA_HUB_0x57) {
@@ -251,7 +262,31 @@ u8 Town_EnterArea(u16 area, s32 newDrawSlots)
         Mem_Compact();
         setIndex = Area_GetSetIndex(area);
         slot = gTownAreaSets[setIndex];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         for (i = 0; i < AREA_MODEL_SLOTS; i++, slot++) {
+
             if (slot->kind == AREA_MODEL_POOGIE) {
                 if (Game_IsOnline() == 1) {
                     outfit = ((HunterCard *)gNetUsers[MyHouse_LocalSlot()].text)->poogieOutfit;
@@ -267,6 +302,24 @@ u8 Town_EnterArea(u16 area, s32 newDrawSlots)
                 EmSlot_LoadModel(slot->kind, slot->variant, i);
             }
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
     gTownMenuOpen = 0;
     Area_Enter(area);
@@ -345,7 +398,31 @@ void Town_SpawnNpcs(u16 area)
     NpcAreaEntry *entry;
     u8 setIndex;
 
-    n = gAreaNpcCounts[(u8)Area_GetSetIndex(area)];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    n = NPC_AREA_COUNT((u8)Area_GetSetIndex(area));
     for (i = 0; i < n; i++) {
         if (AreaNpc_IsPresent(i, area) == 1) {
             npc = EmSlot_Alloc();
@@ -360,11 +437,11 @@ void Town_SpawnNpcs(u16 area)
     }
     if (Game_IsOnline() == 0 && Area_IsHouse(gScene.area) == 1) {
         setIndex = Area_GetSetIndex(AREA_HUB_0x89);
-        entry = gAreaNpcTables[setIndex];
+        entry = NPC_AREA_TABLE(setIndex);
         if (entry == NULL) {
             return;
         }
-        n = gAreaNpcCounts[setIndex];
+        n = NPC_AREA_COUNT(setIndex);
         for (j = 0; j < n; j++, entry++) {
             if (Village_HasMealVisit(entry->id) == 1) {
                 npc = EmSlot_Alloc();

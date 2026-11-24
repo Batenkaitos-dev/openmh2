@@ -19,6 +19,9 @@ s32 LobbyMenu_KbdEntry(void *buf);
 void Quest_SendPaid(void);
 s32 QuestFlags_GetCategory(u32 *infoFlags);
 s32 Quest_CheckOrderTerms(u8 id, u8 ordering);
+
+
+
 s32 Quest_IsSpecialId(u16 id);
 void QuestRoom_ResetSettings(void);
 

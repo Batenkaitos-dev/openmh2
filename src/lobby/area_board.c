@@ -21,7 +21,7 @@
 #include "lobby_state.h"
 #include "lobby_globals.h"
 #include "lobby_net.h"
-#include "lobby_menu.h"
+#include "lobby_menu_work.h"
 #include "lobby_labels.h"
 #include "pad.h"
 #include "bgm.h"

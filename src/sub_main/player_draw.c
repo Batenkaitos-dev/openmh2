@@ -220,6 +220,340 @@ void Key3_EvalByTimer(Player *pl, Key3 *key, f32 *out)
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* Where the weapon is drawn (Player_MotionPhase, Player_DrawWeapon). */
 #define WP_PHASE_OTHER_HAND 0   /* in the other hand (PL_BONE_OTHER_HAND, gWpPoseDrawnAlt) */
 #define WP_PHASE_HAND 1         /* in the hand (PL_BONE_HAND, gWpPoseDrawn) */
@@ -241,6 +575,15 @@ struct EmBone;
 s16 Player_MotionPhase(Player *pl, s32 secondPart, s32 otherPlayer)
 {
     s16 phase = WP_PHASE_SHEATHED;
+
+
+
+
+
+
+
+
+
 
     switch (pl->weaponType) {
     case WEAPON_HAMMER:
@@ -558,6 +901,9 @@ s16 Player_MotionPhase(Player *pl, s32 secondPart, s32 otherPlayer)
         if (pl->stateGroup == PL_GROUP_GESTURE) phase = WP_PHASE_SHEATHED;
         break;
     case 413:
+
+
+
         if (Motion_ReachedFrame(pl, 0, 328.0f)) phase = WP_PHASE_SHEATHED;
         else if (Motion_ReachedFrame(pl, 0, 22.0f)) phase = WP_PHASE_HAND;
         else phase = WP_PHASE_SHEATHED;
@@ -1283,6 +1629,14 @@ extern WpPose gWpPoseDrawnAlt[];
 extern WpPose gWpPoseDrawn[];
 extern WpPose gWpPoseSheathed[];
 extern WpPose gWpPoseSharpen[];
+
+
+
+
+
+
+
+
 extern Key1 gLbgKey579ScaleZ[];
 extern Key1 gHbgKey579ScaleZ[];
 extern Key1 gLbgKey579ScaleY[];
@@ -1525,6 +1879,34 @@ void Player_DrawWeapon(Player *pl, s32 otherPlayer, f32 alpha)
             break;
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     Mtx_Identity(bones[0].local);
     Mtx_SetRotXYZ(bones[0].local, rot[0], rot[1], rot[2]);
     Mtx_Scale(scaleMtx, scale, scale, scale);
@@ -1975,6 +2357,9 @@ void Player_DrawWeapon(Player *pl, s32 otherPlayer, f32 alpha)
         Mtx_SetTrans(bones[3].local, off[0], off[1], off[2]);
         break;
     }
+
+
+
     Bone_UpdateWorldScaledRoot(wpModel->partBones[0], mtx);
     Bone_StoreMatrices(wpModel->partBones[0]);
     materials = pl->weaponModel->mats;
@@ -2077,7 +2462,11 @@ void Player_DrawWeapon(Player *pl, s32 otherPlayer, f32 alpha)
                         }
                         break;
                     case WEAPON_GUNLANCE:
+
+
+
                         if (j > 0) {
+
                             material->alpha = alpha;
                         } else {
                             material->alpha = 0.0f;
@@ -2174,7 +2563,11 @@ void Player_DrawWeapon(Player *pl, s32 otherPlayer, f32 alpha)
             }
             Model_Draw(set->id, 0);
         }
+
+
+
         if (pl->weaponType == WEAPON_GUNLANCE) {
+
             Mtx_Copy(mtx, pl->partRecs[17]->m1);
             off[0] = -18.0f;
             off[1] = 2.0f;
@@ -2826,6 +3219,12 @@ void CharMake_DrawHunter(Player *pl, s32 unused /* a1: DrawCb_CharMake passes 0 
 
 /* The file's data: the weapon poses and keyframe tracks, the bone matrix slot maps, the bone
  * markers' directions, the cycling colours and the part bones. */
+
+
+
+
+
+
 WpPose gWpPoseDrawnAlt[11] = {
 #include "sub_main/0043CA30.inc"
 };

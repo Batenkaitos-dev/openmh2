@@ -35,6 +35,7 @@
  */
 #include "common.h"
 #include <string.h>
+#include <stdint.h>
 #include "io/io.h"
 #include "io/io_pad.h"
 #include "ipc/core_ipc.h"
@@ -42,6 +43,7 @@
 #include "kernel/state.h"
 #include "pal.h"
 #include "pal_freecam.h"
+#include "pal_modcam.h"
 #include "ipc/mh2ipc.h"
 
 static void Rumble(int port, u8 small, u8 large)
@@ -71,6 +73,8 @@ static void PadFromHost(void)
             st.pressure[i] = 0;
     }
     Io_PadSetState(0, &st);
+    /* the modern camera's stick: two signed bytes of the host's pad record (zeros from a host that has none; at rest or off) */
+    Pal_CamStickInput(in.connected ? (s8)in.camTurn : 0, in.connected ? (s8)in.camTilt : 0);
 }
 
 
@@ -100,18 +104,101 @@ void Pal_LoadingScreen(s32 on)
 }
 
 /* The camera of Model_Draw (PC_GS_CAMERA in include/pal.h): the host's renderer gets it when it changes. */
+static float sModelCam[32];   /* the last camera Model_Draw passed: the label of the draw carries it */
+static float last[32];
 void Pal_GsCamera(const f32 *view, const f32 *proj)
 {
-    static float last[32];
     static int have;
     float m[32];
     memcpy(m, view, 16 * sizeof(float));
     memcpy(m + 16, proj, 16 * sizeof(float));
+    memcpy(sModelCam, m, sizeof(m));   /* the camera of the draw whose label follows (Pal_GsModel) */
     if (have && !memcmp(last, m, sizeof(m)))
         return;
     memcpy(last, m, sizeof(m));
     have = 1;
     Ipc_GsCamera(m);
+}
+
+extern f32 gViewportMtx[];   /* the clip-test matrix's third factor (the second pass: gfx_pass.c) */
+/* The label of a Model_Draw (PC_GS_MODEL in include/pal.h): kept by the chain's first tag until the DMA reads it. */
+void Pal_GsModel(u32 handle, const void *top, const void *end, s32 flags, s32 prog, const f32 *world, const void *site)
+{
+    Ipc_GsModelSet((unsigned int)((u32)(uintptr_t)top & 0x0FFFFFFF), (unsigned int)((u32)(uintptr_t)end & 0x0FFFFFFF), handle, (unsigned int)flags, (unsigned int)prog, world, sModelCam,
+                   (unsigned int)(uintptr_t)site, gViewportMtx);
+}
+
+/* The label of a 2D element placed from a 3D point (PC_GS_ANCHOR in include/pal.h): the 2D packets queued until Pal_GsAnchorEnd are its (Pal_GsAnchorPacket, called by
+ * Pal_HudQueued with each queued packet). The camera is the game's own at the call. */
+extern f32 gMtxView[];
+extern f32 gMtxProjClip[];
+static u32 sAnchorId;
+static f32 sAnchorPoint[3];
+static int sAnchorOn;
+
+void Pal_GsAnchor(u32 id, const f32 *point)
+{
+    sAnchorId = id;
+    memcpy(sAnchorPoint, point, sizeof(sAnchorPoint));
+    sAnchorOn = 1;
+}
+
+void Pal_GsAnchorEnd(void)
+{
+    sAnchorOn = 0;
+}
+
+/* The text runs made inside an anchor, by the run's address (the runs are drawn later: Font_DrawPage): a direct-mapped table, a collision loses the older run (its text
+ * is then not labelled). */
+typedef struct {
+    const void *run;
+    u32 id;
+    f32 point[3];
+    f32 cam[32];
+} RunAnchor;
+#define RUN_SLOTS 4096u
+static RunAnchor sRuns[RUN_SLOTS];
+static const RunAnchor *sRunCur;
+
+/* The game calls this one (Font_Printf), and its last statement is a memcpy: the game's tapped one, as everywhere in this library. Compiled to a jump, that memcpy
+ * would return to the game's code, and verify's trace tap, which tells the game's calls by their return address, would log it as a call of the game's, which it
+ * is not. So: no tail calls here. */
+__attribute__((disable_tail_calls))
+void Pal_GsRunNew(const void *run)
+{
+    RunAnchor *e = &sRuns[((u32)(uintptr_t)run >> 4) & (RUN_SLOTS - 1)];
+    if (sAnchorOn) {
+        e->run = run;
+        e->id = sAnchorId;
+        memcpy(e->point, sAnchorPoint, sizeof(e->point));
+        memcpy(e->cam, gMtxView, 16 * sizeof(float));
+        memcpy(e->cam + 16, gMtxProjClip, 16 * sizeof(float));
+    } else if (e->run == run) {
+        e->run = NULL;
+    }
+}
+
+void Pal_GsRun(const void *run)
+{
+    const RunAnchor *e = &sRuns[((u32)(uintptr_t)run >> 4) & (RUN_SLOTS - 1)];
+    sRunCur = e->run == run ? e : NULL;
+}
+
+void Pal_GsRunEnd(void)
+{
+    sRunCur = NULL;
+}
+
+void Pal_GsAnchorPacket(const u32 *queued, s32 qwc)
+{
+    float cam[32];
+    if (sAnchorOn) {
+        memcpy(cam, gMtxView, 16 * sizeof(float));
+        memcpy(cam + 16, gMtxProjClip, 16 * sizeof(float));
+        Ipc_GsAnchorSet((unsigned int)((u32)(uintptr_t)queued & 0x0FFFFFFF), (unsigned int)qwc, sAnchorId, sAnchorPoint, cam);
+    } else if (sRunCur) {
+        Ipc_GsAnchorSet((unsigned int)((u32)(uintptr_t)queued & 0x0FFFFFFF), (unsigned int)qwc, sRunCur->id, sRunCur->point, sRunCur->cam);
+    }
 }
 
 static void VblankPace(u64 n)

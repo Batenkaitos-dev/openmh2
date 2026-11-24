@@ -330,7 +330,7 @@ void Shadow_Draw(DrawSlot *slot)
         if (idx == -1) {
             return;
         }
-        set = gScene.partModels[idx];
+        set = SCENE_PART_MODELS(idx);
     } else {
         set = gCommonModels[0];
     }

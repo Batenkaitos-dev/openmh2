@@ -26,7 +26,9 @@
 #pragma optimization_level 4
 
 /* The monster array (em.h names it gEms, which only the game overlay links). */
+
 extern Em gEms[];
+
 
 extern u8 gPersistentEmKinds[16];
 extern MonsterBit gMonsterFlagBits[];

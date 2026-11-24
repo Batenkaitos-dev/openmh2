@@ -1846,7 +1846,8 @@ enum QuestDeskEntry {
     QUEST_DESK_BOARD = 2,       /* the quest board: the hub's shown quests */
     QUEST_DESK_BY_MAP = 3,      /* the quests by map group */
     QUEST_DESK_BY_TYPE = 4,     /* the quests by type */
-    QUEST_DESK_ENTRY_COUNT = 5
+    QUEST_DESK_ENTRY_COUNT = 5,
+    QUEST_DESK_EXPANSION = 5    /* the Expansion Quests line (the content core only): not in entries[], the cursor one past the last entry (QUEST_DESK_ENTRY) */
 };
 /* Quest_CheckOrder's results: whether the taken quest can set out now. */
 #define QUEST_ORDER_OK 0          /* it can */
@@ -1892,7 +1893,8 @@ enum QuestListKind {
     QUEST_LIST_VILLAGE = 0,         /* offline, in the village: set 0, the standard quests */
     QUEST_LIST_ONLINE = 1,          /* online: set 0, the online quests */
     QUEST_LIST_ONLINE_DESK_2 = 2,   /* online: set 1, NPC_QUEST_DESK_2's quests */
-    QUEST_LIST_AWAY = 3             /* offline, away from the village (gSave.awayFromVillage): set 0, the standard quests */
+    QUEST_LIST_AWAY = 3,            /* offline, away from the village (gSave.awayFromVillage): set 0, the standard quests */
+    QUEST_LIST_FRONTIER = 4         /* the content core: set 0, the quests of the content pack (Pal_ContentListCount) */
 };
 #define QUEST_DESK_WIN_X 0x118      /* the desk window's x when shown */
 #define QUEST_DESK_WIN_Y 0x3A       /* its y */
@@ -2031,28 +2033,8 @@ enum AreaMenuStep {
     AREA_MENU_PICK   /* the two-way choice is up */
 };
 
-/* The town menus' shared work area (3840 bytes at 0x8BDC20): a menu's Open clears it
- * (memset 3840) and starts the window slide that most menus keep first (WinSlide_Step).
- * Most units declare it as bytes; these are the menus that live there. */
-typedef union MenuWork {
-    WinSlide win;
-    PrizeMenu prize;
-    ShopMenu shop;
-    HairMenuWork hair;
-    HouseAccessMenu houseAccess;
-    AreaMenu area;
-    ContestMenu contest;
-    NameSearchMenu nameSearch;
-    IdSearchMenu idSearch;
-    AreaBoardMenu areaBoard;
-    AreaList areaList;
-    MoveMenu move;
-    VillageBoardMenu villageBoard;
-    DrinkContest drink;
-    QuestCounterMenu questCounter;
-    u8 raw[0xF00];
-} MenuWork;
-typedef char MenuWork_size_check[(sizeof(MenuWork) == 0xF00) ? 1 : -1];
+/* MenuWork, the union of the menus that live in gMenuWork, is in lobby_menu_work.h (it holds menus declared in
+ * later headers). */
 
 /* The result of a town minigame (the arm-wrestling contest's and the
  * drinking contest's result field; Minigame_DrawResult draws it). */

@@ -23,6 +23,8 @@
  *   vsync = auto|on|off   as --vsync (auto: on in fullscreen only)
  *   ssaa = N, hires = on  the enhancements (off by default; as --ssaa N and
  *                         --hires), drawn by the renderer only;
+ *   scaling = smooth|sharp|whole   how the finished picture is scaled to the window (as --scaling; smooth, the GPU's bilinear
+ *                         filter, by default), sharpness = low|medium|high the sharp mode's strength (as --sharpness; medium);
  *   texture_dump = on     the textures the game draws are written, once each, as PNGs to the textures folder's dump
  *                         (as --texture-dump; the renderer's, off by default);
  *   texture_packs = on    the PNGs in the textures folder's packs are drawn in place of the textures they are named
@@ -44,6 +46,10 @@
  *   camera_stick = hold   the camera on the right stick (camstick.c): off (default), hold (while
  *                         camera_stick_button is held: l3 by default) or on (always); camera_stick_which = right|left,
  *                         camera_stick_invert = none|x|y|xy, camera_stick_speed = 25|50|75|100 (percent of the game's turn)
+ *   camera_modern = on    the modern camera (as --smooth-camera): with the camera stick on, the right stick turns the camera at a
+ *                         speed that follows the push and tilts it smoothly between the game's lowest and highest views. It
+ *                         changes the game's state: it is the core's --smooth-camera, and a saved session or save state made
+ *                         with it is good only with it. Off by default: the camera is the game's.
  *
  * The launcher: mh2-core gets --disc (mh2's --archive, the setting, else
  * mh2-disc.arc next to mh2, in the user data folder, or the build tree's
@@ -69,7 +75,9 @@ static struct {
     char memcard[2][1024];
     char cards[1024], card[2][256];
     int fullscreen, mute, vsync;
-    int ssaa, hires, widescreen, fast_loading, offline_hub;
+    int ssaa, hires, widescreen, fast_loading, offline_hub, camera_smooth;
+    char scaling[12], sharpness[12];
+    int fps;   /* the frame rate: 30, or 60, 120 and 144 with the in-between pictures */
     int texture_dump, texture_packs, texture_cache_mb, texture_preload;
     int usb_keyboard;
     char textures[1024];
@@ -129,6 +137,10 @@ static const char *at(int line)
 #define CFG(f) .cfg = offsetof(HostConfig, f)
 
 /* One row a setting. The order is the order of --help; a prefix row (key.NAME) comes after the exact keys. */
+/* The frame rate with no fps key and no --fps (the row's default): one constant. A release build runs at 60; a development
+ * build at the game's own 30, as it always has (its 60 without MH2_PASS_CFG is the older interpolation). */
+#define FPS_DEFAULT "60"
+
 static const Setting g_rows[] = {
     /* the picture: the renderer's only */
     {.key = "ssaa", .opt = "--ssaa", .arg = "1|2|4|8|16", .type = SET_CHOICE, .how = AP_SSAA, .page = PAGE_PICTURE,
@@ -136,6 +148,9 @@ static const Setting g_rows[] = {
      .label = T_SSAA, .help = T_SSAA_H, .shown = T_SSAA_SHOWN, INTST(ssaa)},
     {.key = "hires", .opt = "--hires", .type = SET_FLAG, .how = AP_ON, .page = PAGE_PICTURE, .effect = FX_RENDERER,
      .ckind = C_FLAG, .onval = 1, CFG(hires), .dflt = "off", .label = T_HIRES, .help = T_HIRES_H, INTST(hires)},
+    {.key = "fps", .opt = "--fps", .arg = "30|60|120|144", .type = SET_CHOICE, .how = AP_FPS, .page = PAGE_PICTURE,
+     .effect = FX_RENDERER, .ckind = C_NUM, CFG(fps), .dflt = FPS_DEFAULT, .choices = "30|60|120|144", .rule = T_FPS_RULE,
+     .label = T_FPS, .help = T_FPS_H, INTST(fps)},
     {.key = "fullscreen", .opt = "--fullscreen", .type = SET_FLAG, .how = AP_ON, .page = PAGE_PICTURE, .effect = FX_RENDERER,
      .ckind = C_FLAG, .onval = 1, CFG(fullscreen), .dflt = "off", .label = T_FULLSCREEN, .help = T_FULLSCREEN_H,
      INTST(fullscreen)},
@@ -150,6 +165,14 @@ static const Setting g_rows[] = {
     {.key = "texture_packs", .opt = "--texture-packs", .type = SET_FLAG, .how = AP_ON, .page = PAGE_PICTURE,
      .effect = FX_RENDERER, .ckind = C_FLAG, .onval = 1, CFG(texture_packs), .dflt = "off", .label = T_TEXPACKS,
      .help = T_TEXPACKS_H, INTST(texture_packs)},
+    /* the finished picture's scaling to the window (scale.h): smooth is the GPU's bilinear filter, sharp a cubic filter, whole
+     * the largest whole multiple of the picture's width; sharpness is the sharp mode's */
+    {.key = "scaling", .opt = "--scaling", .arg = "smooth|sharp|whole", .type = SET_TEXT, .how = AP_TEXT, .page = PAGE_PICTURE,
+     .effect = FX_RENDERER, .ckind = C_STR, CFG(scaling), .dflt = "smooth", .choices = "smooth|sharp|whole", .label = T_SCALING,
+     .help = T_SCALING_H, .shown = T_SCALING_SHOWN, TXTST(scaling)},
+    {.key = "sharpness", .opt = "--sharpness", .arg = "low|medium|high", .type = SET_TEXT, .how = AP_TEXT, .page = PAGE_PICTURE,
+     .effect = FX_RENDERER, .ckind = C_STR, CFG(sharpness), .dflt = "medium", .choices = "low|medium|high", .label = T_SHARPNESS,
+     .help = T_SHARPNESS_H, .shown = T_SHARPNESS_SHOWN, TXTST(sharpness)},
     {.key = "texture_cache_mb", .type = SET_RANGE, .how = AP_TEXMB, .page = PAGE_CONTENT, .effect = FX_RENDERER, .restart = 1,
      .ckind = C_NUM,
      CFG(texture_cache_mb), .lo = 16, .hi = 16384, .dflt = "1024", .choices = "256|512|1024|2048|4096|8192", .label = T_TEXMB, .help = T_TEXMB_H, INTST(texture_cache_mb)},
@@ -253,6 +276,9 @@ static const Setting g_rows[] = {
     /* the camera on the right stick (camstick.c): the stick as the D-pad the game reads; nothing in the game changes */
     {.key = "camera_stick", .type = SET_TEXT, .how = AP_TEXT_SET, .page = PAGE_GAME, .effect = FX_START, .ckind = C_STR,
      CFG(camera_stick), .dflt = "off", .choices = "off|hold|on", .label = T_CAMSTICK, .help = T_CAMSTICK_H, TXTST(camera_stick)},
+    {.key = "camera_modern", .opt = "--smooth-camera", .type = SET_FLAG, .how = AP_ON, .page = PAGE_GAME, .effect = FX_COMPUTED,
+     .restart = 1, .ckind = C_FLAG, .onval = 1, CFG(camera_smooth), .dflt = "off", .label = T_CAMSMOOTH, .help = T_NONE,
+     INTST(camera_smooth)},
     {.key = "camera_stick_button", .type = SET_TEXT, .how = AP_TEXT_SET, .page = PAGE_GAME, .effect = FX_START,
      .ckind = C_STR, CFG(camera_stick_button), .dflt = "l3", .choices = "l3|select|l2|r2", .label = T_CAMSTICK_BTN,
      .help = T_CAMSTICK_BTN_H, TXTST(camera_stick_button)},
@@ -293,8 +319,7 @@ static const Setting g_rows[] = {
     {.key = "pack.", .type = SET_PACK, .prefix = 1, .hidden = 1},
     {.key = "orig", .type = SET_OLD, .hidden = 1, .help = T_OLD_ORIG},
     {.key = "any_core", .type = SET_OLD, .hidden = 1, .help = T_OLD_ANYCORE},
-    /* fps and fps60 come from a development build's file: read and ignored, as the original's keys are */
-    {.key = "fps", .type = SET_OLD, .hidden = 1, .help = T_OLD_ANYCORE},
+    /* fps60 comes from a development build's file: read and ignored, as the original's keys are */
     {.key = "fps60", .type = SET_OLD, .hidden = 1, .help = T_OLD_ANYCORE},
 };
 #define NROWS ((int)(sizeof(g_rows) / sizeof(g_rows[0])))
@@ -643,6 +668,12 @@ void settings_apply(int cli_fullscreen, int cli_mute)
             if (!g_cfg.ssaa)
                 g_cfg.ssaa = st.ssaa;
             break;
+        case AP_FPS:   /* fps: the file's, unless the command line gave one (--fps or --fps60) */
+            if (!g_cfg.fps)
+                g_cfg.fps = st.fps;
+            if (!g_cfg.fps)   /* neither: the default (a development build keeps 0, the game's own 30) */
+                g_cfg.fps = atoi(FPS_DEFAULT);
+            break;
         default:
             break;
         }
@@ -689,7 +720,7 @@ const char *settings_text(int i)
         case C_NUM: {
             int v = *(int *)cfg_at(s->cfg);
             if (s->type == SET_CHOICE)
-                snprintf(b, SBUF, "%d", v < 2 ? (s->dflt ? atoi(s->dflt) : 1) : v);   /* (no value: the choice's default, 1 for the samples, 30 for the frame rate) */
+                snprintf(b, SBUF, "%d", v < 2 ? (s->dflt ? atoi(s->dflt) : 1) : v);   /* (no value: the choice's default: 1 for the samples, FPS_DEFAULT for the frame rate) */
             else if (v)
                 snprintf(b, SBUF, "%d", v);
             break;
@@ -1349,6 +1380,25 @@ void launcher_widescreen(void)
     host_log("widescreen: on (the camera and the 2D picture are 16:9; movies are shown at 4:3)");
 }
 
+/* The modern camera reaches the core as its own option, --smooth-camera: when the camera stick is hold or on (with the stick off
+ * the setting does nothing). A command line that gives the core the option itself turns the setting on. */
+void launcher_smooth_camera(void)
+{
+    if (has_arg("--smooth-camera"))
+        g_cfg.camera_smooth = 1;
+    if (!g_cfg.camera_smooth)
+        return;
+    if (!g_cfg.camera_stick || !strcmp(g_cfg.camera_stick, "off")) {
+        if (!has_arg("--smooth-camera"))
+            g_cfg.camera_smooth = 0;   /* the camera stick is off: the modern camera has nothing to turn */
+        return;
+    }
+    if (!has_arg("--smooth-camera"))
+        launcher_core_flag("--smooth-camera");
+    host_log("modern camera: on (the right stick turns and tilts the camera; the game's state differs once it moves)");
+}
+
+
 /* The offline hub reaches the core as its own option, --offline-hub. */
 void launcher_offline_hub(void)
 {
@@ -1361,6 +1411,22 @@ void launcher_offline_hub(void)
     host_log("offline hub: on (the village's gate leads to the online town, played with no network)");
 }
 
+/* The folder a text_pack value names: a path (with a separator in it) as it is, else a folder of text_packs in the user data
+ * folder. 0 when the name has no folder to look in (there is no user data folder): OUT is then the name itself. */
+int text_pack_dir(const char *name, char *out, size_t cap)
+{
+    if (strpbrk(name, "/\\")) {
+        snprintf(out, cap, "%s", name);
+        return 1;
+    }
+    if (play_data_dir()) {
+        snprintf(out, cap, "%stext_packs/%s", play_data_dir(), name);
+        return 1;
+    }
+    snprintf(out, cap, "%s", name);
+    return 0;
+}
+
 /* The text pack reaches the core as its folder, --pack DIR: the setting's NAME is a folder of text_packs in the user data
  * folder, or (with a separator in it) a path. A pack that was asked for and is not there stops the core (it says why). */
 void launcher_text_pack(void)
@@ -1369,14 +1435,8 @@ void launcher_text_pack(void)
     static char dir[1200];
     if (!name || !*name || !strcmp(name, "off") || has_arg("--pack"))
         return;
-    if (strpbrk(name, "/\\")) {
-        snprintf(dir, sizeof(dir), "%s", name);
-    } else if (play_data_dir()) {
-        snprintf(dir, sizeof(dir), "%stext_packs/%s", play_data_dir(), name);
-    } else {
+    if (!text_pack_dir(name, dir, sizeof(dir)))
         host_log("text_pack = %s: there is no user data folder to look in (name a path)", name);
-        snprintf(dir, sizeof(dir), "%s", name);
-    }
     host_log("translation pack: %s", dir);
     launcher_core_arg("--pack", dir);
 }

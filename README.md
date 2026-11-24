@@ -4,7 +4,7 @@
 
 **A fully native port, built from the ground up.** OpenMH2 is built on [mh2-decomp](https://github.com/Batenkaitos-dev/mh2-decomp), which turns the game's code back into readable C source that, compiled for the PS2, rebuilds the original game byte for byte. OpenMH2 compiles that same source into a native PC program, with its own new code in place of the PS2's system software, so no PS2 BIOS is needed. It is not an emulator and not a recompilation: unlike a "recomp", it does not translate the PS2's machine code, and nothing emulates the PS2's processor.
 
-It adds options the PS2 never had: widescreen, sharper graphics, texture packs, save states and more. Every option is off by default, so the game plays as it did on the PS2 until you turn something on.
+It adds options the PS2 never had: higher frame rates, widescreen, sharper graphics, texture packs, save states and more. Every option but the frame rate is off by default, and the frame rate changes only the picture, so the game plays as it did on the PS2 until you turn something on.
 
 **This repository holds no game data.** You need your own copy of the game, and OpenMH2 builds everything it needs
 from it, on your PC. Nothing made from your copy ever leaves your PC, and you should not share it.
@@ -54,8 +54,9 @@ photos and the log of your last sessions are kept there too. To bring in a card 
 
 All of these are options. The guide explains each one.
 
+- **Higher frame rates**: 60 frames per second by default, for smoother movement, and 120 or 144 as well (on a PC with fewer than 8 processor threads, those run at 60). The game still runs at 30 steps a second, as on the PS2: the extra pictures never change how it plays. 30 is the game's own picture.
 - **Widescreen**: the game in 16:9, with a wider camera view. Movies stay 4:3.
-- **Anti-aliasing** (2x to 16x) and **high resolution** (twice the original, 1280x896) for a sharper image.
+- **Anti-aliasing** (2x to 16x) and **high resolution** (twice the original, 1280x896) for a sharper image, and a choice of how the picture is scaled to your screen (smooth, sharp or whole numbers).
 - **Texture packs**: replace the game's textures with your own PNG files, at the original resolution or higher (2x, 3x, etc.), and dump the game's textures to start from.
 - **Translation packs**: replace the game's text with a translation. OpenMH2 provides the tools to make one: see [Making a translation pack](#making-a-translation-pack).
 - **Save states**: save and load the whole game at any moment, with ten slots.
@@ -74,7 +75,6 @@ Credit to PCSX2 for providing a solution for better emulating the PS2's math on 
 
 ## Not in this release
 
-- **Higher frame rates.** The game runs at 30 frames per second, as it did on the PS2. Higher frame rates are currently being researched. They are difficult, because everything in the game is tied to its original frame rate.
 - **An English translation.** OpenMH2 does not come with an English translation, out of respect for the hard work of translators like the BREAK ARTS team. If you want to, you can make your own translation pack with the tools OpenMH2 provides: "Making a translation pack", below, says where they are and how to use them.
 - **Online play.** OpenMH2 has no online play, and it sends nothing anywhere. It is not set up to connect to the MHOldschool servers, out of respect for the MHOldschool team.
 
@@ -110,7 +110,7 @@ A translation pack is a folder that replaces the game's text with your own. Noth
    ```
    python3 tools/pc/textpack.py check PACK --archive ARCHIVE
    ```
-5. Put the `PACK` folder in the `text_packs` folder of the user data folder (make the `text_packs` folder if it is not there). To use it, add `text_pack = NAME` to `mh2.ini`, where `NAME` is the pack folder's name. `mh2 --text-pack NAME` does the same for one start. `text_pack = off` turns it off. (The launcher does not list translation packs. The launcher's **Folders and logs** page shows where `mh2.ini` is.)
+5. Put the `PACK` folder in the `text_packs` folder of the user data folder. The launcher's **Content** page has **Open the translation packs folder**, which makes the `text_packs` folder if it is not there and opens it. Then choose your pack on the **Content** page, in **Translation pack** (below the texture packs): it lists **Off** and each folder of `text_packs`, by the name in its `pack.ini`. **This pack** says whether the game accepts it, and why not when it does not, and the launcher writes `text_pack = NAME` to `mh2.ini` when you press **Play**. You can also write that line yourself, where `NAME` is the pack folder's name, or start `mh2 --text-pack NAME` for one start. **Off** (`text_pack = off`) turns it off.
 
 A save state made with a pack loads only with the same pack.
 

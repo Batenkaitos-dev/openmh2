@@ -21,7 +21,7 @@
 #include "common.h"
 #include "lobby_state.h"
 #include "lobby_globals.h"
-#include "lobby_menu.h"
+#include "lobby_menu_work.h"
 #include "menu_task.h"
 #include "em.h"
 #include "player.h"
@@ -1375,7 +1375,9 @@ char gGalleryPrizeRowFmt[10] = {
 };
 #pragma rodata off
 
+
 extern char *gItemNames[];
+
 
 /*
  * Draws the prize page (7 prizes per page, 2 pages): label bar, money,

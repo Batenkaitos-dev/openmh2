@@ -13,7 +13,14 @@
 #include "ipc/mh2ipc.h"
 #include "ipc/mh2ipc_os.h"
 
-/* os[0] the mapping, os[1..4] the events, os[5] the watched process, os[6] its pid */
+/* os[0] the mapping, os[1..MH2IPC_EV_COUNT] the events. The watched process's handle and its pid are this file's own,
+ * not the map's: they stood in os[5] and os[6] from the time of four events, and with the fifth event and after it the
+ * first mh2ipc_alive() closed the fifth event's handle and wrote the pid over the sixth's, so that the waits and wakes
+ * on those two events went nowhere. A process watches one other process (the core its host). */
+_Static_assert(1 + MH2IPC_EV_COUNT <= sizeof(((Mh2IpcMap *)0)->os) / sizeof(void *), "every event has a handle of its own in the map");
+static HANDLE sWatch;
+static unsigned int sWatchPid;
+
 static int open_events(Mh2IpcMap *m)
 {
     for (int i = 0; i < MH2IPC_EV_COUNT; i++) {
@@ -71,11 +78,15 @@ void mh2ipc_close(Mh2IpcMap *m)
     if (m->base)
         UnmapViewOfFile(m->base);
     m->base = NULL;
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 1 + MH2IPC_EV_COUNT; i++) {
         if (m->os[i])
             CloseHandle(m->os[i]);
         m->os[i] = NULL;
     }
+    if (sWatch)
+        CloseHandle(sWatch);
+    sWatch = NULL;
+    sWatchPid = 0;
 }
 
 void mh2ipc_wait(Mh2IpcMap *m, int ev, const unsigned int *word, unsigned int old, unsigned int timeout_ms)
@@ -100,15 +111,16 @@ int mh2ipc_alive(Mh2IpcMap *m, unsigned int pid)
 {
     if (pid == (unsigned int)GetCurrentProcessId())
         return 1;
-    if (!m->os[5] || (unsigned int)(UINT_PTR)m->os[6] != pid) {
-        if (m->os[5])
-            CloseHandle(m->os[5]);
-        m->os[5] = OpenProcess(SYNCHRONIZE, FALSE, pid);
-        m->os[6] = (void *)(UINT_PTR)pid;
-        if (!m->os[5])
+    (void)m;
+    if (!sWatch || sWatchPid != pid) {
+        if (sWatch)
+            CloseHandle(sWatch);
+        sWatch = OpenProcess(SYNCHRONIZE, FALSE, pid);
+        sWatchPid = pid;
+        if (!sWatch)
             return 0;
     }
-    return WaitForSingleObject(m->os[5], 0) == WAIT_TIMEOUT;
+    return WaitForSingleObject(sWatch, 0) == WAIT_TIMEOUT;
 }
 
 unsigned long long mh2ipc_time_ns(void)

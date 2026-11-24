@@ -30,6 +30,9 @@
 struct EmBone;
 
 /* This file's read-only data. */
+
+
+
 #pragma rodata on
 char gMotionIdBadFmt[32] = {
 #include "sub_main/0046A1E0.inc"
@@ -59,7 +62,7 @@ void Anim_SetupCommon(void)
     s32 *groupFirst;
     void **motions;
 
-    motions = gMotions;
+    motions = MOTION_TABLE;
     groupFirst = gCommonMotionGroupFirst;
     buf = gSysSettings.loadBuf;
     motionIndex = 0;
@@ -102,11 +105,11 @@ void Anim_SetupPlayer(s32 slot)
     void **out;
     u8 *buf;
 
-    out = &gMotions[slot * MOTIONS_PER_PLAYER + MOTIONS_PLAYER_FIRST];
+    out = &MOTION_TABLE[slot * MOTION_PLAYER_STRIDE + MOTIONS_PLAYER_FIRST];
     buf = gSysSettings.loadBuf;
     motionIndex = 0;
     group = 0;
-    groupFirst = gPlayerMotionGroupFirst[slot];
+    groupFirst = MOTION_GROUP_FIRST(slot);
     for (groupBase = 0; group < MOTIONS_PLAYER_GROUPS; group++, groupFirst++, groupBase += MOTION_GROUP_SIZE) {
         *groupFirst = motionIndex;
         count = MotionPack_GroupCount(buf, group);
@@ -147,12 +150,20 @@ void Anim_SetupEm(s32 slot, s32 kind)
     s32 j;
     s32 groups;
 
-    out = &gMotions[slot * MOTIONS_PER_EM + MOTIONS_EM_FIRST];
+
+
+
+    out = &MOTION_TABLE[slot * MOTIONS_PER_EM + MOTION_EM_FIRST];
+
     buf = gSysSettings.loadBuf;
     groups = EmKind_MotionGroupCount(kind) * 2;
     motionIndex = 0;
     for (group = 0; group < groups; group++) {
+
+
+
         gEmMotionGroupFirst[slot][group] = motionIndex;
+
         groupBase = group * MOTION_GROUP_SIZE;
         count = MotionPack_GroupCount(buf, group);
         for (j = 0; j < count; j++, out++, motionIndex++) {
@@ -186,11 +197,19 @@ void Anim_SetupEmSlot(s32 slot)
     void **out;
     u8 *buf;
 
-    out = &gMotions[slot * MOTIONS_PER_EM + MOTIONS_EM_FIRST];
+
+
+
+    out = &MOTION_TABLE[slot * MOTIONS_PER_EM + MOTION_EM_FIRST];
+
     buf = gSysSettings.loadBuf;
     motionIndex = 0;
     group = 0;
+
+
+
     groupFirst = gEmMotionGroupFirst[slot];
+
     for (groupBase = 0; group < 2; group++, groupFirst++, groupBase += MOTION_GROUP_SIZE) {
         *groupFirst = motionIndex;
         count = MotionPack_GroupCount(buf, group);
@@ -304,18 +323,26 @@ void Player_BeginLayerMotion(Player *pl, s32 frame, s32 blendLen, s32 part)
     inSet = id % MOTION_ID_SET;
     if (pl->isEm == 0 || (pl->ownTask != 0 && pl->playerMotions != 0)) {
         if (id >= MOTION_ID_SET) {
-            slot = &gMotions[pl->index * MOTIONS_PER_PLAYER + MOTIONS_PLAYER_FIRST];
-            slot += gPlayerMotionGroupFirst[pl->index][inSet / MOTION_GROUP_SIZE];
+            slot = &MOTION_TABLE[pl->index * MOTION_PLAYER_STRIDE + MOTIONS_PLAYER_FIRST];
+            slot += MOTION_GROUP_FIRST(pl->index)[inSet / MOTION_GROUP_SIZE];
         } else {
-            slot = gMotions;
+            slot = MOTION_TABLE;
             slot += gCommonMotionGroupFirst[inSet / MOTION_GROUP_SIZE];
         }
     } else {
         if (id >= MOTION_ID_SET) {
-            slot = &gMotions[pl->emModelSlot * MOTIONS_PER_EM + MOTIONS_EM_FIRST];
+
+
+
+
+            slot = &MOTION_TABLE[pl->emModelSlot * MOTIONS_PER_EM + MOTION_EM_FIRST];
             slot += gEmMotionGroupFirst[pl->emModelSlot][inSet / MOTION_GROUP_SIZE];
+
         } else {
             Debug_Message(gMotionIdBadFmt, (s16)id, 0, 0);
+
+
+
         }
     }
     if (pl->isEm == 0 || pl->ownTask != 0) {
@@ -323,6 +350,11 @@ void Player_BeginLayerMotion(Player *pl, s32 frame, s32 blendLen, s32 part)
     } else {
         slot = (void **)((s32 *)slot + inSet % MOTION_GROUP_SIZE);
     }
+
+
+
+
+
     if (blendLen != 0) {
         if (blendLen < 0) {
             pl->motion[part].blend = -1;
@@ -371,18 +403,26 @@ void Player_SetPartAnim(Player *pl, s32 part)
     inSet = id % MOTION_ID_SET;
     if (pl->isEm == 0 || (pl->ownTask != 0 && pl->playerMotions != 0)) {
         if (id >= MOTION_ID_SET) {
-            slot = &gMotions[pl->index * MOTIONS_PER_PLAYER + MOTIONS_PLAYER_FIRST];
-            slot += gPlayerMotionGroupFirst[pl->index][inSet / MOTION_GROUP_SIZE];
+            slot = &MOTION_TABLE[pl->index * MOTION_PLAYER_STRIDE + MOTIONS_PLAYER_FIRST];
+            slot += MOTION_GROUP_FIRST(pl->index)[inSet / MOTION_GROUP_SIZE];
         } else {
-            slot = gMotions;
+            slot = MOTION_TABLE;
             slot += gCommonMotionGroupFirst[inSet / MOTION_GROUP_SIZE];
         }
     } else {
         if (id >= MOTION_ID_SET) {
-            slot = &gMotions[pl->emModelSlot * MOTIONS_PER_EM + MOTIONS_EM_FIRST];
+
+
+
+
+            slot = &MOTION_TABLE[pl->emModelSlot * MOTIONS_PER_EM + MOTION_EM_FIRST];
             slot += gEmMotionGroupFirst[pl->emModelSlot][inSet / MOTION_GROUP_SIZE];
+
         } else {
             Debug_Message(gMotionIdBadFmt, (s16)id, 0, 0);
+
+
+
         }
     }
     if (pl->isEm == 0 || pl->ownTask != 0) {
@@ -390,6 +430,11 @@ void Player_SetPartAnim(Player *pl, s32 part)
     } else {
         slot = (void **)((s32 *)slot + inSet % MOTION_GROUP_SIZE);
     }
+
+
+
+
+
     Bone_SetPartAnim(plModel->partBones2[0], *(s32 *)slot, (u16)part);
 }
 

@@ -58,6 +58,7 @@ void KVblank_Finish(const char *reason)
     }
     sFinished = 1;
     Spu2_Advance(Kern_Now());
+    Gfx_PassFinish();
 }
 
 static void Hook(int step, u64 n)

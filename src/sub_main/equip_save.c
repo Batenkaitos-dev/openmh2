@@ -34,6 +34,9 @@
 #include "syssettings.h"
 #include "lobby_state.h"
 #include "quest.h"
+
+
+
 #include "area.h"
 #include "award.h"
 #include "bone_effects.h"
@@ -91,7 +94,9 @@ void *memcpy(void *dst, void *src, u32 n);
 s32 SavePouch_Count(u16 item);
 void Em_BonePos(void *obj, s16 bone, f32 *out);
 
+
 extern Em gEms[];
+
 
 extern u8 gAmmoLevels[][4];      /* per ammo kind: +0, +1 compared with the gun */
 extern EquipItem gEquipShown[7]; /* the equipment shown: [0] the weapon, [1 + type] each armour piece (EquipType 0-5) */
@@ -161,7 +166,11 @@ u8 Equip_GetBladeSpecial(EquipItem *item)
  */
 u8 Weapon_GetClass(u8 type, u16 id)
 {
+
+
+
     if (id > 900) {
+
         return D_0044BF3B[id];
     }
     if (type == EQUIP_BLADE) {
@@ -576,9 +585,24 @@ s32 LongSword_GaugeAtLeast(Player *pl, s16 amount)
     return 0;
 }
 
+
+
+
+
 /* Sets the player's attack percent and its base from the weapon class (gWeaponClassAttack). */
 void Player_ResetAttackPercent(Player *pl)
 {
+
+
+
+
+
+
+
+
+
+
+
     pl->attackPercent = gWeaponClassAttack[pl->weaponType][0];
     pl->attackPercentBase = gWeaponClassAttack[pl->weaponType][1];
 }
@@ -704,6 +728,93 @@ void Save_LoadSlot(u8 slot)
     gSave = gSysSave.save;
     gRandSeeds[2] = gSave.randSaved[0];
     PspLink_ClearFlags();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 
 /* Sets up a player from save data: the equipment and what follows from
@@ -2003,6 +2114,11 @@ void Save_MarkQuestCleared(u16 quest)
         if (index != 0xFFFF) {
             save->clearedQuests[(u16)(index / 32)] |= 1LL << (u16)(index % 32);
         }
+
+
+
+
+
     }
 }
 
@@ -2018,8 +2134,16 @@ s32 Save_IsQuestCleared(u16 quest)
         }
         return 0;
     }
+
+
+
     return 0;
+
 }
+
+
+
+
 
 /* The flag bytes of item's equipment type in save. Static: its callers (Equip_SetFlag and the
  * next two) keep their arguments in the argument registers across the call, as the game's code
@@ -2082,6 +2206,9 @@ void Save_ClearNewMarks(void)
     for (i = 0; i < LEGS_ENTRY_COUNT; i++) {
         save->armorFlags[4][i] &= ~(1 << EQUIP_FLAG_NEW);
     }
+
+
+
 }
 
 /* 1 when an item of equipment has an id its type's flag bytes cover (1 to ARMOR_ID_COUNT,
@@ -2177,6 +2304,23 @@ extern u8 gArmorLevelSlots[];
 extern ForgeRecipe gArmorRecipes[];
 extern ForgeRecipe gWeaponRecipes[];
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* Sets bit bit of item's flag byte in gSave, then the equipment collection awards. */
 void Equip_SetFlag(EquipItem *item, s16 bit)
 {
@@ -2188,6 +2332,11 @@ void Equip_SetFlag(EquipItem *item, s16 bit)
         EquipCollect_CheckWeapons();
         EquipCollect_CheckArmor();
     }
+
+
+
+
+
 }
 
 /* As Equip_SetFlag, on the save given. */
@@ -2201,6 +2350,11 @@ void Save_SetEquipFlag(SaveData *save, EquipItem *item, s16 bit)
         EquipCollect_CheckWeapons();
         EquipCollect_CheckArmor();
     }
+
+
+
+
+
 }
 
 /* Packs bit 0 of n bytes into (n + 7) / 8 bytes. */
@@ -2250,7 +2404,11 @@ s32 Equip_TestFlag(EquipItem *item, s16 bit)
     u8 *flags;
 
     if (Equip_IsValidId(item) == 0) {
+
+
+
         return 0;
+
     }
     flags = Save_GetEquipFlags(&gSave, item);
     return EquipFlags_Test(flags, item, bit);
@@ -2665,6 +2823,16 @@ s32 Forge_CheckRecipe(u16 list, s16 idx, s32 where)
             continue;
         }
         obtained = Save_IsItemObtained(save, recipe->mat[i].item) == 1;
+
+
+
+
+
+
+
+
+
+
         switch (where) {
         case 0:
             pouchCount = SavePouch_Count(recipe->mat[i].item);
@@ -2728,6 +2896,23 @@ s32 Forge_CheckRecipe(u16 list, s16 idx, s32 where)
             okMask |= 1 << i;
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     if (numCond == 0 || unlocked != 0) {
         if (okMask == 15) {
             return 2;
@@ -2741,6 +2926,43 @@ s32 Forge_CheckRecipe(u16 list, s16 idx, s32 where)
     }
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* 1 when box slot idx holds a gun. */
 static s32 Box_SlotIsGun(SaveData *save, s16 idx)
@@ -3522,6 +3744,9 @@ void Save_SetItemObtained(SaveData *save, u16 item)
 {
     u16 *entry;
     s16 count = 0;
+
+
+
 
     if (item != 0xFFFF && item < ITEM_ID_COUNT) {
         save->itemBits[item / 32] |= 1 << (item & 0x1F);
@@ -6617,6 +6842,14 @@ u16 *gEquipCollectLists[6] = {
 u16 gEquipCollectKinds[6] = {
 #include "sub_main/0044CC88.inc"
 };
+
+
+
+
+
+
+
+
 BladeData gBladeData[486] = {
 #include "sub_main/0044CCA0.inc"
 };
@@ -7209,6 +7442,10 @@ AreaLightZone gAreaLightZones_170[2] = {
 f32 gAreaLightColors_170[6][4] = {
 #include "sub_main/0045F0B0.inc"
 };
+
+
+
+
 ItemData gItemData[921] = {
 #include "sub_main/0045F110.inc"
 };
@@ -7445,6 +7682,10 @@ char *gItemNames[924] = {
     gItemNames_916, gItemNames_917, gItemNames_918, gItemNames_919,
     gItemNames_920, 0, 0, 0,
 };
+
+
+
+
 
 /* The equipment's texts and constants, read-only. */
 #pragma rodata on

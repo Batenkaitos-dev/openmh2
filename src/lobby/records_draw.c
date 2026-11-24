@@ -17,6 +17,9 @@
 #include "lobby_text.h"
 #include "item.h"
 #include "lobby_vobj.h"
+
+
+
 #include "lobby_state.h"
 #include "save.h"
 #include "lobby_globals.h"
@@ -413,7 +416,11 @@ void Records_DrawWeaponGenres(RecordMenu *menu, s16 x, s16 y)
     Font_SetColor(0x80101010);
     Font_SetSpacing(20, 20);
     rowY += 30;
+
+
+
     for (i = 0, groupName = gEquipGroupTexts; i < RECORDS_GENRE_COUNT; i++, groupName++) {
+
         sprintf(buf, gRecordsFmtString, *groupName);
         textX = Text_CenterX(buf, 450, 18);
         rowY += 34;
@@ -567,7 +574,9 @@ void Records_DrawTitleList(RecordMenu *menu, s16 x, s16 y)
     }
 }
 
+
 extern char *gItemNames[];
+
 
 /*
  * Draws an item category's page: the numbered rows (an obtained item
@@ -688,7 +697,11 @@ void Records_DrawWeaponList(RecordMenu *menu, s16 x, s16 y)
     baseY = (s32)y;
     centerX = x;
     Font_SetPos(x + 40, y + 30);
+
+
+
     Text_PrintfColored(gRecordsFmtString, gEquipGroupTexts[menu->genre]);
+
     if (menu->rowCount == 0) {
         Font_SetSpacing(18, 18);
         emptyText = gRecordsMenuTexts[RECORDS_MENU_NO_WEAPON];

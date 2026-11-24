@@ -47,7 +47,9 @@ extern u8 gBootMode;
  * sub_main names it by address */
 void D_6B5230(TaskSlot *t);
 
+
 extern Em gEms[20];
+
 
 /* Clears every task slot. */
 void TaskSlot_InitAll(void)

@@ -2524,7 +2524,7 @@ void DustCloud_Draw(DrawSlot *node)
             if ((index = EmSlot_FindKind(obj->var1)) == -1) {
                 return;
             }
-            kindModel = gScene.partModels[index];
+            kindModel = SCENE_PART_MODELS(index);
             scale[0] = puff->size * puff->sc[0];
             scale[1] = puff->size * puff->sc[1];
             scale[2] = puff->size * puff->sc[2];
@@ -2648,7 +2648,7 @@ void DustCloud_Draw(DrawSlot *node)
             if ((index = EmSlot_FindKind(obj->var1)) == -1) {
                 return;
             }
-            kindModel = gScene.partModels[index];
+            kindModel = SCENE_PART_MODELS(index);
             scale[0] = puff->size * puff->sc[0];
             scale[1] = puff->size * puff->sc[1];
             scale[2] = puff->size * puff->sc[2];

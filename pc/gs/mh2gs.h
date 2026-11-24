@@ -74,7 +74,20 @@ typedef struct mh2gs_config {
      * pixel for pixel); MH2GS_INTERP_TEST_SKIP interpolates step n from n-1 and n+1 and compares with the real n.
      * Both log one line a step and a summary (log) and stall to compare. */
     uint32_t interpolate;
+    /* The renderer's local memory in MB: 0 or 4 is the GS's own (the base game); 8, 16, 32 or 64 gives the content
+     * core's block pointers above 16383 room (the bank, in the register TEX1 and in BITBLTBUF). A power of two from 4
+     * to 64, else mh2gs_init returns -6. A save state is good only for the size it was made at (MH2GS_STATE_MISMATCH).
+     * Appended to the structure without a new ABI version: a state's header carries the version, and a state of the
+     * 4 MB renderer keeps loading. */
+    uint32_t vram_mb;
+    /* The in-between pictures from the core's second pass, when the host made the pass's ring: MH2GS_PASS_ON puts the pass's records on a
+     * thread of their own, each in-between picture waiting for its moment until the host's deadline and drawn the other way (from the
+     * stream) when it is not there, and the give-up to that way when too many steps are late. 0: not used (a development build reads its
+     * switches instead). Appended without a new ABI version, as vram_mb was: a host and its library come together. */
+    uint32_t pass;
 } mh2gs_config;
+
+enum { MH2GS_PASS_OFF = 0, MH2GS_PASS_ON = 1 };
 
 enum { MH2GS_INTERP_OFF = 0, MH2GS_INTERP_ON = 1, MH2GS_INTERP_TEST_IDENTITY = 2, MH2GS_INTERP_TEST_SKIP = 3 };
 
@@ -113,13 +126,21 @@ typedef int (*mh2gs_frame_poll_fn)(uint64_t id, mh2gs_frame *out);
 typedef void (*mh2gs_notify_fn)(void *user, uint64_t id, int index);
 typedef void (*mh2gs_set_notify_fn)(mh2gs_notify_fn fn, void *user);
 typedef void (*mh2gs_camera_fn)(const float *m);
+typedef void (*mh2gs_model_fn)(uint32_t handle, uint32_t flags, uint32_t prog, const float *world, const float *cam, uint32_t site);
+typedef void (*mh2gs_anchor_fn)(uint32_t id, const float *point, const float *cam);
+typedef void (*mh2gs_pass_fn)(uint32_t kind, uint32_t arg, const void *data, size_t bytes);
+typedef void (*mh2gs_pass2_fn)(uint32_t arg0, uint32_t arg1, const void *data, size_t bytes);
+typedef int (*mh2gs_pass_wait_fn)(uint32_t ms);
+typedef int (*mh2gs_pass_moment_wait_fn)(uint32_t al, uint32_t us);   /* development builds: the wait by picture */
+typedef void (*mh2gs_pass_steady_fn)(int steady);
+typedef int (*mh2gs_pass_b_left_fn)(void);   /* development builds: the steps B's phase has left (MH2_PASS_BNOWIN) */
 
 /* MH2GS_ABI_VERSION of the library; the host looks before it fills a config (a library without this function is
  * older than ABI 6). */
 MH2GS_API int mh2gs_abi_version(void);
 /* Returns 0 on success (a Vulkan device with the features paraLLEl-GS needs);
  * -1 ABI mismatch, -2 no Vulkan loader, -3 no suitable device, -4 paraLLEl-GS
- * init failed, -5 software rasterizer only (see mh2gs.cpp). */
+ * init failed, -5 software rasterizer only (see mh2gs.cpp), -6 vram_mb is not 0 or a power of two from 4 to 64. */
 MH2GS_API int mh2gs_init(const mh2gs_config *cfg);
 /* GIF data for PATH1-3: whole 128-bit words, GIFtags included. */
 MH2GS_API void mh2gs_gif(uint32_t path, const void *data, size_t bytes);
@@ -174,6 +195,28 @@ MH2GS_API void mh2gs_set_notify(mh2gs_notify_fn fn, void *user);
  * the order of the stream: the in-between pictures of the frame rate setting use it (the ground the pairing cannot follow is moved by the
  * camera's own motion); nothing else does. A library without the setting ignores it. */
 MH2GS_API void mh2gs_camera(const float *m);
+
+/* The label of a model draw (MH2IPC_REC_MODEL), in the order of the stream: the path 1 data that follows, up to the next label, is that draw's (handle:
+ * the game's model pool handle; flags: the draw's; prog: its VU1 program; world: 16 floats, the model's matrix; cam: 32 floats, the view and the projection it was drawn with). The in-between pictures pair the
+ * draws by handle and occurrence. A library without the setting ignores it. */
+MH2GS_API void mh2gs_model(uint32_t handle, uint32_t flags, uint32_t prog, const float *world, const float *cam, uint32_t site);
+/* The label of a 2D element placed from a 3D point (MH2IPC_REC_ANCHOR), in the order of the stream: the path 2 data that follows, up to the next label, is that
+ * element's (id: the call site's number and the thing it belongs to; point: 3 floats, the world point; cam: 32 floats, the view and the projection at the game's call;
+ * id 0: the end of the packet). The in-between pictures move the element with the point's place on the screen. A library without the setting ignores it. */
+MH2GS_API void mh2gs_anchor(uint32_t id, const float *point, const float *cam);
+
+/* The second pass's stream (MH2IPC_REC_PASS; development builds; design 13.11), in the order of the stream. kind 0 and 1 bracket the real records of a window (a
+ * transfer to VIF1), 2 begins the pass's stream for it (arg: the alpha in 1/256), 3 is GIF data of the pass (arg: the path), 4 ends it, 5 says that no pass was run
+ * for the window. The renderer keeps, for each step, a second stream: what came outside the windows, and the pass's in the windows' places. When every window of
+ * a step has one, the in-between picture is made from it, in place of the step with its vertices moved (design B); otherwise B's way is used for the step. A library
+ * without the setting ignores it. */
+MH2GS_API void mh2gs_pass(uint32_t kind, uint32_t arg, const void *data, size_t bytes);
+/* The pass on a thread of its own (development builds): its records come on a second ring, after the VSync of their step. arg0 = the kind (as above, 6: the window's records are all
+ * here) in the low 4 bits and the window's serial number above (the serial that kind 0's arg carried on the first ring); arg1 and the data as in mh2gs_pass. The step's stream is
+ * made at its VSync, with each window's data in its place. mh2gs_pass_wait waits up to ms milliseconds for every window of the step in progress to be whole; 1: it is, or there
+ * is nothing to wait for. A library without the setting ignores them. */
+MH2GS_API void mh2gs_pass2(uint32_t arg0, uint32_t arg1, const void *data, size_t bytes);
+MH2GS_API int mh2gs_pass_wait(uint32_t ms);
 
 /* Save states. The renderer's part of a state: the GS's local memory (4 MB), the registers (the general and the
  * privileged ones, the GIF paths), the CLUT cache, and the texture code's copy of local memory (mh2tex). One

@@ -1,0 +1,112 @@
+A palette is loaded again when TEX1 names another bank at the draw
+
+A palette is loaded at the TEX0 write, from the block that TEX0's CBP and the
+bank of the TEX1 before it name together (patch 0006). A writer that sets
+TEX1 after TEX0 (the sampling last) therefore loaded the palette from the
+bank of the texture before: the right low bits in the wrong bank.
+
+The interface now remembers, for each context, the palette bank (TEX1's
+CBP_BANK) at the context's last TEX0 write. A textured draw of a context
+whose TEX1 names another bank by then loads the palette again first, exactly
+as that TEX0 write would have with the bank in place (handle_clut_upload: the
+CLD rule, the cached pointers), and remembers the new bank. The usual order,
+TEX1 then TEX0, is untouched: the bank at the draw is the bank at the TEX0
+write.
+
+The remembered banks are state beside the registers: a caller that saves and
+restores the registers around speculative drawing saves and restores them
+(get_clut_load_banks, set_clut_load_banks), and a caller that replaces the
+registers whole calls sync_clut_load_banks.
+
+For a block below 16384 the bank is always zero and nothing is loaded again.
+
+set_clut_bank_reload(false) is a control for tests: the palette stays the one
+TEX0 loaded.
+
+The lines are kept apart from those of the earlier patches, so that each
+patch still reverse-checks on its own.
+
+diff --git a/gs/gs_interface.cpp b/gs/gs_interface.cpp
+index 5f8a1d8..a9a53dc 100644
+--- a/gs/gs_interface.cpp
++++ b/gs/gs_interface.cpp
+@@ -870,8 +870,41 @@ void GSInterface::handle_clut_upload(uint32_t ctx_index)
+ 	}
+ }
+ 
++void GSInterface::get_clut_load_banks(uint32_t banks[2]) const
++{
++	banks[0] = clut_load_bank[0];
++	banks[1] = clut_load_bank[1];
++}
++
++void GSInterface::set_clut_load_banks(const uint32_t banks[2])
++{
++	clut_load_bank[0] = banks[0];
++	clut_load_bank[1] = banks[1];
++}
++
++void GSInterface::sync_clut_load_banks()
++{
++	clut_load_bank[0] = registers.ctx[0].tex1.desc.CBP_BANK;
++	clut_load_bank[1] = registers.ctx[1].tex1.desc.CBP_BANK;
++}
++
++void GSInterface::set_clut_bank_reload(bool enable)
++{
++	clut_bank_reload = enable;
++}
++
++// A textured draw of a context whose TEX1 names another palette bank than at its last TEX0 write: the palette is
++// loaded again, as that TEX0 write would have loaded it with the bank in place (the CLD rule, the cached pointers).
++void GSInterface::handle_clut_bank_change(uint32_t ctx_index)
++{
++	clut_load_bank[ctx_index] = registers.ctx[ctx_index].tex1.desc.CBP_BANK;
++	if (clut_bank_reload)
++		handle_clut_upload(ctx_index);
++}
++
+ void GSInterface::handle_tex0_write(uint32_t ctx_index)
+ {
++	clut_load_bank[ctx_index] = registers.ctx[ctx_index].tex1.desc.CBP_BANK;
+ 	handle_clut_upload(ctx_index);
+ 	tracker.flush_if_memory_pressure();
+ }
+@@ -2977,6 +3010,9 @@ void GSInterface::drawing_kick_primitive(bool adc)
+ 
+ 	if (!adc)
+ 	{
++		const uint32_t ctx_index = registers.prim.desc.CTXT;
++		if (registers.prim.desc.TME && uint32_t(registers.ctx[ctx_index].tex1.desc.CBP_BANK) != clut_load_bank[ctx_index])
++			handle_clut_bank_change(ctx_index);
+ 		if (!draw_is_degenerate())
+ 			drawing_kick_append<list_primitive, fan_primitive, quad, num_vertices>();
+ 		else
+diff --git a/gs/gs_interface.hpp b/gs/gs_interface.hpp
+index 64ff119..0ca28e1 100644
+--- a/gs/gs_interface.hpp
++++ b/gs/gs_interface.hpp
+@@ -673,6 +673,23 @@ private:
+ 	void reset_context_state_registers();
+ 
+ 	enum { MaxPromotedBackbuffers = 4 };
++public:
++	// The bank of each context's palette pointer (TEX1's CBP_BANK) at its last TEX0 write: the bank its palette was
++	// loaded from. A textured draw of a context whose TEX1 names another bank by then loads the palette again first,
++	// as that TEX0 write would have with the bank in place (a writer that sets TEX1 after TEX0). A caller that saves
++	// and restores the registers around speculative drawing saves and restores these with them; a caller that
++	// replaces the registers whole calls sync_clut_load_banks(): nothing is loaded again until a bank changes.
++	void get_clut_load_banks(uint32_t banks[2]) const;
++	void set_clut_load_banks(const uint32_t banks[2]);
++	void sync_clut_load_banks();
++	// false: the palette stays the one TEX0 loaded (a control for tests).
++	void set_clut_bank_reload(bool enable);
++
++private:
++	uint32_t clut_load_bank[2] = {};
++	bool clut_bank_reload = true;
++	void handle_clut_bank_change(uint32_t ctx_index);
++
+ 	PromotedBackbuffer promoted_backbuffers[MaxPromotedBackbuffers];
+ 	uint32_t num_promoted_backbuffers = 0;
+ 	void promote_render_pass_to_backbuffer(const RenderPass &rp);

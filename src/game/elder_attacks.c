@@ -804,7 +804,7 @@ void KushalaBreath_Draw(DrawSlot *drawSlot)
     if (slot == -1) {
         return;
     }
-    bank = gScene.partModels[slot];
+    bank = SCENE_PART_MODELS(slot);
     if (bank == NULL) {
         return;
     }

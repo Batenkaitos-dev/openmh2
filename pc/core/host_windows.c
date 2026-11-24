@@ -117,10 +117,89 @@ HOST const char *Host_Getenv(const char *name)
     return val;
 }
 
+/*
+ * The command line split into arguments, by the rules of CommandLineToArgvW (the first word: up to the next quote when
+ * it opens with one, else up to the first blank; then: blanks separate, a quote opens or closes a quoted run, a pair
+ * of quotes inside a run is one quote and ends the run, 2n backslashes before a quote are n backslashes and the quote works, 2n+1 are
+ * n backslashes and a literal quote, backslashes elsewhere stay). It is not that function: the core must not load
+ * shell32.dll, which pulls in user32.dll, and user32 maps the desktop heap (about 20 MB, in the low addresses) before
+ * the first line of the program runs: the low pool (pal_mem.c) lies under the image, from 0x02000000, and that
+ * mapping covers part of it. The returned array and its strings are one block, never freed.
+ */
+static wchar_t **SplitCommandLine(const wchar_t *cl, int *count)
+{
+    size_t len = wcslen(cl), n = 0;
+    wchar_t **v = (wchar_t **)calloc(len / 2 + 2, sizeof(wchar_t *));
+    wchar_t *buf = (wchar_t *)calloc(len + 2, sizeof(wchar_t)), *o = buf;
+    const wchar_t *p = cl;
+    if (!v || !buf) {
+        return NULL;
+    }
+    v[n++] = o;
+    if (*p == L'"') {
+        for (p++; *p && *p != L'"'; p++) {
+            *o++ = *p;
+        }
+        if (*p) {
+            p++;
+        }
+    } else {
+        for (; *p && *p != L' ' && *p != L'\t'; p++) {
+            *o++ = *p;
+        }
+    }
+    *o++ = 0;
+    for (;;) {
+        int quoted = 0;
+        while (*p == L' ' || *p == L'\t') {
+            p++;
+        }
+        if (!*p) {
+            break;
+        }
+        v[n++] = o;
+        for (; *p && (quoted || (*p != L' ' && *p != L'\t')); ) {
+            size_t bs = 0;
+            while (*p == L'\\') {
+                bs++;
+                p++;
+            }
+            if (*p == L'"') {
+                size_t k;
+                for (k = 0; k < bs / 2; k++) {
+                    *o++ = L'\\';
+                }
+                if (bs & 1) {
+                    *o++ = L'"';
+                    p++;
+                } else if (quoted && p[1] == L'"') {
+                    *o++ = L'"';   /* a pair of quotes inside a quoted run: one quote, and the run ends */
+                    p += 2;
+                    quoted = 0;
+                } else {
+                    quoted = !quoted;
+                    p++;
+                }
+            } else {
+                size_t k;
+                for (k = 0; k < bs; k++) {
+                    *o++ = L'\\';
+                }
+                if (*p) {
+                    *o++ = *p++;
+                }
+            }
+        }
+        *o++ = 0;
+    }
+    *count = (int)n;
+    return v;
+}
+
 HOST void Host_Args(int *argc, char ***argv)
 {
     int n = 0, i;
-    wchar_t **w = CommandLineToArgvW(GetCommandLineW(), &n);
+    wchar_t **w = SplitCommandLine(GetCommandLineW(), &n);
     char **a;
     if (!w || n < 1) {
         return;
@@ -218,6 +297,24 @@ HOST int HostFile_Replace(const char *from, const char *to)
     return r;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 HOST unsigned int Host_PageSize(void)
 {
     SYSTEM_INFO si;
@@ -228,4 +325,51 @@ HOST unsigned int Host_PageSize(void)
 HOST void *Host_LowMap(unsigned int addr, unsigned int size)
 {
     return VirtualAlloc((void *)(size_t)addr, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+}
+
+typedef struct ThreadStart {
+    HostThreadFn fn;
+    void *arg;
+} ThreadStart;
+
+static DWORD WINAPI ThreadMain(LPVOID p)
+{
+    ThreadStart t = *(ThreadStart *)p;
+    free(p);
+    t.fn(t.arg);
+    return 0;
+}
+
+HOST int Host_ThreadStart(HostThreadFn fn, void *arg, int low)
+{
+    ThreadStart *t = malloc(sizeof(*t));
+    HANDLE h;
+    if (!t)
+        return 0;
+    t->fn = fn;
+    t->arg = arg;
+    h = CreateThread(NULL, 8u << 20, ThreadMain, t, STACK_SIZE_PARAM_IS_A_RESERVATION, NULL);
+    if (!h) {
+        free(t);
+        return 0;
+    }
+    if (low)
+        SetThreadPriority(h, THREAD_PRIORITY_BELOW_NORMAL);
+    CloseHandle(h);
+    return 1;
+}
+
+HOST void *Host_SemNew(void)
+{
+    return CreateSemaphoreW(NULL, 0, 0x7FFFFFFF, NULL);
+}
+
+HOST void Host_SemPost(void *sem)
+{
+    ReleaseSemaphore((HANDLE)sem, 1, NULL);
+}
+
+HOST int Host_SemWait(void *sem, unsigned int ms)
+{
+    return WaitForSingleObject((HANDLE)sem, ms) == WAIT_OBJECT_0;
 }

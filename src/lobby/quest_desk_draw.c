@@ -55,6 +55,16 @@
 #include "menu_sheets.h"
 #include "menu_widgets.h"
 #include "official_desk.h"
+#include "quest_desk.h"
+
+
+
+
+
+
+
+
+
 #include "quest_offers.h"
 #include "wanted.h"
 #include "libc.h"
@@ -68,6 +78,20 @@ void Text_PrintfColored(char *fmt, ...);
 extern u8 gMenuWork[];
 extern u32 *gDecoFrameColors[];
 void Text_DrawShadowRgb(s16 x, s16 y, u32 c1, u32 c2, char *s);
+
+
+
+
+
+
+
+
+
+
+
+
+#define DESK_ENTRY_TEXT(e) gInfoIndexTexts[e]
+
 
 /*
  * The desk window's entries, at (x, y): the season's frame
@@ -114,9 +138,9 @@ void QuestDesk_DrawFieldInfo(s16 x, s16 y)
     Text_PrintfColored(text);
     Font_SetSpacing(20, 20);
     rowY += 10;
-    for (i = 0; i < desk->entryCount; i++) {
-        entry = desk->entries[i];
-        text = gInfoIndexTexts[entry];
+    for (i = 0; i < QUEST_DESK_ENTRY_TOTAL(desk); i++) {
+        entry = QUEST_DESK_ENTRY(desk, i);
+        text = DESK_ENTRY_TEXT(entry);
         if (entry > QUEST_DESK_FORECAST) {
             textX = Text_CenterX(text, centerX, 20);
             if (i == desk->entrySel) {
@@ -131,9 +155,9 @@ void QuestDesk_DrawFieldInfo(s16 x, s16 y)
         }
     }
     rowY = headY + 150;
-    for (i = 0; i < desk->entryCount; i++) {
-        entry = desk->entries[i];
-        text = gInfoIndexTexts[entry];
+    for (i = 0; i < QUEST_DESK_ENTRY_TOTAL(desk); i++) {
+        entry = QUEST_DESK_ENTRY(desk, i);
+        text = DESK_ENTRY_TEXT(entry);
         if (entry < QUEST_DESK_BOARD) {
             textX = Text_CenterX(text, centerX, 20);
             if (i == desk->entrySel) {
@@ -231,6 +255,9 @@ void Quest_DrawOverview(s16 x, s16 y, QuestInfo *quest)
     s16 top;
     char stars[64];
 
+
+
+
     if ((quest->flags & QUEST_FLAG_MUST_ORDER) != 0 && Game_RulesOnline() == 1) {
         Quest_DrawMustOrderOverview(x, y, quest);
         return;
@@ -252,7 +279,16 @@ void Quest_DrawOverview(s16 x, s16 y, QuestInfo *quest)
     Font_SetPos(x, y += 42);
     Text_PrintfColored(gQuestSheetStrFmt, Quest_GetText(id, QUEST_TEXT_SUB_TARGET_B));
     Font_SetPos(x, y + 42);
+
+
+
+
+
+
+
+
     Text_PrintfColored(gQuestSheetStrFmt, gQuestKindNames[quest->terms]);
+
     Font_SetColor(QUEST_SHEET_LABEL_INK);
     x = x - 10;
     y = top + 20;
@@ -434,6 +470,23 @@ extern u16 gQuestStampRand;
  * a wanted quest. Nothing is drawn while the sheet is hidden (desk->unk6D or
  * the drop talk's hideSheet).
  */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void QuestBoard_Draw(s16 x, s16 y)
 {
     QuestDesk *desk = (QuestDesk *)gMenuWork;
@@ -476,6 +529,11 @@ void QuestBoard_Draw(s16 x, s16 y)
     } else {
         y += 5;
     }
+
+
+
+
+
     Font_SetSpacing(18, 18);
     switch (desk->page) {
     case QUEST_SHEET_OVERVIEW:
@@ -812,7 +870,9 @@ void QuestDesk_DrawElderInfo(s16 x, s16 y)
     ElderForecast_DrawPanel(desk->forecast, left + 20, top + 30, desk->season, desk->pm);
 }
 
+
 extern char *gItemNames[];
+
 extern u16 **gFieldGuideTables[];
 extern u16 *gFieldGuideLists[2][6];
 
@@ -954,10 +1014,13 @@ void QuestDesk_Draw(MenuTask *task)
         break;
     case QUEST_DESK_STEP_SLIDE_OUT:
     case QUEST_DESK_STEP_SLIDE_BACK:
-        switch (desk->entries[desk->entrySel]) {
+        switch (QUEST_DESK_ENTRY(desk, desk->entrySel)) {
         case QUEST_DESK_BY_TYPE:
         case QUEST_DESK_BY_MAP:
         case QUEST_DESK_BOARD:
+
+
+
             /* the y adds the wanted stamp's x shake too, as the game's code does */
             QuestBoard_Draw(desk->stamp.dx + QUEST_DESK_WIN_X + desk->wantedStamp.dx,
                           desk->stamp.dy + QUEST_DESK_WIN_Y + desk->wantedStamp.dx);
@@ -1033,7 +1096,7 @@ void QuestDesk_Draw2(MenuTask *task)
     case QUEST_DESK_STEP_SLIDE_OUT:
     case QUEST_DESK_STEP_SLIDE_BACK:
         x = desk->win.pos;
-        switch (desk->entries[desk->entrySel]) {
+        switch (QUEST_DESK_ENTRY(desk, desk->entrySel)) {
         case QUEST_DESK_BY_TYPE:
         case QUEST_DESK_BY_MAP:
             QuestDesk_DrawIndexList(x, QUEST_DESK_WIN_Y);

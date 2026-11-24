@@ -144,9 +144,9 @@ Down move a page, and the wheel scrolls without changing a value. A line at the 
 | **Home** | **Play**; the pages below, each with a summary; **Skip this screen next time** (turn it on to start the game at once); **Quit**. A banner replaces the subtitle when the game archive is missing, is not valid for this version, or has no movie table. In a release, it also has **Build the game**, which shows whether the game is built |
 | **Game archive** | the archive's status, file, size and free space; **Make the archive from a disc image...** or **from a folder...** (a file or folder dialog, then a progress screen with Cancel); choose another archive; **Make the movie table** (shown only when the table is missing) |
 | **Memory cards** | the card in each slot, the cards in the folder (marked in use when another copy of OpenMH2 has one open), **New card...**, **Import cards from an earlier version...**, open the memory cards folder |
-| **Graphics** | anti-aliasing, high resolution, fullscreen, V-Sync, mute, dump textures, use texture packs; **Defaults** shows while something differs |
-| **Game** | widescreen, Offline Dundorma, fast loading, keyboard typing and its typing key, the save states folder, and three pages: the Japanese keyboard's keys, **Cameras** (the free camera's keys and the camera on the right stick), and the save state, pause and speed keys |
-| **Content** | texture packs: whether to use them, the memory they may use, and the list of packs in order, each with its author (the `author = NAME` line of the pack's `pack.txt`) and file count. A translation is a different kind of pack, made with the tools that [the translation pack guide](translation-packs.md) describes |
+| **Graphics** | anti-aliasing, high resolution, frames per second, picture scaling and its sharpness, fullscreen, V-Sync, mute, dump textures, use texture packs; **Defaults** shows while something differs |
+| **Game** | widescreen, Offline Dundorma, fast loading, keyboard typing and its typing key, the save states folder, and three pages: the Japanese keyboard's keys, **Cameras** (the free camera's keys, and **Camera settings** for the camera on the right stick), and the save state, pause and speed keys |
+| **Content** | texture packs: whether to use them, the memory they may use, and the list of packs in order, each with its author (the `author = NAME` line of the pack's `pack.txt`) and file count. Below the list, **Translation pack** chooses a translation (**Off**, or a folder of `text_packs`; Left and Right), **This pack** says whether the game accepts it, and **Open the translation packs folder** opens where they go. [Translation packs](#translation-packs), below, has the rest |
 | **Folders and logs** | open the user data folder and the logs folder, show the last log, the photos folder (a setting), and the settings file's path. It has no summary |
 
 Your changes are written to `mh2.ini` when you press **Play**, or when you answer **Yes** to "Save the changes?" as
@@ -222,7 +222,7 @@ search. `--set KEY=VALUE` gives one setting for a single start, and `mh2 --help`
 | `cards`, `card1`, `card2` | the memory cards (section 5) |
 | `launcher = off` | start the game without the launcher |
 | `fullscreen`, `vsync = auto/on/off`, `mute` | the window and the sound (vsync auto: on in fullscreen only) |
-| `ssaa`, `hires`, `widescreen`, `offline_hub` | graphics and game options (below) |
+| `ssaa`, `hires`, `fps`, `scaling`, `sharpness`, `widescreen`, `offline_hub` | graphics and game options (below) |
 | `texture_dump`, `texture_packs`, `textures`, `texture_cache_mb`, `texture_preload`, `pack.NAME` | textures (below) |
 | `text_pack = off` | a translation: the name of a folder in `text_packs` in the user data folder, with the translation's files and text (a save state made with a pack loads only with that pack). [The translation pack guide](translation-packs.md) is for making one: the tools' commands, the pack's files, every message the checker prints, and the limits |
 | `usb_keyboard`, `usb_keyboard_toggle`, `usb_key_*` | keyboard typing (below) |
@@ -233,8 +233,9 @@ search. `--set KEY=VALUE` gives one setting for a single start, and `mh2 --help`
 
 ### The extras
 
-**Every extra is off by default.** With none of them on, the image and the behaviour are the PS2's. The free camera
-is on a key (`F9`) and does nothing until you press it.
+**Every extra but the frame rate is off by default.** The frame rate starts at 60, which changes only the picture
+(below). At 30 frames per second with no extra on, the image and the behaviour are the PS2's. The free camera is on a
+key (`F9`) and does nothing until you press it.
 
 **Anti-aliasing and high resolution.** These change how the game looks, never how it plays. `ssaa = N` smooths
 jagged edges by drawing each pixel with N samples (2, 4, 8 or 16; 1 is off). The image keeps its size. `hires = on`
@@ -242,6 +243,23 @@ draws the game at twice its original width and height (1280x896), which looks sh
 least 4 samples (`ssaa = 4`). Both ask more of your graphics card: 4 samples suits most cards, and 16 samples or
 `hires` want a recent one. If the card cannot make the samples you asked for, OpenMH2 tries again with one sample
 and says so in the log. Movies are not affected. The Graphics page has both.
+
+**Frames per second** (`fps = 30`, `60`, `120` or `144`; the Graphics page). The game itself always runs at 30 steps a
+second, as on the PS2. At 60, 120 or 144, OpenMH2 draws extra pictures between those steps, so movement looks smoother.
+It changes only the picture, never how the game plays. 60 is the default; 30 is the game's own picture, as on the PS2.
+On a computer with fewer than 8 logical processors (threads), 120 and 144 run at 60, and the log says so. If the
+computer ever falls behind, OpenMH2 steps down to a lower rate by itself.
+
+**Picture scaling** (`scaling = smooth`, `sharp` or `whole`, and `sharpness = low`, `medium` or `high`; the Graphics page).
+This is how the finished picture is stretched to your screen, which matters most on a large screen (1440p, 4K), where the
+original picture is stretched two to four and a half times. It changes only how the picture is drawn in the window, never the game.
+`smooth` is the default, and the picture the game has always had: soft, filling the window. `sharp` filters the picture
+with a method that keeps edges and small detail crisper (`sharpness` sets how much: `high` is the crispest and may show
+a thin halo along hard edges). It uses a little processor time, a few milliseconds a picture at 4K, spread over up to
+three of your processor's other cores. `whole` draws the picture at the largest whole multiple of its width that fits
+the window (in 4:3: three times on a 1440p screen, four on a 4K one), with no filtering at all: pixels stay sharp squares, and the picture
+leaves black borders. Turn on high resolution and `whole` steps in multiples of 1280 instead, so on a 1440p screen it
+is smaller than `smooth`. Each mode also has a command line option (`--scaling sharp --sharpness high`).
 
 **Widescreen** (`widescreen = on`, the Game page). The game is shown in 16:9, and the camera sees 33% more to the
 sides. The HUD, menus and text keep their shape (the 2D image is drawn 3/4 as wide about its centre, and the display
@@ -303,6 +321,26 @@ the Content page.
   levels). The log's summary says how many.
 - Do not share your dump: it is the game's own art. A pack you make from it is your own work.
 
+**Translation packs** (`text_pack = off`, the Content page). A translation pack is a folder that replaces the game's text
+(the dialogue, the quests, the menus). OpenMH2 comes with none: it gives you the tools to make one, and
+[the translation pack guide](translation-packs.md) says how. To use a pack, put its folder in the `text_packs` folder of the
+user data folder (the Content page's **Open the translation packs folder** opens it, and makes it when it is not there).
+On the Content page, below the texture packs, **Translation pack** then lists **Off** and each folder of `text_packs`,
+by the name in the folder's `pack.ini` (the folder's own name when it has none). Left and Right choose, and **Enter**
+goes on to the next choice and round to **Off**. The choice is written to `mh2.ini` as `text_pack = NAME` when you press
+**Play**, or answer **Yes** to "Save the changes?".
+
+- **This pack** shows under the choice and says whether the game accepts the pack. It is the check the game makes when it
+  starts, made without starting it: the pack's `pack.ini`, its character map, its text table (`text.tsv`) and its
+  files. When the game refuses the pack, the line at the bottom says why, Home's Content row says "translation
+  refused", and **Play** stops with the same words until you choose another pack, or **Off**.
+- With no folder in `text_packs`, the row says "none installed".
+- A folder whose name `mh2.ini` cannot hold (a `#` or `;` in it, or spaces at either end) is not listed: **Folders not
+  listed** counts them. Rename the folder to choose it.
+- A pack given on the command line (`--text-pack NAME`) shows "(command line)" and is not changed here. `text_pack` can
+  also be a path to a pack's folder; the row then shows the path.
+- A save state made with a pack loads only with the same pack (section 5, "Save states").
+
 **Keyboard typing** (`usb_keyboard = on`, the Game page). The PS2 game takes text from a USB keyboard where it asks
 for a name or a chat line: romaji becomes kana, Space and the arrow keys convert, and Return accepts. This option
 connects your keyboard to the game as that USB keyboard, for the whole session. Your keyboard is also the game
@@ -334,8 +372,8 @@ click) and push the stick, and the camera turns. Let go, and a flick of the stic
 still pushed when you let go is held back from the game until it comes to rest. `camera_stick = on` makes the stick
 the camera all the time, for places where you do not attack. `camera_stick_which` chooses the stick (`right` or
 `left`). `camera_stick_invert` reverses an axis (`x`, `y`, `xy`, `none`). `camera_stick_speed` is how fast the camera
-turns at full tilt, as a share of the D-pad's turning speed (25, 50, 75 or 100). The mode, the invert and the speed
-are on the Cameras page; the other two are in `mh2.ini`. The game and your saves are the same as before. The
+turns at full tilt, as a share of the D-pad's turning speed (25, 50, 75 or 100). **Modern camera** (`camera_modern = on`, with `camera_stick` at `hold` or `on`) makes the stick an omnidirectional camera. It is off by default. It changes what the game computes, so a save state made with it on needs it on. The mode, Modern camera, the invert and the speed
+are on the Camera settings page, opened from the Cameras page; the other two are in `mh2.ini`. With Modern camera off, the game and your saves are the same as before. The
 camera moves only in hunts and the dojo, because the village's camera does not turn with the D-pad either.
 
 **The free camera and photo mode.** Press `F9` in the village or in a hunt, and the camera is yours. It starts
@@ -415,10 +453,14 @@ about 100 KB per texture and stops at 20,000 files per session.
    underruns at the end of a session. (`mh2` does not start at all without SDL3's library next to it.)
 8. **A save state is refused.** The line on the screen gives the reason (another version or another setting). Put the
    setting back, or make a new save state.
-9. **The launcher or a setting does nothing.** A setting given on the command line wins over the file for that
+9. **A translation pack is refused.** The Content page's **This pack** says "the game refuses it", and the line at the
+   bottom says why: a `pack.ini` that is not well-formed, a character map that is not there, a line of `text.tsv`
+   (it names the line), or a file that cannot be read. Fix the file, or choose another pack, or **Off**. The author's
+   tool `textpack.py check PACK` says every fault at once ([the translation pack guide](translation-packs.md), section 3.4).
+10. **The launcher or a setting does nothing.** A setting given on the command line wins over the file for that
    start. Check `mh2 --help` for the option, and check that the line in `mh2.ini` has no typo (the log names the
    lines it did not use).
-10. **Starting over.** Copy your memory cards (the `cards` folder) and `mh2.ini` somewhere safe first. Then move the
+11. **Starting over.** Copy your memory cards (the `cards` folder) and `mh2.ini` somewhere safe first. Then move the
     user data folder aside. The next start is a first start, and the launcher makes the game archive again from the
     disc. To save the 2.7 GB, keep `mh2-disc.arc` and `mh2-movies.txt` in place.
 

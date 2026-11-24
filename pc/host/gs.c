@@ -13,10 +13,13 @@
  * another thread asks for. gs_init starts the thread and waits for its
  * answer, before the core starts.
  */
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "hfr.h"
+/* A development build's switch (the environment); a release build reads none and names none */
+#define GS_ENV(name) ((const char *)0)
 #define HF_STAT_MAX 60000   /* (development builds) the values the percentiles are made of */
 #include "mh2host.h"
 #include "packs.h"
@@ -47,6 +50,36 @@ static struct {
     mh2gs_frame_poll_fn frame_poll;
     mh2gs_set_notify_fn set_notify;
     mh2gs_camera_fn camera;
+    mh2gs_model_fn model;
+    mh2gs_pass_fn pass;
+    mh2gs_pass2_fn pass2;
+    mh2gs_pass_wait_fn pass_wait;
+    mh2gs_pass_moment_wait_fn pass_mom_wait;   /* the wait by picture (the pass with its ring; MH2_PASS_PICWAIT=1 in a development build) */
+    mh2gs_pass_steady_fn pass_steady;
+    double pw_lead_ns, pw_cap_ns;              /* a picture's moment is waited for until its time less a margin (MH2_PASS_PICLEAD, ms, 4), and never past this long after the VSync record (MH2_PASS_PICCAP, ms, 31) */
+    uint64_t pw_waits, pw_late, pw_ready;      /* pictures whose moment was waited for; of those, the deadline came first; the moment was there (or none was to come) */
+    SDL_Thread *pass_thread;   /* the reader of the pass thread's ring (the pass with its ring; MH2_PASS_THREAD=1 in a development build) */
+    int pass_sync;             /* MH2_PASS_SYNC=1 (tests): the VSync waits for the pass thread without a limit */
+    unsigned pass_wait_ms;     /* the limit, MH2_PASS_WAITMS (default 15) */
+    int pass_waitfirst;        /* MH2_PASS_WAITFIRST=1 (tests): the wait comes before the real picture, as it did before the real picture went first */
+    int real_due, real_started;   /* this VSync: a real picture is to be shown / has been started */
+    double vs_arrival;         /* the time the VSync record was taken up (ns) */
+    /* MH2_PASS (development): the core stamps each VSync record with the time it reached the VSync (MH2IPC_REC_STAMP), and the clock uses that time, not the time the reader took the record up */
+    double stamp_t;            /* the stamp of the next VSync record, in SDL_GetTicksNS's time */
+    unsigned stamp_state;      /* the core's pacing timeline at that VBlank (the stamp's second word): 0 none, 1 on it, 2 began or broke */
+    unsigned stamp_plan, vs_plan;   /* the live plan's VBlank number the core's stamp names (0: none) and, for the VSync being made, the same */
+    int live;                  /* MH2_PASS_LIVE=1 (development): the host publishes each step's plan at its anchor and the core's moments are made at it (plan 11's step 5a) */
+    HfrPlan pred[2];           /* the plans published at the last two anchors (each for the step two anchors on, so that the core has it before its first window), by slot (VBlank number / 2) & 1 */
+    uint32_t pred_vb[2];       /* the VBlank number each plan's step's VSync is expected to have (0: none) */
+    uint64_t lv_steps, lv_nopred, lv_unused, lv_stale, lv_used, lv_pics_c, lv_pics_b;   /* anchors; with no plan published for them; whose moments the core did not make at the plan; whose b had moved; steps that kept their moments; pictures from a moment / B's by the match */
+    int stamp_have, nostamp, notimeline;   /* a stamp is waiting; MH2_PASS_NOSTAMP=1 (the control): the stamps are not used; MH2_PASS_NOTIMELINE=1 (the control): the stamps' timeline state is ignored, a jump is judged by the old rule */
+    uint64_t st_stamp_n, st_stamp_over1, st_stamp_over8;   /* VSync records that had a stamp; read over 1 ms and over 8 ms after it */
+    double st_stamp_sum, st_stamp_max, stamp_off;
+    int stamp_off_have;
+    uint64_t st_rs_n, st_rs_over4, st_pw_slept, st_pw_real;   /* real pictures started; started over 4 ms after the record; waits that slept; of them with the real picture still to start */
+    double st_rs_sum, st_rs_max, st_pw_ms;
+    uint64_t st_pw_first, st_pw_last;   /* the VSync records (counted from 1) of the first and the last wait that slept with the real picture still to start */
+    mh2gs_anchor_fn anchor;
     /* the VSync being made (on_vsync): the pictures the library tells of while mh2gs_vsync runs (gs_notify) are entered at once */
     uint64_t cur_vblank;
     int cur_real, note_real, in_call;   /* in_call: inside mh2gs_vsync (the step down waits for its return) */
@@ -152,6 +185,13 @@ static int gs_load(void)
     gs.frame_poll = (mh2gs_frame_poll_fn)SDL_LoadFunction(gs.lib, "mh2gs_frame_poll");
     gs.set_notify = (mh2gs_set_notify_fn)SDL_LoadFunction(gs.lib, "mh2gs_set_notify");   /* optional */
     gs.camera = (mh2gs_camera_fn)SDL_LoadFunction(gs.lib, "mh2gs_camera");   /* optional */
+    gs.model = (mh2gs_model_fn)SDL_LoadFunction(gs.lib, "mh2gs_model");   /* optional */
+    gs.pass = (mh2gs_pass_fn)SDL_LoadFunction(gs.lib, "mh2gs_pass");   /* optional */
+    gs.pass2 = (mh2gs_pass2_fn)SDL_LoadFunction(gs.lib, "mh2gs_pass2");   /* optional */
+    gs.pass_wait = (mh2gs_pass_wait_fn)SDL_LoadFunction(gs.lib, "mh2gs_pass_wait");   /* optional */
+    gs.pass_mom_wait = (mh2gs_pass_moment_wait_fn)SDL_LoadFunction(gs.lib, "mh2gs_pass_moment_wait");   /* optional, development builds of the library */
+    gs.pass_steady = (mh2gs_pass_steady_fn)SDL_LoadFunction(gs.lib, "mh2gs_pass_steady");   /* optional */
+    gs.anchor = (mh2gs_anchor_fn)SDL_LoadFunction(gs.lib, "mh2gs_anchor");   /* optional */
     if (!gs.state_get || !gs.state_set || !gs.state_size) {
         host_log("%s has no save state functions; running without graphics", path);
         SDL_UnloadObject(gs.lib);
@@ -182,8 +222,21 @@ static void gs_make_renderer(void)
     cfg.high_resolution_scanout = g_cfg.hires ? 1 : 0;
     /* the in-between pictures (fps 60, 120 or 144; off by default): one renderer at every rate, the alphas planned here (hf_before_vsync) and
      * the pictures shown by the timed presenter (present.c); 60 is the one picture between each two (alpha 1/2); display only */
-    gs.rate = 30;   /* 1.0.0 draws 30 pictures a second: no in-between pictures, no second renderer, no speculation (the library's interpolate is off) */
+    /* 120 and 144 need HFR_MIN_CPUS logical processors (hfr_rate_rule): below that they are 60, and the log says so */
+    int cpus = SDL_GetNumLogicalCPUCores();
+    gs.rate = hfr_rate_rule(g_cfg.fps, cpus);
+    if (g_cfg.fps > 60 && gs.rate == 60)
+        host_log("%d frames per second needs %d logical processors (this computer has %d): 60 frames per second", g_cfg.fps, HFR_MIN_CPUS, cpus);
     cfg.interpolate = gs.rate >= 60 ? MH2GS_INTERP_ON : MH2GS_INTERP_OFF;
+    /* the in-between pictures from the core's second pass, whose ring the host made for the rate (main.c): a release build's form, and a
+     * development build's with MH2_PASS_CFG=1; otherwise a development build's library reads its switches */
+    const int pass_cfg = 1;
+    cfg.pass = pass_cfg && g_ipc->pass.size && gs.rate >= 60 ? MH2GS_PASS_ON : MH2GS_PASS_OFF;
+    /* the renderer's local memory: the GS's 4 MB for the base core; 8 MB for the content core, whose texture area reaches past
+     * block 16383 (a state is good only for the memory it was made with, so the two cores' states are not exchanged) */
+    cfg.vram_mb = g_cfg.content_core ? 8 : 4;
+    if (g_cfg.content_core)
+        host_log("graphics memory: 8 MB (the content core)");
     if (gs.rate > 30)
         cfg.log = on_gs_log;   /* its summary at the end */
     cfg.on_event = on_event;
@@ -348,10 +401,102 @@ static void hf_fall_back(void)
     gs.interp_stop();   /* 30: no in-between pictures */
 }
 
-/* Before a VSync: the clock, and the alphas of the refreshes of the frame whose real picture this VSync ends (ANCHOR: it flips). */
-static void hf_before_vsync(uint64_t vblank, int anchor, double arrival)
+/* The live alphas (plan 11's step 5a), at an anchor whose real picture is shown at b: first the plan published at the last anchor against this one (the core made its moments at it when its stamp names this VBlank; each
+ * refresh that has a moment within a quarter of a refresh of its time takes the moment's alpha, the others are B's; a step whose b has moved by over a millisecond is B's whole), then the plan of the next step, published
+ * with the VBlank number its VSync is expected to have. At 60 the one picture is at 128 whenever the moment is there. */
+static void hf_live(uint64_t vblank, double b)
 {
-    double t = hfr_clock(&gs.clk, arrival, vblank);
+    double ref, rd;
+    int dv;
+    if (!present_grid(&ref, &rd, &dv)) {
+        ref = b;
+        rd = 1e9 / (double)gs.rate;
+        dv = 1;
+    }
+    const uint32_t vb = (uint32_t)vblank;
+    const HfrPlan *pr = &gs.pred[(vb >> 1) & 1u];
+    gs.lv_steps++;
+    if (!gs.pred_vb[(vb >> 1) & 1u] || gs.pred_vb[(vb >> 1) & 1u] != vb)
+        gs.lv_nopred++;
+    else if (gs.vs_plan != vb)
+        gs.lv_unused++;
+    else {
+        HfrPlan act;
+        HfrMatch mt;
+        act.b = b;
+        act.n = gs.hf_n;
+        for (int i = 0; i < gs.hf_n; i++) {
+            act.alpha[i] = gs.hf_alpha[i];
+            act.tau[i] = gs.hf_tau[i];
+        }
+        hfr_match(pr, &act, rd * dv, gs.rate <= 60 ? 1e9 : HFR_LIVE_STEP_NS, &mt);
+        if (mt.stale)
+            gs.lv_stale++;
+        else
+            gs.lv_used++;
+        for (int i = 0; i < gs.hf_n; i++)
+            if (mt.use[i] >= 0)
+                gs.hf_alpha[i] = pr->alpha[mt.use[i]];
+        /* The step whose b kept within the tolerance has the plan's pictures, at the plan's alphas, their times moved by b's shift: the actual refreshes' own list differs from the plan's by the return
+         * times of the presents that fix the grid (they jitter by up to half a refresh) and by a refresh at the edge of the step, so a match by time left whole steps and single pictures to B though the
+         * core had made every moment. MH2_LIVE_MATCH=1 gives the match by time (the control). */
+        static int old_match = -1;
+        if (old_match < 0)
+            old_match = GS_ENV("MH2_LIVE_MATCH") != NULL && GS_ENV("MH2_LIVE_MATCH")[0] == '1';
+        if (!old_match && !mt.stale && pr->n > 0) {
+            gs.hf_n = pr->n < HFR_MAX ? pr->n : HFR_MAX;
+            for (int i = 0; i < gs.hf_n; i++) {
+                gs.hf_alpha[i] = pr->alpha[i];
+                gs.hf_tau[i] = pr->tau[i] + (b - pr->b);
+            }
+            mt.matched = gs.hf_n;
+            mt.bs = 0;
+        }
+        gs.lv_pics_c += (uint64_t)mt.matched;
+        {   /* MH2_LIVE_LOG=FILE: a line for each anchor with a plan used: its VBlank, the plan's alphas, the actual refreshes' alphas before the match and after it, and the match's counts */
+            static FILE *lf;
+            static int lf_init;
+            if (!lf_init) {
+                lf_init = 1;
+                const char *e = GS_ENV("MH2_LIVE_LOG");
+                if (e)
+                    lf = hfs_fopen(e, "w");
+            }
+            if (lf) {
+                fprintf(lf, "anchor %u: stale %d b %.3f plan n %d:", vb, mt.stale, b / 1e6, pr->n);
+                for (int i = 0; i < pr->n; i++)
+                    fprintf(lf, " %u", (unsigned)pr->alpha[i]);
+                fprintf(lf, "; actual n %d:", gs.hf_n);
+                for (int i = 0; i < gs.hf_n; i++)
+                    fprintf(lf, " %u", (unsigned)act.alpha[i]);
+                fprintf(lf, " -> ");
+                for (int i = 0; i < gs.hf_n; i++)
+                    fprintf(lf, " %u", (unsigned)gs.hf_alpha[i]);
+                fprintf(lf, "; matched %d bs %d\n", mt.matched, mt.bs);
+                fflush(lf);
+            }
+        }
+        gs.lv_pics_b += (uint64_t)mt.bs;
+    }
+    /* the plan of the step after the next: the core reads a step's plan at the step's first window, which it reaches before this anchor's record is read, so the plan is written two steps ahead (the real
+     * picture of the next step is expected a step after b, and its in-between pictures follow it); the slot its number names keeps it until the step that uses it */
+    const uint32_t nvb = vb + 4u, slot = (nvb >> 1) & 1u;
+    hfr_predict(b + 2.0 * HFR_VBLANK_NS, ref, rd, dv, gs.rate <= 60, &gs.pred[slot]);
+    gs.pred_vb[slot] = nvb;
+    uint32_t al[MH2IPC_LIVE_MAX];
+    for (int i = 0; i < gs.pred[slot].n && i < (int)MH2IPC_LIVE_MAX; i++)
+        al[i] = gs.pred[slot].alpha[i];
+    /* MH2_PASS_BNOWIN=N: no windows in B's phase. The plan's step is two steps after this anchor's, so it falls in B's phase when the phase has three steps or more left before this anchor's step is
+     * made (the library counts a step when it has made it); such a step's plan goes to the core empty, with no fallback, and the core makes no moments for it (it still keeps the step's draws, so
+     * the first step back has its partners). N - 1 more steps at the phase's end keep their plans. The host's own copy of the plan is untouched: B's pictures take the refreshes' alphas. */
+    uint32_t pn = (uint32_t)gs.pred[slot].n, pfb = gs.rate <= 60 ? 1u : 0u;
+    mh2ipc_liveplan_write(&g_ipc->live[slot], nvb, pn, al, pfb);
+}
+
+/* Before a VSync: the clock, and the alphas of the refreshes of the frame whose real picture this VSync ends (ANCHOR: it flips). */
+static void hf_before_vsync(uint64_t vblank, int anchor, double arrival, unsigned state)
+{
+    double t = hfr_clock_timeline(&gs.clk, arrival, vblank, state, 0);
     gs.hf_n = 0;
     if (anchor) {
         if (gs.hf_lag < HFR_VBLANK_NS)
@@ -369,17 +514,22 @@ static void hf_before_vsync(uint64_t vblank, int anchor, double arrival)
             gs.hf_n = hfr_plan_half(b, gs.hf_alpha, gs.hf_tau);
         else
             gs.hf_n = hfr_plan(b, ref, rd, dv, gs.hf_alpha, gs.hf_tau, HFR_MAX);
+        if (gs.live)
+            hf_live(vblank, b);
     }
     double al[HFR_MAX];
     for (int i = 0; i < gs.hf_n; i++)
         al[i] = (double)gs.hf_alpha[i] / 256.0;
     gs.set_alphas(al, (uint32_t)gs.hf_n);
+    if (gs.pass_steady)
+        gs.pass_steady(gs.clk.steady >= 32);
 }
 
 static void hf_add(uint64_t id, uint64_t vblank, double tau, int real, unsigned alpha)
 {
-    if (!id || gs.npend >= (int)(sizeof(gs.pend) / sizeof(gs.pend[0])))
+    if (!id || gs.npend >= (int)(sizeof(gs.pend) / sizeof(gs.pend[0]))) {
         return;
+    }
     gs.pend[gs.npend++] = (struct HfPend){id, vblank, tau, real, alpha, 0};
 }
 
@@ -395,13 +545,33 @@ static void hf_after_vsync(uint64_t id, uint64_t vblank, int real)
 }
 
 static void hf_poll(void);
+static void pass_step_wait(void);
+static void pass_pic_wait(int k);
 
 /* The library tells of a picture while mh2gs_vsync is still making the step's others (mh2gs_set_notify): it is entered now, and the copies
  * started before are looked at, so that a finished one reaches the window at once and not when the call returns. */
 static void gs_notify(void *user, uint64_t id, int index)
 {
     (void)user;
+    if (index <= -16) {   /* the library is about to make picture k: its moment is waited for (MH2_PASS_PICWAIT) */
+        pass_pic_wait(-16 - index);
+        return;
+    }
+    if (index == -4) {   /* the library has started the real picture: the pass thread's windows are waited for now */
+        if (!gs.pass_waitfirst)
+            pass_step_wait();
+        return;
+    }
     if (id && index == -1) {
+        {
+            const double d = ((double)SDL_GetTicksNS() - gs.vs_arrival) / 1e6;
+            gs.real_started = 1;
+            gs.st_rs_n++;
+            gs.st_rs_sum += d;
+            gs.st_rs_over4 += d > 4.0;
+            if (d > gs.st_rs_max)
+                gs.st_rs_max = d;
+        }
         if (gs.cur_real) {
             hf_add(id, gs.cur_vblank, gs.hf_b, 1, 0);
             gs.note_real = 1;
@@ -476,10 +646,27 @@ static void on_vsync(const Mh2IpcRec *rec, const unsigned char *p)
 {
     uint64_t vblank;
     memcpy(&vblank, p, 8);
-    const double arrival = gs.hf_on ? (double)SDL_GetTicksNS() : 0;
+    double arrival = gs.hf_on ? (double)SDL_GetTicksNS() : 0;
+    unsigned state = 0;   /* the core's timeline at this VBlank, when a stamp tells it */
+    if (gs.stamp_have && gs.hf_on && !gs.nostamp) {
+        const double lag = (arrival - gs.stamp_t) / 1e6;
+        gs.st_stamp_n++;
+        gs.st_stamp_sum += lag;
+        gs.st_stamp_over1 += lag > 1.0;
+        gs.st_stamp_over8 += lag > 8.0;
+        if (lag > gs.st_stamp_max)
+            gs.st_stamp_max = lag;
+        arrival = gs.stamp_t;
+        state = gs.notimeline ? 0 : gs.stamp_state;
+    }
+    gs.stamp_have = 0;
+    gs.vs_plan = gs.stamp_plan;
+    gs.stamp_plan = 0;
     const int flip_now = gs.flip;
     SDL_AddAtomicU32(&gs.vsyncs, 1);
     SDL_SetAtomicU32(&gs.last_vblank, (Uint32)vblank);
+    gs.vs_arrival = (double)SDL_GetTicksNS();
+    gs.real_started = 0;
     /* a movie playing (movie.c) replaces the GS's picture */
     const uint8_t *mpix = NULL;
     uint32_t mw = 0, mh = 0;
@@ -487,12 +674,15 @@ static void on_vsync(const Mh2IpcRec *rec, const unsigned char *p)
     gs.flip = 0;
     if (!gs.ok)
         return;
+    gs.real_due = gs.hf_on && !g_cfg.no_window && flip_now && !movie;
+    if (gs.pass_waitfirst)
+        pass_step_wait();
     interp_note();
     int show = !g_cfg.no_window;
     const int hfr = gs.hf_on;   /* the timed presenter shows the pictures: only the pictures of flips are copied back here, and the in-between ones with them */
     const int want = hfr ? show && flip_now && !movie : show;
     if (hfr)
-        hf_before_vsync(vblank, flip_now && !movie, arrival);
+        hf_before_vsync(vblank, flip_now && !movie, arrival, state);
     gs.cur_vblank = vblank;
     gs.cur_real = hfr && show && flip_now && !movie;
     gs.note_real = 0;
@@ -530,8 +720,10 @@ static void on_vsync(const Mh2IpcRec *rec, const unsigned char *p)
         f.width = mw;
         f.height = mh;
         f.stride = mw * 4;
-    } else if (!gs.get_frame(id, &f)) {
-        return;   /* no picture (the display off): the next VBlank's */
+    } else {
+        uint64_t hid = id;
+        if (!gs.get_frame(hid, &f))
+            return;   /* no picture (the display off): the next VBlank's */
     }
     if (photo) {
         SDL_SetAtomicU32(&gs.photo_w, f.width);
@@ -629,9 +821,53 @@ static void on_record(const Mh2IpcRec *rec)
     case MH2IPC_REC_VSYNC:
         on_vsync(rec, p);
         break;
+    case MH2IPC_REC_STAMP:
+        if (rec->bytes >= 8) {   /* the core's clock in this clock's time: the two are read together, and the pair with the shortest gap between its reads is kept */
+            uint64_t t;
+            memcpy(&t, p, 8);
+            const Uint64 a = SDL_GetTicksNS(), c = mh2ipc_time_ns(), b = SDL_GetTicksNS();
+            if (!gs.stamp_off_have || b - a < 50000u) {
+                gs.stamp_off = (double)(a / 2 + b / 2) - (double)c;
+                gs.stamp_off_have = 1;
+            }
+            gs.stamp_t = (double)t + gs.stamp_off;
+            gs.stamp_state = 0;
+            if (rec->bytes >= 16) {
+                uint64_t w;
+                memcpy(&w, (const unsigned char *)p + 8, 8);
+                gs.stamp_state = (unsigned)w;
+            }
+            gs.stamp_have = 1;
+            gs.stamp_plan = rec->arg0;
+        }
+        break;
     case MH2IPC_REC_CAMERA:
         if (gs.ok && gs.camera && rec->bytes >= 32 * sizeof(float))
             gs.camera((const float *)p);
+        break;
+    case MH2IPC_REC_MODEL:
+        if (gs.ok && gs.model) {
+            if (rec->bytes >= sizeof(Mh2IpcModel)) {
+                const Mh2IpcModel *m = (const Mh2IpcModel *)p;
+                gs.model(rec->arg0, rec->arg1, m->prog, m->world, m->cam, m->site);
+            } else {
+                gs.model(0, 0, 0, NULL, NULL, 0);   /* the end of a labelled run */
+            }
+        }
+        break;
+    case MH2IPC_REC_ANCHOR:
+        if (gs.ok && gs.anchor) {
+            if (rec->bytes >= sizeof(Mh2IpcAnchor)) {
+                const Mh2IpcAnchor *an = (const Mh2IpcAnchor *)p;
+                gs.anchor(rec->arg0, an->point, an->cam);
+            } else {
+                gs.anchor(0, NULL, NULL);   /* the end of the packet */
+            }
+        }
+        break;
+    case MH2IPC_REC_PASS:
+        if (gs.ok && gs.pass)
+            gs.pass(rec->arg0, rec->arg1, p, rec->bytes & ~15u);
         break;
     case MH2IPC_REC_READBACK:
         on_readback(rec);
@@ -660,11 +896,148 @@ static void on_record(const Mh2IpcRec *rec)
     }
 }
 
+/* The reader of the pass thread's ring (the in-between pictures' pass): it hands the records to the renderer, which keeps them by the window's serial number. It never waits for the
+ * main reader, nor the other way round: the VSync waits in pass_step_wait, and the pass thread's records are taken here meanwhile. */
+static int SDLCALL gs_pass_main(void *arg)
+{
+    (void)arg;
+    host_realtime_thread();
+    Mh2IpcRing *r = &g_ipc->pass;
+    unsigned long long rd_n = 0, rd_ns = 0, rd_max = 0, rd_over1 = 0, rd_over5 = 0, rd_sleeps = 0, rd_bytes = 0;   /* the reader's own count: each record's intake */
+    for (;;) {
+        const Mh2IpcRec *rec = mh2ipc_rec_peek(r, g_block);
+        if (!rec) {
+            unsigned int head = mh2ipc_load(&r->head);
+            unsigned int st = mh2ipc_load(&g_ipc->core_state);
+            if (SDL_GetAtomicInt(&gs.stop) || (st != MH2IPC_STATE_NONE && st != MH2IPC_STATE_RUNNING))
+                if (head == r->tail)
+                    break;
+            mh2ipc_store(&r->consumer_waiting, 1);
+            mh2ipc_fence();
+            if (!mh2ipc_rec_peek(r, g_block)) {
+                rd_sleeps++;
+                mh2ipc_wait(&g_map, MH2IPC_EV_PASS_DATA, &r->head, head, 20);
+            }
+            mh2ipc_store(&r->consumer_waiting, 0);
+            continue;
+        }
+        if (rec->type == MH2IPC_REC_PASS && gs.ok && gs.pass2) {
+            unsigned long long t0 = mh2ipc_time_ns(), d;
+            gs.pass2(rec->arg0, rec->arg1, (const unsigned char *)(rec + 1), rec->bytes & ~15u);
+            d = mh2ipc_time_ns() - t0;
+            rd_n++;
+            rd_ns += d;
+            rd_bytes += rec->bytes;
+            if (d > rd_max)
+                rd_max = d;
+            rd_over1 += d > 1000000ull;
+            rd_over5 += d > 5000000ull;
+        }
+        if (mh2ipc_rec_release(r, rec))
+            mh2ipc_wake(&g_map, MH2IPC_EV_PASS_SPACE, &r->tail);
+    }
+    if (rd_n)
+        host_log("pass reader: %llu records taken (%.1f MB), their intake %.1f ms in all, %.3f ms a record, %.2f ms at worst, %llu over 1 ms, %llu over 5 ms; the reader slept %llu times on an empty ring",
+                 rd_n, rd_bytes / 1048576.0, rd_ns / 1e6, rd_ns / 1e6 / (double)rd_n, rd_max / 1e6, rd_over1, rd_over5, rd_sleeps);
+    return 0;
+}
+
+/* A wait that slept is counted: how long, and whether the step's real picture was still to start when it did (the old order: it was). */
+static void pass_wait_note(Uint64 t0)
+{
+    gs.st_pw_slept++;
+    gs.st_pw_ms += (double)(SDL_GetTicksNS() - t0) / 1e6;
+    if (gs.real_due && !gs.real_started) {
+        gs.st_pw_real++;
+        if (!gs.st_pw_first)
+            gs.st_pw_first = SDL_GetAtomicU32(&gs.vsyncs);
+        gs.st_pw_last = SDL_GetAtomicU32(&gs.vsyncs);
+    }
+}
+
+/* Before a VSync is given to the renderer: wait for the pass thread's data of the step, up to the limit (no limit with MH2_PASS_SYNC=1), as long as the core runs. */
+static void pass_step_wait(void)
+{
+    if (!gs.pass_thread || !gs.pass_wait || !gs.ok)
+        return;
+    const Uint64 t0 = SDL_GetTicksNS();
+    int slept = 0;
+    for (;;) {
+        const Uint64 used = (SDL_GetTicksNS() - t0) / 1000000ull;
+        const unsigned left = gs.pass_sync || used >= gs.pass_wait_ms ? 5u : gs.pass_wait_ms - (unsigned)used;   /* the limit is the limit: the last slice is what is left of it */
+        if (gs.pass_wait(left < 5u ? (left ? left : 1u) : 5u)) {
+            if (slept)
+                pass_wait_note(t0);
+            return;
+        }
+        slept = 1;
+        unsigned int st = mh2ipc_load(&g_ipc->core_state);
+        if (SDL_GetAtomicInt(&gs.stop) || (st != MH2IPC_STATE_NONE && st != MH2IPC_STATE_RUNNING))
+            return;
+        if (!gs.pass_sync && (SDL_GetTicksNS() - t0) / 1000000ull >= gs.pass_wait_ms) {
+            pass_wait_note(t0);
+            return;
+        }
+    }
+}
+
+/* The wait by picture (plan 11's step 5a; the library's `mh2gs_pass_moment_wait`): picture k of the step, whose refresh is at hf_tau[k], waits for its moment until its time less a margin, and never past the cap
+ * after the VSync record (the next step's chain can arrive then), looking at the core every half millisecond; it stops when the core waits for a state or a readback. The library takes the moment
+ * if it is there and makes B's picture if not. MH2_PASS_SYNC=1 (tests): no deadline. */
+static void pass_pic_wait(int k)
+{
+    if (!gs.pass_thread || !gs.pass_mom_wait || !gs.ok || k < 0 || k >= gs.hf_n)
+        return;
+    const uint32_t al = gs.hf_alpha[k];
+    double dl = gs.hf_tau[k] - gs.pw_lead_ns;
+    if (dl > gs.vs_arrival + gs.pw_cap_ns)
+        dl = gs.vs_arrival + gs.pw_cap_ns;
+    gs.pw_waits++;
+    for (;;) {
+        const double now = (double)SDL_GetTicksNS();
+        if (!gs.pass_sync && now >= dl) {
+            if (!gs.pass_mom_wait(al, 0))
+                gs.pw_late++;
+            else
+                gs.pw_ready++;
+            return;
+        }
+        double left_us = gs.pass_sync ? 500.0 : (dl - now) / 1000.0;
+        if (left_us > 500.0)
+            left_us = 500.0;
+        if (gs.pass_mom_wait(al, (uint32_t)left_us)) {
+            gs.pw_ready++;
+            return;
+        }
+        const unsigned int st = mh2ipc_load(&g_ipc->core_state);
+        if (SDL_GetAtomicInt(&gs.stop) || (st != MH2IPC_STATE_NONE && st != MH2IPC_STATE_RUNNING)) {
+            gs.pw_late++;
+            return;
+        }
+    }
+}
+
 static int SDLCALL gs_main(void *arg)
 {
     (void)arg;
     host_realtime_thread();
     gs_make_renderer();
+    gs.live = g_ipc->pass.size != 0;   /* the core makes its moments at the host's plans exactly when the ring exists */
+    if (g_ipc->pass.size) {   /* the ring is read (and its records dropped when there is no renderer) whenever the block has one: the pass thread would wait on a full ring */
+        const char *w = GS_ENV("MH2_PASS_WAITMS");
+        gs.pass_wait_ms = w ? (unsigned)atoi(w) : 15u;
+        w = GS_ENV("MH2_PASS_SYNC");
+        gs.pass_sync = w && w[0] == '1';
+        w = GS_ENV("MH2_PASS_WAITFIRST");
+        gs.pass_waitfirst = w && w[0] == '1';
+        w = GS_ENV("MH2_PASS_PICLEAD");
+        gs.pw_lead_ns = (w ? atof(w) : 4.0) * 1e6;   /* 4 ms: at 144 it gave the first picture its moment more often than 6 and 8, and C its higher share */
+        w = GS_ENV("MH2_PASS_PICCAP");
+        gs.pw_cap_ns = (w ? atof(w) : 31.0) * 1e6;
+        gs.pass_thread = SDL_CreateThread(gs_pass_main, "gs-pass", NULL);
+        if (!gs.pass_thread)
+            host_log("the pass thread's reader: %s", SDL_GetError());
+    }
     SDL_SignalSemaphore(gs.ready);
     Mh2IpcRing *r = &g_ipc->gs;
     for (;;) {
@@ -690,6 +1063,10 @@ static int SDLCALL gs_main(void *arg)
     }
     /* the movie stays (main.c frees it after the sound device): the device still plays the core's
      * last frames, with the movie's sound mixed in as the original's output has it */
+    if (gs.pass_thread) {   /* the reader of the pass thread's ring ends with the core, before the renderer goes */
+        SDL_WaitThread(gs.pass_thread, NULL);
+        gs.pass_thread = NULL;
+    }
     if (gs.ok)
         gs.shutdown();
     gs.ok = 0;
@@ -722,6 +1099,10 @@ void gs_stop(void)
     if (gs.thread)
         SDL_WaitThread(gs.thread, NULL);
     gs.thread = NULL;
+    mh2ipc_wake(&g_map, MH2IPC_EV_PASS_DATA, &g_ipc->pass.head);
+    if (gs.pass_thread)
+        SDL_WaitThread(gs.pass_thread, NULL);
+    gs.pass_thread = NULL;
     if (gs.ready)
         SDL_DestroySemaphore(gs.ready);
     gs.ready = NULL;

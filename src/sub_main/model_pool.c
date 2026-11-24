@@ -23,6 +23,17 @@ extern u8 gMaterialSlotUsed[MATERIAL_POOL_COUNT]; /* one per material slot: in u
 extern u8 gMatSetUsed[MATSET_POOL_COUNT];        /* one per material set slot: in use */
 extern u8 gModelUsed[MODEL_POOL_COUNT];          /* one per model slot: in use */
 extern ModelMatSet *gMatSets;
+
+
+
+
+
+
+
+#define MATSET_USED gMatSetUsed
+#define MATSET_COUNT MATSET_POOL_COUNT
+#define MATSET_BASE ((s32)gMatSets)
+
 extern MaterialSlot *gMaterials;
 extern EmBone *gBones;
 extern Model *gModels;
@@ -171,6 +182,10 @@ void Model_FreeAll(void)
     for (i = 0; i < MODEL_POOL_COUNT; i++) {
         Model_Free(i);
     }
+
+
+
+
 }
 
 void Quest_EmptySetupHook(void)
@@ -326,20 +341,20 @@ s32 MatSet_FindFree(s32 count)
         return 0;
     }
     while (1) {
-        for (i = i; i < MATSET_POOL_COUNT; i++) {
-            if (gMatSetUsed[i] == 0) {
+        for (i = i; i < MATSET_COUNT; i++) {
+            if (MATSET_USED[i] == 0) {
                 break;
             }
         }
-        if (i >= MATSET_POOL_COUNT) {
+        if (i >= MATSET_COUNT) {
             return -1;
         }
         j = i + count;
-        if (j > MATSET_POOL_COUNT) {
+        if (j > MATSET_COUNT) {
             return -1;
         }
         for (j = sum = 0; j < count; j++) {
-            sum += gMatSetUsed[i + j];
+            sum += MATSET_USED[i + j];
         }
         if (sum == 0) {
             break;
@@ -352,7 +367,7 @@ s32 MatSet_FindFree(s32 count)
 /* The address of material set slot i. */
 ModelMatSet *MatSet_Get(s32 i)
 {
-    return (ModelMatSet *)((s32)gMatSets + i * 140);
+    return (ModelMatSet *)(MATSET_BASE + i * 140);
 }
 
 /* Marks count material set slots from first in use. */
@@ -361,7 +376,7 @@ void MatSet_Reserve(s32 first, s32 count)
     s32 i;
 
     for (i = 0; i < count; i++) {
-        gMatSetUsed[first + i] = 1;
+        MATSET_USED[first + i] = 1;
     }
 }
 
@@ -371,7 +386,7 @@ void MatSet_Release(s32 first, s32 count)
     s32 i;
 
     for (i = 0; i < count; i++) {
-        gMatSetUsed[first + i] = 0;
+        MATSET_USED[first + i] = 0;
     }
 }
 

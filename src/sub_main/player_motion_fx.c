@@ -38,6 +38,10 @@
 #include "card.h"
 #include "sound.h"
 #include "bone_effects.h"
+
+
+
+
 #include "dust_flash_effects.h"
 #include "engine_math.h"
 #include "hit_effects.h"
@@ -1487,6 +1491,38 @@ void Player_MotionSounds(Player *pl, PlayerWork *work)
         PlayerSe_AtFrame(pl, 380, 58);
         break;
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     switch (pl->weaponType) {
     case WEAPON_HEAVY_BOWGUN:
         switch (work->motion) {

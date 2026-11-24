@@ -36,6 +36,12 @@ s32 Recipe_IsInList(s32 type, s32 id)
     RecipeId *entry = gForgeRecipeList;
     s32 entryId = gForgeRecipeList[0].id;
 
+
+
+
+
+
+
     while (entryId != 0) {
         if (type == entry->type && id == entryId) {
             return 1;

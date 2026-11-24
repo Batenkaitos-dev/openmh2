@@ -37,6 +37,9 @@
 #include "vec_math.h"
 #include "save.h"
 
+
+
+
 extern void *PlayerAttack_RowsPtr;
 extern HitShape *PlayerAttack_HitShapes[];
 extern s16 ItemAttack_Models[];
@@ -275,11 +278,22 @@ void PlayerAttack_Setup(ObjAttach *obj)
     f32 out[3];
     u8 takesElement;
 
+
+
+
+
     takesElement = 0;
     obj->state++;
     obj->visible = 1;
     obj->draw = NULL;
+
+
+
+
+
+
     ObjAttach_StartOwnedAttack(obj, (s32) pl, obj->type, &PlayerAttack_RowsPtr);
+
     if (obj->stateVar1 & 1) {
         switch (obj->hitListNo) {
         case 9:
@@ -290,13 +304,24 @@ void PlayerAttack_Setup(ObjAttach *obj)
             break;
         }
     }
+
+
+
+
+
+
     obj->hitList = PlayerAttack_HitShapes[obj->hitListNo];
+
     obj->hurtList = 0;
     obj->area = pl->area;
     if (obj->hitList->bone == HIT_BONE_SEGMENT) {
         PlayerAttack_PlaceOnWeapon(obj, pl);
     }
+
+
+
     switch (obj->type) {
+
     case 11:
     case 86:
         in[0] = 0.0f;
@@ -392,7 +417,16 @@ void PlayerAttack_Setup(ObjAttach *obj)
                 obj->hitFx |= HITFX_WEAK;
             }
         } else if (stat > pl->stateRand % 100) {
+
+
+
+
+
+
+
+
             obj->power = (s32) (1.25f * obj->power);
+
             obj->hitFx |= HITFX_CRITICAL;
         }
     }
@@ -434,11 +468,30 @@ void PlayerAttack_Run(ObjAttach *obj)
 {
     Player *pl = &gPlayers[obj->idx];
 
+
+
+
+
     if (obj->hitList->bone == HIT_BONE_SEGMENT && obj->type != 68) {
+
         PlayerAttack_PlaceOnWeapon(obj, pl);
     }
     PlayerAttack_PauseInHitStop(obj);
+
+
+
+
+
+
+
+
+
+
+
+
+
     switch (obj->type) {
+
     case 8:
         if (pl->motionId[0] == obj->ownerMotion || pl->motionId[0] == 1407) {
             return;

@@ -709,3 +709,35 @@ void vu1_stats(u64 *runs, u64 *pairs)
     *runs = vu.runs;
     *pairs = vu.pairs;
 }
+
+/* The second pass's snapshot (gfx_pass.c): VU1's registers and the statistics that a run changes (the memory is the caller's: g_vu_mem). */
+typedef struct Vu1Snap {
+    Vu1State vu;
+    int hashing;
+    u64 hash, bails, ends, checks, check_diffs;
+} Vu1Snap;
+
+u32 vu1_state(void *buf, int load)
+{
+    Vu1Snap *s = buf;
+    if (!s)
+        return sizeof(Vu1Snap);
+    if (load) {
+        memcpy(&vu, &s->vu, sizeof(vu));
+        g_vu1_kick_hashing = s->hashing;
+        g_vu1_kick_hash = s->hash;
+        g_vu1_gen_bails = s->bails;
+        sGenEnds = s->ends;
+        sChecks = s->checks;
+        sCheckDiffs = s->check_diffs;
+    } else {
+        memcpy(&s->vu, &vu, sizeof(vu));
+        s->hashing = g_vu1_kick_hashing;
+        s->hash = g_vu1_kick_hash;
+        s->bails = g_vu1_gen_bails;
+        s->ends = sGenEnds;
+        s->checks = sChecks;
+        s->check_diffs = sCheckDiffs;
+    }
+    return sizeof(Vu1Snap);
+}

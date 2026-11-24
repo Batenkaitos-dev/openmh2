@@ -547,6 +547,14 @@ void ButtonHint_DrawSort(u8 index)
     Draw_Icons((Icon *) gButtonHintSortIcons[index], 1);
 }
 
+
+
+
+
+
+
+
+
 /* The texture rectangle of equip's icon on the 32-pixel icon sheet: a
  * weapon's by its class (cells from 63), an armour's by its type (cells
  * from 74, in row 9). */
@@ -554,6 +562,19 @@ void Equip_GetIconUV(EquipItem *equip, Pt *topLeft, Pt *bottomRight)
 {
     if (equip->type == 6 || equip->type == 7) {
         s32 cell = (u8)Equip_GetClass(equip) + 63;
+
+
+
+
+
+
+
+
+
+
+
+
+
         topLeft->x = (cell & 7) * 32 + 1;
         topLeft->y = (cell >> 3) * 32 + 1;
         bottomRight->x = topLeft->x + 30;
@@ -565,6 +586,60 @@ void Equip_GetIconUV(EquipItem *equip, Pt *topLeft, Pt *bottomRight)
         bottomRight->y = 319;
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* The weapon icon's texture rectangle for the byte at +2 of equip (an
  * EquipItem's id, its low byte), from gWeaponIconUVs. */

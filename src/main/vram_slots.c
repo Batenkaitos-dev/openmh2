@@ -15,7 +15,15 @@
 #include "texture.h"
 #include "mem_util.h"
 
+
+
+
+
+
+
+
 #define VRAM_END 0x4000     /* GS memory, 256-byte blocks */
+
 
 extern s32 gSysTexBlock;      /* gSysWork: first GS block for textures */
 
@@ -169,6 +177,9 @@ s32 VramSlot_Assign(VramSlot *after, TexRec *texRec)
  */
 s32 VramSlot_Replace(VramSlot *slot, TexRec *texRec)
 {
+
+
+
     if (slot == NULL) {
         if ((slot = VramSlot_Alloc(gVramSlots, VRAM_SLOT_MAX)) == NULL) {
             return 0;
@@ -193,6 +204,29 @@ s32 VramSlot_Replace(VramSlot *slot, TexRec *texRec)
     slot->align = texRec->align;
     return 1;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* Frees every VramSlot in the list. Returns 1. */
 s32 VramSlot_FreeAll(void)

@@ -1038,7 +1038,9 @@ s32 Kitchen_ChooseIngredient(KitchenMenu *menu, u16 pad)
     return MENU_RUNNING;
 }
 
+
 extern char *gItemNames[];
+
 void Win_Draw(s32, s32, s32, s32, s32, s32, s16);
 /* Draws the first ingredient's window at (x, y): its label and, once
  * chosen, its name. */

@@ -41,6 +41,9 @@
 #include "pad.h"
 #include "lobby_state.h"
 #include "lobby_globals.h"
+
+
+
 #include "area.h"
 #include "quest.h"
 #include "render_state.h"
@@ -411,7 +414,11 @@ void Npc_Draw(DrawSlot *slot)
     Bone_StoreMatrices(npcModel->bones);
     Mtx_Identity(identMtx);
     Gs_SetState(RS_UV_MTX, (s32)identMtx);
+
+
+
     Tex_Prepare(10, npc->type * 20 + 163);
+
     colorEnt = gNpcColorSets[w->look];
     if (w->id == NPC_POOGIE && Area_IsHouse(gScene.area) == 1 && Game_IsOnline() == 0) {
         colorEnt->part = gSave.poogieOutfit;
@@ -527,6 +534,11 @@ void Npc_Init(Em *npc)
         npc->isEm = 1;
         npc->motionLayerCount = 1;
     }
+
+
+
+
+
     npc->alpha = 1.0f;
     npc->hideShadow = 0;
     npc->fieldCollide = 1;
@@ -603,6 +615,9 @@ void Npc_Init(Em *npc)
         }
         Actor_SetMotion(npc, routeOrMotion, 0, 0);
         Player_BeginLayerMotion((Player *) npc, npc->motionFrame[0], npc->motionBlend[0], 0);
+
+
+
         Player_BeginLayerMotion((Player *) npc, npc->motionFrame[1], npc->motionBlend[1], 1);
     } else {
         if (gHouseAccess != HOUSE_ACCESS_CLOSED && w->id == NPC_POOGIE) {
@@ -683,9 +698,9 @@ NpcAreaEntry *NpcTable_Find(u8 npcId, s32 areaId)
     if (npcId == 255) {
         return NULL;
     }
-    areaId = Area_GetSetIndex(areaId);
-    entry = gAreaNpcTables[areaId];
-    for (i = 0; i < gAreaNpcCounts[areaId]; i++) {
+    areaId = NPC_SET(areaId);
+    entry = NPC_AREA_TABLE(areaId);
+    for (i = 0; i < NPC_AREA_COUNT(areaId); i++) {
         if (entry->id == npcId) {
             return entry;
         }
@@ -700,7 +715,7 @@ NpcAreaEntry *NpcTable_Find(u8 npcId, s32 areaId)
  * entry. */
 s32 AreaNpc_IsPresent(s32 entryIdx, s32 areaId)
 {
-    NpcAreaEntry *entry = gAreaNpcTables[Area_GetSetIndex(areaId)];
+    NpcAreaEntry *entry = NPC_AREA_TABLE(NPC_SET(areaId));
 
     entry += entryIdx;
     return Npc_IsPresent(entry->id, areaId, 0);
@@ -1072,6 +1087,11 @@ void Npc_SetRouteByKind(Em *npc)
     u8 id;
 
     w = (NpcWork *)&npc->work;
+
+
+
+
+
     if ((Game_IsOnline() != 0) || (w->id == 103) || (Area_IsHouse(gScene.area) != 1)) {
         facilityTotal = 0;
         /* the levels of VILLAGE_FACILITY_TAVERN to VILLAGE_FACILITY_PORT */
@@ -1290,6 +1310,12 @@ void Npc_SetRouteByVillage(Em *npc)
 {
     NpcWork *w = (NpcWork *)&npc->work;
 
+
+
+
+
+
+
     if (Game_IsOnline() == 0 && Area_IsHouse(gScene.area) == 1 && Village_HasMealVisit(w->id) == 1) {
         if (w->id != 10) {
             w->route = gNpcRouteHouse;
@@ -1380,9 +1406,9 @@ void Npc_SetupFromArea(Em *npc, u8 keep, s32 areaId)
     SaveData *save;
 
     w = (NpcWork *)&npc->work;
-    areaSet = Area_GetSetIndex(areaId);
+    areaSet = NPC_SET(areaId);
     save = &gSave;
-    entry = gAreaNpcTables[areaSet];
+    entry = NPC_AREA_TABLE(areaSet);
     if (entry == NULL) {
         return;
     }
@@ -1392,6 +1418,9 @@ void Npc_SetupFromArea(Em *npc, u8 keep, s32 areaId)
     npc->rotY = entry->yaw;
     npc->variant = entry->type;
     npc->modelSlot = npc->type = entry->modelSet;
+
+
+
     w->leaving = 0;
     w->name = entry->name;
     if (entry->id == NPC_POOGIE) {
@@ -1401,11 +1430,20 @@ void Npc_SetupFromArea(Em *npc, u8 keep, s32 areaId)
     w->route = entry->route;
     Npc_SetRouteByKind(npc);
     w->presence = entry->presence;
+
+
+
     w->bodyKind = entry->modelSet;
+
     w->look = entry->type;
     npc->motionSpeed = entry->motionSpeed;
     npc->scaleX = npc->scaleY = npc->scaleZ = entry->scale;
     w->holdRoute = 0;
+
+
+
+
+
     switch (OfferMenu_BuildList((struct Em *) npc, 1)) {
     default:
         w->offerMark = 1;
@@ -1420,6 +1458,9 @@ void Npc_SetupFromArea(Em *npc, u8 keep, s32 areaId)
     if (w->id == NPC_HOUSE_COOK && MyHouse_IsOwner() != 0 && Kitchen_SetCourseReady() == 1) {
         w->offerMark = 2;
     }
+
+
+
     if (ElderRaid_IsOn() == 1) {
         Npc_SetRaidRoute(npc);
     }
@@ -1447,6 +1488,11 @@ void Npc_SetupFromArea(Em *npc, u8 keep, s32 areaId)
     if (w->id == NPC_POOGIE && Poogie_PlaceByPlayer() == 1 && Area_IsOnlineHouse(gScene.area) == 1) {
         gPoogieByPlayer = 0;
     }
+
+
+
+
+
     if (Npc_HasDrinkMug(npc)) {
         DrinkMug_Spawn(npc);
     }
@@ -1515,7 +1561,13 @@ s32 Npc_Run(Em *npc)
     npc->prevPosY = npc->posY;
     npc->prevPosZ = npc->posZ;
     Npc_StepMoveTo(npc);
+
+
+
     Npc_UpdateState(npc);
+
+
+
     npc->rotX = (u16)npc->rotX;
     npc->rotY = (u16)npc->rotY;
     npc->rotZ = (u16)npc->rotZ;

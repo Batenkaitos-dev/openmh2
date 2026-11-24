@@ -534,6 +534,10 @@ extern u16 *gShopStockNpc0A[];
 extern u16 gShopStockNpc0B[];
 extern u16 gShopStockNpc0BLv2[];
 extern u16 gShopStockNpc0BTimer[];
+
+
+
+
 extern u16 gShopStockNpc0C[];
 extern u16 gShopStockNpc0CLv2[];
 extern ShopStockCond gShopCondStockNpc28[];
@@ -564,6 +568,9 @@ void Shop_BuildStock(ItemListWin *list, s16 page)
     ShopStockCond *condList;
     s32 k;
     u16 id;
+
+
+
 
     list->n = 0;
     list->page = page;
@@ -652,6 +659,28 @@ void Shop_BuildStock(ItemListWin *list, s16 page)
             break;
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #if PLATFORM_PC
     /* PS2: i is $s1, the caller's, when items stays NULL. Unreachable: every
      * shop kind has a stock list. */
@@ -791,6 +820,9 @@ void Shop_Buy(ItemListWin *list)
 
     cost = Shop_GetBuyPrice(id);
     cost *= list->count;
+
+
+
 
     LobbySe_Play(LOBBY_SE_MONEY);
     Save_AddMoney(-cost);
@@ -1042,7 +1074,9 @@ s8 Kbd_IsOpen(void);
 #else
 s32 Kbd_IsOpen(void);
 #endif
+
 extern char *gItemNames[];
+
 
 /*
  * The item info panel at x, y, w wide, in `color`: the details label with

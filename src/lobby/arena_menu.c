@@ -393,7 +393,9 @@ void ArenaMenu_DrawRecord(s32 x, s32 y)
 }
 
 void Text_PrintfColored(const char *fmt, ...);
+
 extern char *gItemNames[];
+
 /*
  * Draws the feed list at (x, y): each item's name and count with its icon,
  * a bar under the cursor, the page arrows and the description of the item

@@ -220,6 +220,9 @@ typedef struct ShipMenu {
     /* 0x4 */ s16 cursor;       /* SHIP_CHOICE_* */
     /* 0x6 */ s16 count;        /* the choices listed: 1, or 2 with the offers */
     /* 0x8 */ s8 state;         /* enum ShipMenuState */
+
+
+
 } ShipMenu;
 
 #define SHIP_CHOICE_BOARD   0

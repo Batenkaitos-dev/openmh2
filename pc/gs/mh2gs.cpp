@@ -10,6 +10,8 @@
  * it starts but when the picture is fetched, normally a VBlank later, so
  * the CPU does not wait for the GPU to finish each frame. */
 #include <algorithm>
+#include <array>
+#include <unordered_map>
 #include <cmath>
 #include <cstdio>
 #include <cstdarg>
@@ -17,6 +19,7 @@
 #include <chrono>
 #include <cstring>
 #include <deque>
+#include <map>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -28,6 +31,8 @@
 #include "gs_interface.hpp"
 
 #include "mh2gs.h"
+#include "mh2gs_warm.hpp"
+#include "mh2gs_pool.hpp"
 #include "mh2interp.hpp"
 #include "mh2tex.hpp"
 
@@ -219,6 +224,7 @@ struct Mid
     GSInterface *shared = nullptr;        /* design B: the first renderer is the only one; the chain is drawn once before the real one, and its traces are taken out again */
     std::vector<double> alphas{0.5};      /* where the in-between pictures of a step lie (mh2gs_interp_set_alphas) */
     std::vector<uint64_t> mid_ids;        /* the readback ids of the last step's in-between pictures, in the order of alphas (0: none) */
+    std::unordered_map<uint64_t, uint8_t> hmap;   /* (tests) MH2GS_HYST: the class of each kick of a draw last step */
     Mh2Interp::Plan plan;                 /* the last mid_plan's plan (valid when planned) */
     bool planned = false;
     std::vector<std::vector<uint8_t>> pic_data;   /* the step's data at each picture's alpha (the pictures after the first: the vertex worker's) */
@@ -241,6 +247,79 @@ struct Mid
     uint32_t force_late = 0, fetches = 0; /* (MH2GS_TEST_MID_LATE=N: every Nth in-between picture counts as late) */
     mh2gs_interp_status st;
     Mh2Interp::Params params;
+    /* design C (13.11): the second pass's stream (MH2_PASS 2 or 3 in the environment of the core and the host). alt collects, for the step in progress, what came outside
+     * the DMA windows and the pass's data in the windows' places; at the VSync it becomes alt_done, and alt_use says that the step's in-between picture is made from it. */
+    bool alt_on = false, alt_real = false, alt_in = false, alt_bad = false, alt_use = false;
+    uint32_t alt_guard = 0;   /* moments refused for want of a moment 0 before them (moment_ok) */
+    uint32_t alt_windows = 0, alt_ok_windows = 0;
+    Mh2Interp::Step alt, alt_done;
+    /* several moments a step (the proof vehicle of plan 2's step 1: the core runs each window's pass once for each alpha of MH2_PASS_ALPHAS, a record begins each with its alpha, its number and their count):
+     * alt is the stream of moment 0 and alt_x the streams of moments 1 on; what came outside the windows goes to all of them, a moment's own data to its stream alone. A picture is made from the moment
+     * whose alpha is its own (alt_al, in 1/256); with one moment and one picture the moment is used whatever the alphas. */
+    std::vector<Mh2Interp::Step> alt_x, alt_done_x;
+    uint32_t alt_nm = 1, alt_mo = 0, alt_nm_done = 1;
+    uint32_t alt_al[8] = {}, alt_al_done[8] = {};
+    bool alt_skip[8] = {}, alt_skip_done[8] = {};   /* a moment the pass says is not to be shown from the pass (below one half at a camera cut): no picture is made for its alpha */
+    /* the pass on a thread of its own (MH2_PASS_THREAD=1 in the core's environment and the host's): the pass's records arrive on a second ring, after the VSync of their step is
+     * on the first. The windows of a step are told by the first ring's brackets (a serial number each); the pass's data of a window is kept by that number (pwin) and is put
+     * into the step's stream at the VSync, in the window's place: th_marks[i] is the number of events of alt that came before window i. */
+    struct PMom
+    {
+        uint32_t al = 0;                                   /* the alpha in 1/256 */
+        bool skip = false;                                 /* the pass says: no picture for this alpha */
+        std::vector<uint8_t> data;
+        std::vector<std::pair<uint32_t, uint32_t>> chunks; /* path, bytes */
+    };
+    struct PWin
+    {
+        bool done = false, bad = false, in = false;
+        uint32_t nm = 0;
+        std::vector<PMom> mom;   /* by moment number: with helpers the moments of a window come in any order (a record is whole: its pieces are consecutive on the ring) */
+        std::vector<char> got;   /* a record of the moment has begun */
+        std::vector<char> whole; /* the moment's record is whole (development: the wait by picture, MH2_PASS_PICWAIT) */
+        uint32_t have = 0;       /* the moments whose records are whole */
+        uint32_t cur = 0;        /* the moment the record in progress is of */
+        uint64_t rx_left = 0;   /* kinds 7 and 8: the qwords of the moment's record still to come, */
+        uint32_t rx_cleft = 0;  /* and of the piece (kind 3's) being taken: 0 means the next qword is a header */
+    };
+    bool th_on = false;
+    uint32_t th_wait_ms = 12;   /* how long the VSync waits for the pass's data of its step (MH2_PASS_WAITMS; MH2_PASS_SYNC=1: no limit, tests) */
+    bool th_sync = false;
+    std::mutex th_mx;
+    std::condition_variable th_cv;
+    bool th_pending = false;   /* the pass thread's step is not made yet: vsync_rf makes it after the real picture is started (vsync_single does where there is no vsync_rf) */
+    std::map<uint32_t, PWin> pwin;
+    Mh2PassPool rx_pool;        /* (development) MH2_PASS_RXPOOL=1: a moment's vector gets its room at once and the room of the moments that are over is kept (mh2gs_pool.hpp); with th_mx held */
+    uint32_t pfloor = 0;                                   /* serials up to this are over: a late record of one is dropped */
+    std::vector<uint32_t> th_serials, th_marks;
+    uint64_t th_steps = 0, th_used = 0, th_late = 0, th_bad_steps = 0, th_guard = 0, th_waited = 0, th_dropped = 0;
+    double th_wait_sum = 0, th_wait_max = 0;
+    /* (development) the in-between pictures by source, for each picture number 1 to 6 (later ones in 6): C, B for a late moment, B for no moment (a stale plan: the alpha has none), not made, B by choice (the pass is off, or MH2_PASS_FIRSTB) */
+    uint64_t src_n[6][5] = {};
+    bool th_late_now = false;   /* the step being made had a window the pass thread had not finished (th_assemble) */
+    /* (development) MH2_PASS_PICWAIT=1: the source by picture and the wait by picture (plan 11's step 5a). The B worker is started for every step, the VSync does not wait for the whole step's
+     * windows, and picture k waits for its moment (the host's deadline, notify index -16 - k) and is B's picture when the moment is not there in time. */
+    bool picwait = false, pw_b_only = false, pw_steady = true;
+    uint32_t pw_hist = 0, pw_n = 0;   /* the last steps with a late moment after the first (1 = late), counted 32 at a time while the clock is steady */
+    uint64_t pw_vs[32] = {};          /* the VSync each of those steps ended at (a development line names the late steps' VSyncs) */
+    uint64_t pw_db[32] = {}, pw_ev[32] = {};   /* and the bytes and the events of the step's own chain (what the step drew) */
+    uint64_t pw_steps = 0, pw_late_steps = 0, pw_waited = 0;
+    /* the give-up lets go (plan 11's step 5c, iv-a): after pw_letgo chain steps in B's phase (MH2_PASS_LETGO, default 64; 0: never, the latch as it was), doubled at each give-up after the first */
+    uint32_t pw_letgo = 64, pw_b_steps = 0, pw_giveups = 0, pw_b_len = 0;
+    uint64_t pw_b_total = 0;
+    /* (iv-b, a measurement) the waits in a phase: the C phase's waits for a moment (pw_waited and its sum, max) and the B phase's waits for the step's windows (mh2gs_pass_wait), each from the phase's start */
+    uint64_t pwb_waited = 0, pwb_late = 0, ph_steps = 0, ph_waited0 = 0, ph_late0 = 0;
+    /* (iv-b) no wait in B's phase, the default with the wait by picture (MH2_PASS_BNOWAIT=0 waits): in B's phase the step does not wait for the pass thread's windows; they are looked at as they stand (th_assemble), not used, and what the thread
+     * delivers after is dropped (pfloor). pwb_late then counts the steps whose windows were not whole when the step drew; pwb_nw_total and pwb_nw_late_total the same from the session's start. */
+    bool pwb_nowait = false;
+    bool pwb_late_step = false;   /* th_assemble's answer for the step in B's phase, kept before the step's pictures reset th_late_now */
+    uint64_t pwb_nw_total = 0, pwb_nw_late_total = 0;
+    /* (development) MH2_PASS_WARMUP=N (1 to 32; 0, the default: off), the warm-up exemption (mh2gs_warm.hpp): a scene's start is the step whose own chain is at least twice the chain of the step before it
+     * and at least 256 KB more (the first drawn step after a loading screen: every draw is new, and the data is several times the steps' before). That step and the N - 1 after it are not entered in the
+     * history of the rule of 4 late steps in 32; their pictures are made as any step's (C's when the moment is in time, else B's). */
+    Mh2PassWarm pw_warm;
+    double pwb_wait_sum = 0, pwb_wait_max = 0, ph_sum0 = 0, ph_max = 0;
+    double pw_wait_sum = 0, pw_wait_max = 0;
     /* the tests */
     std::deque<Mh2Interp::Step> q;        /* skip: the segments not yet given to the second renderer */
     uint64_t test_mid = 0;                /* identity: the in-between picture waiting for the flip's picture */
@@ -309,6 +388,9 @@ extern "C" MH2GS_API int mh2gs_init(const mh2gs_config *cfg)
 {
     if (!cfg || cfg->abi_version != MH2GS_ABI_VERSION)
         return -1;
+    const uint32_t vram_mb = cfg->vram_mb ? cfg->vram_mb : 4;
+    if (vram_mb < 4 || vram_mb > 64 || (vram_mb & (vram_mb - 1)))
+        return -6;
     if (!Context::init_loader(nullptr))
         return -2;
     auto b = std::make_unique<Backend>();
@@ -334,8 +416,23 @@ extern "C" MH2GS_API int mh2gs_init(const mh2gs_config *cfg)
     /* The rate is fixed for a session. Allowing changes in flight sizes VRAM
      * for 16 samples whatever the rate: about 330 MB more. */
     opts.dynamic_super_sampling = false;
+    /* The local memory: the host's choice by the core it runs (mh2gs.h, vram_mb). MH2GS_VRAM_MB: another size, in MB, for the
+     * tests (a size below 4 is the control that wraps the game's addresses; development builds only) */
+    opts.vram_size = vram_mb << 20;
+    if (const char *e = DEV_ENV("MH2GS_VRAM_MB"))
+        opts.vram_size = uint32_t(atoi(e)) << 20;
+    /* MH2GS_NO_BANK: TEX1's bank bits read as zero, as by a renderer that did not know them (the control of the proof that the content core's
+     * pointers above block 16383 reach the renderer: the pictures must then differ; development builds only) */
+    opts.ignore_bank = DEV_ENV("MH2GS_NO_BANK") != nullptr;
+    bool bank_reload = true;
+    if (const char *e = DEV_ENV("MH2GS_BANK_RELOAD"))   /* (development) 0: a palette is not loaded again when TEX1 names another bank at the draw than at its TEX0 (the control) */
+        bank_reload = e[0] != '0';
+    /* paraLLEl-GS option super_sampled_textures: a sprite that reads back a region drawn with samples keeps the samples (MH2GS_SSAA_TEXTURES=1;
+     * a study, off by default, development builds only; the notes of port2-n7-pic say what it changes in MH2: nothing seen) */
+    opts.super_sampled_textures = DEV_ENV("MH2GS_SSAA_TEXTURES") != nullptr;
     if (!b->iface.init(&b->device, opts))
         return -4;
+    b->iface.set_clut_bank_reload(bank_reload);
     b->vram_size = opts.vram_size;
     b->high_resolution_scanout = cfg->high_resolution_scanout && cfg->super_sampling >= 4;
     bool any_pack = false;
@@ -361,6 +458,7 @@ extern "C" MH2GS_API int mh2gs_init(const mh2gs_config *cfg)
         to.log_user = cfg->user;
         b->textures.reset(new Mh2Tex::Textures(&b->device, opts.vram_size, to));
         b->iface.set_texture_interface(b->textures.get());
+        b->textures->set_registers(&b->iface.get_register_state());
     }
     b->signals.fn = cfg->on_event;
     b->signals.user = cfg->user;
@@ -390,6 +488,7 @@ extern "C" MH2GS_API int mh2gs_init(const mh2gs_config *cfg)
             const bool single = cfg->interpolate == MH2GS_INTERP_ON && !DEV_ENV("MH2GS_A");
             if (single || m->iface.init(&b->device, opts))
             {
+                m->iface.set_clut_bank_reload(bank_reload);
                 Hacks h = {};
                 h.unsynced_readbacks = true;   /* nobody reads the second renderer's transfers: no waiting for them */
                 if (single)
@@ -403,6 +502,23 @@ extern "C" MH2GS_API int mh2gs_init(const mh2gs_config *cfg)
                     m->iface.set_debug_mode(dm);
                 }
                 m->mode = cfg->interpolate;
+                /* the in-between pictures from the core's second pass (the host made its ring): on its own thread, the wait by picture, B's phase
+                 * without the wait. A development build's switches below may change each. */
+                if (cfg->pass == MH2GS_PASS_ON)
+                {
+                    m->alt_on = true;
+                    m->th_on = true;
+                    m->picwait = true;
+                    m->pwb_nowait = true;
+                }
+                if (const char *e = DEV_ENV("MH2_PASS"))   /* design C (13.11): the core's second pass feeds the in-between pictures */
+                    m->alt_on = e[0] >= '2' && e[0] <= '4';
+                if (const char *e = DEV_ENV("MH2_PASS_THREAD"))
+                    m->th_on = m->alt_on && e[0] == '1';
+                if (const char *e = DEV_ENV("MH2_PASS_WAITMS"))
+                    m->th_wait_ms = uint32_t(atoi(e));
+                if (const char *e = DEV_ENV("MH2_PASS_SYNC"))
+                    m->th_sync = e[0] == '1';
                 m->st.state = 1;
                 if (const char *e = DEV_ENV("MH2GS_TEST_MID_LATE"))
                     m->force_late = uint32_t(atoi(e));
@@ -418,6 +534,38 @@ extern "C" MH2GS_API int mh2gs_init(const mh2gs_config *cfg)
                 if (const char *e = DEV_ENV("MH2GS_RGBB"))
                     m->params.rgb_bias = atoi(e);
                 m->params.stats = DEV_ENV("MH2GS_VTXLOG") != nullptr;
+                m->params.stats_labels = DEV_ENV("MH2GS_STEPLOG") != nullptr;
+                if (const char *e = DEV_ENV("MH2GS_CAMMAX"))   /* (tuning) px: a kick the camera would move further than this keeps the step */
+                    m->params.cam_max_px = atof(e);
+                if (const char *e = DEV_ENV("MH2GS_WBLEND"))   /* (tuning) 0: a paired kick is the straight mean on the screen */
+                    m->params.world_blend = atoi(e) != 0;
+                if (const char *e = DEV_ENV("MH2GS_HYST"))   /* (tests) FACTOR: a camera-moved kick stays so up to rp_tol * FACTOR, a moving one turns camera-moved within rp_tol / FACTOR */
+                {
+                    m->params.hyst = atof(e);
+                    m->params.hmap = &m->hmap;
+                }
+                if (const char *e = DEV_ENV("MH2GS_ANCHORM"))   /* PX: see Params::anchor_min */
+                    m->params.anchor_min = atof(e);
+                if (const char *e = DEV_ENV("MH2GS_ANCHORT"))   /* PX: see Params::anchor_tol (0: no test) */
+                    m->params.anchor_tol = atof(e);
+                if (const char *e = DEV_ENV("MH2GS_ANCHORR"))   /* 0: the anchors' move is in 1/16 px */
+                    m->params.anchor_round = atoi(e) != 0;
+                if (const char *e = DEV_ENV("MH2GS_ANCHOR"))   /* 0: the 2D elements anchored to a 3D point are the step's own (Params::anchors) */
+                    m->params.anchors = atoi(e) != 0;
+                if (const char *e = DEV_ENV("MH2GS_TWODMIN"))   /* PX: see Params::twod_min */
+                    m->params.twod_min = atof(e);
+                if (const char *e = DEV_ENV("MH2GS_TWOD"))   /* PX: see Params::twod_px */
+                    m->params.twod_px = atof(e);
+                if (const char *e = DEV_ENV("MH2GS_FARINT"))   /* (tests) PX: see Params::far_coh */
+                    m->params.far_coh = atof(e);
+                if (const char *e = DEV_ENV("MH2GS_MATCLS"))   /* (tests) 1: a model draw whose matrix changed is moving (interpolated), not still */
+                    m->params.mat_class = atoi(e) != 0;
+                if (const char *e = DEV_ENV("MH2GS_STILLALL"))   /* (tests) 1: the still test looks at every vertex, all within the tolerance */
+                    m->params.still_all = atoi(e) != 0;
+                if (const char *e = DEV_ENV("MH2GS_NOSTILL"))   /* (tests) 1: no kick takes the still shortcut (everything paired is interpolated) */
+                    m->params.no_still = atoi(e) != 0;
+                if (const char *e = DEV_ENV("MH2GS_LABELS"))   /* (tuning, tests) 0: the model draws' labels pair nothing */
+                    m->params.labels = atoi(e) != 0;
                 if (const char *e = DEV_ENV("MH2GS_REPROJ"))   /* (tuning, tests) 0: the camera does not move the kicks the pairing cannot follow */
                     m->params.reproject = atoi(e) != 0;
                 if (const char *e = DEV_ENV("MH2GS_CAMCUT"))   /* (tuning) EYE:DEGREES */
@@ -436,6 +584,18 @@ extern "C" MH2GS_API int mh2gs_init(const mh2gs_config *cfg)
                     m->params.rp_w = atoi(e);
                 if (const char *e = DEV_ENV("MH2GS_KRANGE"))
                     sscanf(e, "%u:%u", &m->params.klo, &m->params.khi);
+                if (const char *e = DEV_ENV("MH2GS_BIRTH"))   /* 0|1|2: see Params::birth */
+                    m->params.birth = atoi(e);
+                if (const char *e = DEV_ENV("MH2GS_ATTACH"))   /* SHARE: see Params::attach (0: off) */
+                    m->params.attach = atof(e);
+                if (const char *e = DEV_ENV("MH2GS_ATTACHFADE"))
+                    m->params.attach_fade = atoi(e);
+                if (const char *e = DEV_ENV("MH2GS_ATTACHMIN"))
+                    m->params.attach_min = atof(e);
+                if (const char *e = DEV_ENV("MH2GS_C3LOG"))
+                    m->params.c3log = fopen(e, "w");
+                if (const char *e = DEV_ENV("MH2GS_C3RANGE"))
+                    sscanf(e, "%u:%u", &m->params.c3lo, &m->params.c3hi);
                 if (const char *e = DEV_ENV("MH2GS_AMARGIN"))
                     m->params.anchor_margin = atoi(e);
                 if (const char *e = DEV_ENV("MH2GS_PERSP"))
@@ -794,6 +954,9 @@ void mid_remember(Mid &m, Mh2Interp::Step &c)
 {
     std::swap(m.prev.kicks, c.kicks);
     std::swap(m.prev.verts, c.verts);
+    std::swap(m.prev.models, c.models);
+    std::swap(m.prev.anchors, c.anchors);
+    std::swap(m.prev.cams, c.cams);
     memcpy(m.prev.cam, c.cam, sizeof(m.prev.cam));
     memcpy(m.prev.cam_last, c.cam_last, sizeof(m.prev.cam_last));
     m.prev.ncam = c.ncam;
@@ -869,6 +1032,7 @@ struct SavedRegs
     RegisterState regs;
     PrivRegisterState priv;
     GIFPath paths[4];
+    uint32_t clut_banks[2];   /* the bank each context's palette was loaded from (the library keeps them beside the registers) */
 };
 
 void regs_save(GSInterface &iface, SavedRegs &r)
@@ -877,6 +1041,7 @@ void regs_save(GSInterface &iface, SavedRegs &r)
     memcpy(static_cast<void *>(&r.priv), &iface.get_priv_register_state(), sizeof(PrivRegisterState));
     for (uint32_t i = 0; i < 4; i++)
         memcpy(static_cast<void *>(&r.paths[i]), &iface.get_gif_path(i), sizeof(GIFPath));
+    iface.get_clut_load_banks(r.clut_banks);
 }
 
 /* The registers as they were, then the draw state derived from them (the sequence mh2gs_state_set uses): the library
@@ -893,6 +1058,7 @@ void regs_restore(GSInterface &iface, const SavedRegs &r)
     iface.write_register(RegisterAddr::XYOFFSET_2, regs.ctx[1].xyoffset.bits);
     for (uint32_t i = 0; i < 4; i++)
         memcpy(static_cast<void *>(&iface.get_gif_path(i)), &r.paths[i], sizeof(GIFPath));
+    iface.set_clut_load_banks(r.clut_banks);
     iface.clobber_register_state();
 }
 
@@ -945,6 +1111,21 @@ uint64_t hash_readback(uint64_t id)
     return h;
 }
 
+
+/* the Textures class's own speculation state; (development, MH2GS_SPECTEX=0: left alone, a bisection) */
+static void tex_spec(std::unique_ptr<Backend> &g, bool begin)
+{
+    if (begin)
+        g->textures->speculation_begin();
+    else
+        g->textures->speculation_end();
+}
+
+static void th_assemble(Mid &m, bool count = true);
+static int th_moment_try(Mid &m, uint32_t al, Mh2Interp::Step &out, bool &skip);
+static void piclog(Mid &m, size_t n, const int *st);
+static void th_finish(Mid &m);
+
 uint64_t vsync_rf(Mid &m, uint32_t field, int readback)
 {
     Mh2Interp::Step &seg = m.seg;
@@ -952,10 +1133,53 @@ uint64_t vsync_rf(Mid &m, uint32_t field, int readback)
     const size_t n = m.alphas.size();
     m.planned = false;
     m.draw_ctx = last_ctx(seg);
+    std::vector<int> pmo(n, -1);   /* design C: the moment of the pass's streams each in-between picture is made from (13.11); -1: the first renderer's plan (design B) */
+    std::vector<char> skipk(n, 0);   /* the pictures the pass says are not made (the moment is flagged) */
+    bool usepass = false;
+    /* with the pass on a thread of its own the step's stream is made, and the pass thread waited for, after the real picture is started: only then is it known whether the
+     * in-between pictures come from the pass */
+    const bool late_decide = m.th_pending;
+    /* (development) the wait by picture: the pass's windows are not made into the step's streams up front; each picture takes its moment when it is there (below). After 4 of 32 steps had a
+     * late moment after the first, the session is B's: the step's windows are made as before and not used. */
+    const bool pw = late_decide && m.picwait && !m.pw_b_only && n > 0;
+    const bool pwb = late_decide && m.picwait && m.pw_b_only;
+    /* (development) MH2_PASS_FIRSTB=1: the first in-between picture of a step is always B's, the others the pass's (the evenness of the mix) */
+    static const bool firstb = DEV_ENV("MH2_PASS_FIRSTB") != nullptr && DEV_ENV("MH2_PASS_FIRSTB")[0] == '1';
+    bool firstb_forced = false;
+    auto decide = [&]() {
+        std::fill(pmo.begin(), pmo.end(), -1);
+        std::fill(skipk.begin(), skipk.end(), char(0));
+        firstb_forced = false;
+        if (m.alt_use && !pwb)
+        {
+            if (m.alt_nm_done <= 1 && n == 1)
+                pmo[0] = 0;
+            else
+                for (size_t k = 0; k < n; k++)
+                    for (uint32_t j = 0; j < m.alt_nm_done && j < 8; j++)
+                        if (m.alt_al_done[j] == alpha_256(m.alphas[k]))
+                        {
+                            pmo[k] = int(j);
+                            break;
+                        }
+            for (size_t k = 0; k < n; k++)
+                if (pmo[k] >= 0 && m.alt_skip_done[pmo[k] < 8 ? pmo[k] : 7])
+                    skipk[k] = 1;
+            if (firstb && n > 0 && pmo[0] >= 0 && !skipk[0])
+            {
+                pmo[0] = -1;
+                firstb_forced = true;
+            }
+        }
+        usepass = n > 0;
+        for (size_t k = 0; k < n; k++)
+            if (pmo[k] < 0)
+                usepass = false;
+    };
     if (!m.vw)
         m.vw.reset(new VertexWorker);
     m.pic_data.resize(n);
-    {
+    auto start_worker = [&]() {
         VertexWorker::Batch b;
         b.base = &seg;
         b.prev = &m.prev;
@@ -969,14 +1193,22 @@ uint64_t vsync_rf(Mid &m, uint32_t field, int readback)
         for (double a : m.alphas)
             b.alphas.push_back(alpha_256(a));
         m.vw->start(b);
+    };
+    if (!late_decide)
+    {
+        decide();
+        if (!usepass)
+            start_worker();
     }
+    else if (pw)
+        start_worker();   /* B's pictures are made beside the pass's wait, for the pictures whose moments are late or none */
     double tr0 = g->costs ? now_ms() : 0;
     s_b_inside = true;
     SavedRegs saved;
     regs_save(I, saved);
     I.begin_speculation();
     if (g->textures)
-        g->textures->speculation_begin();
+        tex_spec(g, true);
     idle_if_serial(I);
     /* the real chain, for its picture */
     mid_feed(m, seg);
@@ -990,18 +1222,33 @@ uint64_t vsync_rf(Mid &m, uint32_t field, int readback)
         m.last_p = id;
         notify(id, -1);
     }
+    if (late_decide && pw)
+        m.th_pending = false;   /* no wait here: each picture waits for its moment in the loop below */
+    else if (late_decide)
+    {
+        if (!(pwb && m.pwb_nowait))   /* (iv-b, the candidate) in B's phase with MH2_PASS_BNOWAIT=1 the windows are not waited for */
+            notify(0, -4);   /* the host waits for the pass thread now (the real picture is on its way) */
+        th_assemble(m);
+        m.pwb_late_step = m.th_late_now;
+        m.th_pending = false;
+        decide();
+        if (!usepass)
+            start_worker();
+    }
     double tr1 = g->costs ? now_ms() : 0;
     I.rewind_speculation();
     if (g->textures)
     {
-        g->textures->speculation_end();
-        g->textures->speculation_begin();
+        tex_spec(g, false);
+        tex_spec(g, true);
     }
     regs_restore(I, saved);
     idle_if_serial(I);
     double tw0 = g->costs ? now_ms() : 0;
     /* the plan (made by the worker): mid_plan's statistics */
-    const bool ok = m.vw->wait_plan();
+    const bool ok = usepass || pw ? true : m.vw->wait_plan();   /* (the wait by picture: each picture takes the plan's word, when it needs it, below) */
+    bool pw_bok = true, pw_bok_known = false, pw_late_after_first = false;
+    int pw_st[16] = {};   /* (MH2GS_PICLOG) each picture's answer: 1 a moment, 0 late, -1 none */
     if (g->costs)
     {
         g->ms_x[0] += tr1 - tr0;
@@ -1028,11 +1275,55 @@ uint64_t vsync_rf(Mid &m, uint32_t field, int readback)
                     (unsigned long long)q.rpz_err[0], (unsigned long long)q.rpz_err[1], (unsigned long long)q.rpz_err[2], (unsigned long long)q.rpz_err[3],
                     (unsigned long long)q.rpz_err[4], (unsigned long long)q.rpz_err[5], (unsigned long long)q.rpz_err[6],
                     q.rpk_ok, q.rpk_bad, (unsigned long long)q.rpv_ok, (unsigned long long)q.rpv_bad, (unsigned long long)q.rp_bad);
+            fprintf(sl, " lb %u/%u diff %u v %llu nodraw %u models %zu", q.lb_kicks, q.lb_unl, q.lb_diff, (unsigned long long)q.v_lb_diff, q.lb_nodraw, seg.models.size());
+            {
+                uint32_t aok = 0, ak = 0;
+                for (const auto &ap : m.plan.anc)
+                    aok += ap.ok;
+                for (const auto &k : seg.kicks)
+                    ak += k.anchor >= 0 && k.count;
+                fprintf(sl, " anchors %zu ok %u kicks %u", seg.anchors.size(), aok, ak);
+            }
+            {
+                /* how each model draw was treated (the class of most of its vertices: 1 interpolated, 3 moved by the camera, 0 other), and how many changed class since the step before */
+                static std::unordered_map<uint64_t, uint8_t> last;
+                std::unordered_map<uint64_t, uint8_t> now;
+                std::vector<std::array<uint32_t, 4>> cnt(seg.models.size());
+                for (auto &c : cnt)
+                    c = {0, 0, 0, 0};
+                for (size_t i = 0; i < seg.kicks.size() && i < m.plan.dec.size(); i++)
+                    if (seg.kicks[i].path == 1 && seg.kicks[i].count && seg.kicks[i].model >= 0)
+                        cnt[seg.kicks[i].model][m.plan.dec[i].what == 1 ? 1 : m.plan.dec[i].what == 3 ? 3 : 0] += seg.kicks[i].count;
+                uint32_t ci = 0, cc = 0, co = 0, fl = 0, fl13 = 0, nb = 0;
+                for (size_t k = 0; k < seg.models.size(); k++)
+                {
+                    uint8_t cl = cnt[k][1] >= cnt[k][3] && cnt[k][1] >= cnt[k][0] ? 1 : cnt[k][3] >= cnt[k][0] ? 3 : 0;
+                    const uint64_t id = (uint64_t(seg.models[k].handle) << 32) | seg.models[k].occ;
+                    now[id] = cl;
+                    ci += cl == 1;
+                    cc += cl == 3;
+                    co += cl == 0;
+                    auto f = last.find(id);
+                    if (f == last.end())
+                        nb++;
+                    else if (f->second != cl)
+                    {
+                        fl++;
+                        fl13 += (f->second == 1 && cl == 3) || (f->second == 3 && cl == 1);
+                    }
+                }
+                last.swap(now);
+                fprintf(sl, " cls %u/%u/%u flips %u (int-cam %u) born %u far-int %u twod %u anch %u/%u att %u bk %u", ci, cc, co, fl, fl13, nb, q.far_int, q.twod, q.anch, q.anch_kicks, q.att_kicks, q.born_kicks);
+                fprintf(sl, " c3 k %u/%u/%u/%u/%u/%u v %llu/%llu/%llu/%llu/%llu/%llu", q.k_c3[0], q.k_c3[1], q.k_c3[2], q.k_c3[3], q.k_c3[4], q.k_c3[5], (unsigned long long)q.v_c3[0], (unsigned long long)q.v_c3[1],
+                        (unsigned long long)q.v_c3[2], (unsigned long long)q.v_c3[3], (unsigned long long)q.v_c3[4], (unsigned long long)q.v_c3[5]);
+            }
             fprintf(sl, "\n");
             fflush(sl);
         }
     }
-    if (ok)
+    if (ok && (usepass || pw))
+        m.planned = false;
+    else if (ok)
     {
         const Mh2Interp::Result &r = m.plan.res;
         m.planned = true;
@@ -1046,6 +1337,10 @@ uint64_t vsync_rf(Mid &m, uint32_t field, int readback)
     m.ready = ok;
     std::vector<ScanoutResult> mids;
     m.mid_ids.assign(n, 0);
+    if (!pw)   /* (the wait by picture counts each picture where it is made) */
+        for (size_t k = 0; k < n; k++)
+            m.src_n[k < 6 ? k : 5][!ok || skipk[k] ? 3 : pmo[k] >= 0 ? 0 : (!m.alt_on || pwb || (firstb_forced && k == 0)) ? 4 : m.th_late_now ? 1 : 2]++;
+    m.th_late_now = false;
     if (ok)
         for (size_t k = 0; k < n; k++)
         {
@@ -1055,16 +1350,61 @@ uint64_t vsync_rf(Mid &m, uint32_t field, int readback)
                 I.rewind_speculation();
                 if (g->textures)
                 {
-                    g->textures->speculation_end();
-                    g->textures->speculation_begin();
+                    tex_spec(g, false);
+                    tex_spec(g, true);
                 }
                 regs_restore(I, saved);
                 idle_if_serial(I);
             }
+            Mh2Interp::Step pwstep;
+            bool pwC = false;
+            if (pw)
+            {
+                /* the wait by picture: the host waits for this picture's moment until its deadline (notify index -16 - k), then the moment is taken if it is there; a late moment or none is B's picture */
+                const size_t sk = k < 6 ? k : 5;
+                notify(0, -16 - int(k));
+                bool sks = false;
+                const int st = th_moment_try(m, alpha_256(m.alphas[k]), pwstep, sks);
+                pw_st[k < 16 ? k : 15] = st;
+                if (st == 1)
+                {
+                    pwC = true;
+                    skipk[k] = sks;
+                    m.src_n[sk][sks ? 3 : 0]++;
+                }
+                else
+                {
+                    if (st == 0 && k > 0)
+                        pw_late_after_first = true;
+                    if (!pw_bok_known)
+                    {
+                        pw_bok = m.vw->wait_plan();
+                        pw_bok_known = true;
+                    }
+                    if (!pw_bok)   /* a cut: B makes no picture */
+                    {
+                        skipk[k] = 1;
+                        m.src_n[sk][3]++;
+                    }
+                    else
+                        m.src_n[sk][st == 0 ? 1 : 2]++;
+                }
+            }
+            if (skipk[k])
+            {
+                mids.push_back(ScanoutResult());   /* no picture: the host shows the one before */
+                continue;
+            }
             double t1 = g->costs ? now_ms() : 0;
-            m.vw->wait(k);
+            if (!usepass
+                && !pwC
+            )
+                m.vw->wait(k);
             double t2 = g->costs ? now_ms() : 0;
-            mid_feed(m, seg, m.pic_data[k].data());
+            if (pmo[k] >= 0)
+                mid_feed(m, pmo[k] == 0 ? m.alt_done : m.alt_done_x[size_t(pmo[k] - 1)]);
+            else
+                mid_feed(m, seg, m.pic_data[k].data());
             notify(0, -2);
             double t3 = g->costs ? now_ms() : 0;
             mids.push_back(mid_scan(m, field, true, m.draw_ctx));
@@ -1086,7 +1426,7 @@ uint64_t vsync_rf(Mid &m, uint32_t field, int readback)
     double tr2 = g->costs ? now_ms() : 0;
     I.end_speculation();
     if (g->textures)
-        g->textures->speculation_end();
+        tex_spec(g, false);
     regs_restore(I, saved);
     idle_if_serial(I);
     s_b_inside = false;
@@ -1095,6 +1435,109 @@ uint64_t vsync_rf(Mid &m, uint32_t field, int readback)
         g->ms_spec_begin += tr1 - tr0;
         g->ms_spec_draw += tr2 - tr1;
         g->ms_spec_end += now_ms() - tr2;
+    }
+    if (pw)
+    {
+        /* the wait by picture: the worker was started for every picture; it is waited for before the step is remembered, and the step's pass data is done with */
+        if (m.vw->wait_plan())
+            m.vw->wait(n - 1);
+        piclog(m, n, pw_st);
+        th_finish(m);
+        m.pw_steps++;
+        m.pw_late_steps += pw_late_after_first;
+        m.ph_steps++;
+        bool pw_warm_now = false;   /* (MH2_PASS_WARMUP) this step is one of a scene's first: not counted */
+        if (m.pw_warm.n)
+        {
+            const uint64_t db0 = m.pw_warm.db, vs0 = m.pw_warm.vs;
+            const int w = m.pw_warm.step(m.seg.data.size(), m.nvs, pw_late_after_first);
+            pw_warm_now = w != 0;
+            if (w == 2)
+                mid_log("pass warm-up: a scene's start at VSync %llu (the step's own chain %llu bytes, %llu in the step before, which ended at VSync %llu): %u steps not counted from here (the pass's step %llu)",
+                        (unsigned long long)m.nvs, (unsigned long long)m.seg.data.size(), (unsigned long long)db0, (unsigned long long)vs0, m.pw_warm.n, (unsigned long long)(m.pw_steps + m.pw_b_total));
+            if (w && !m.pw_warm.left)
+                mid_log("pass warm-up: %u steps from VSync %llu to %llu not counted, %d of them late after the first (mask 0x%08x, bit 0 the newest)", m.pw_warm.n, (unsigned long long)m.pw_warm.vs0,
+                        (unsigned long long)m.nvs, __builtin_popcount(m.pw_warm.mask), m.pw_warm.mask);
+        }
+        if (!pw_warm_now && m.pw_steady)
+        {
+            m.pw_hist = (m.pw_hist << 1) | (pw_late_after_first ? 1u : 0u);
+            m.pw_vs[m.pw_n < 32 ? m.pw_n : 31] = m.nvs;
+            m.pw_db[m.pw_n < 32 ? m.pw_n : 31] = m.seg.data.size();
+            m.pw_ev[m.pw_n < 32 ? m.pw_n : 31] = m.seg.events.size();
+            if (++m.pw_n >= 32)
+            {
+                const int nl = __builtin_popcount(m.pw_hist);
+                m.pw_n = 0;
+                if (nl > 0)   /* (development) where the late steps of these 32 fall: their VSyncs (the first late moment's step is the one whose later pictures were B's) */
+                {
+                    char lv[480];
+                    size_t lp = 0;
+                    for (int i = 0; i < 32 && lp + 12 < sizeof(lv); i++)
+                        if ((m.pw_hist >> (31 - i)) & 1u)
+                            lp += size_t(snprintf(lv + lp, sizeof(lv) - lp, " %llu", (unsigned long long)m.pw_vs[i]));
+                    lv[lp] = 0;
+                    double ld = 0, le = 0, od = 0, oe = 0;
+                    for (int i = 0; i < 32; i++)
+                        if ((m.pw_hist >> (31 - i)) & 1u)
+                            ld += double(m.pw_db[i]), le += double(m.pw_ev[i]);
+                        else
+                            od += double(m.pw_db[i]), oe += double(m.pw_ev[i]);
+                    const int no = 32 - nl;
+                    snprintf(lv + lp, sizeof(lv) - lp, "; the step's own chain, mean bytes and events: late %.0f and %.1f, the others %.0f and %.1f", ld / nl, le / nl, no ? od / no : 0.0, no ? oe / no : 0.0);
+                    mid_log("pass chunk: 32 steps from VSync %llu to %llu, %d late after the first, at VSync:%s (the pass's step %llu)", (unsigned long long)m.pw_vs[0], (unsigned long long)m.pw_vs[31], nl, lv,
+                            (unsigned long long)(m.pw_steps + m.pw_b_total));
+                }
+                if (nl >= 4)
+                {
+                    m.pw_b_only = true;
+                    mid_log("pass phase %u: %llu steps, waits for a moment %llu (%.2f ms on average, %.1f at worst), steps with a late moment after the first %llu; at the pass's step %llu (C and B steps so far), the last 32 steps' late mask 0x%08x (bit 0 the newest)", m.pw_giveups, (unsigned long long)m.ph_steps,
+                            (unsigned long long)(m.pw_waited - m.ph_waited0), m.pw_waited > m.ph_waited0 ? (m.pw_wait_sum - m.ph_sum0) / double(m.pw_waited - m.ph_waited0) : 0.0, m.ph_max,
+                            (unsigned long long)(m.pw_late_steps - m.ph_late0), (unsigned long long)(m.pw_steps + m.pw_b_total), m.pw_hist);
+                    m.pw_giveups++;
+                    m.pwb_waited = m.pwb_late = 0;
+                    m.pwb_wait_sum = m.pwb_wait_max = 0;
+                    m.pw_b_steps = 0;
+                    m.pw_b_len = m.pw_letgo ? m.pw_letgo << std::min<uint32_t>(m.pw_giveups - 1, 10) : 0;
+                    if (m.pw_b_len)
+                        mid_log("the pass's moments were late after the first in %d of 32 steps: in-between pictures from B for %u steps (give-up %u)", nl, m.pw_b_len, m.pw_giveups);
+                    else
+                        mid_log("the pass's moments were late after the first in %d of 32 steps: in-between pictures from B at this rate from here", nl);
+                }
+            }
+        }
+        else if (!pw_warm_now)
+            m.pw_n = 0;
+    }
+    else if (pwb)
+    {
+        m.pw_b_total++;
+        m.pwb_late += m.pwb_late_step ? 1 : 0;
+        if (m.pw_warm.n)   /* (MH2_PASS_WARMUP) the step before, for a scene's start: a scene that starts in B's phase is not a start at the return */
+            m.pw_warm.seen_step(m.seg.data.size(), m.nvs);
+        if (m.pwb_nowait)
+        {
+            m.pwb_nw_total++;
+            m.pwb_nw_late_total += m.pwb_late_step ? 1 : 0;
+        }
+        if (m.pw_b_len && ++m.pw_b_steps >= m.pw_b_len)
+        {
+            mid_log("B phase %u: %u steps, waits for the step's windows %llu (%.2f ms on average, %.1f at worst), steps whose windows were not whole after the wait %llu", m.pw_giveups, m.pw_b_steps,
+                    (unsigned long long)m.pwb_waited, m.pwb_waited ? m.pwb_wait_sum / double(m.pwb_waited) : 0.0, m.pwb_wait_max, (unsigned long long)m.pwb_late);
+            if (m.pwb_nowait)
+                mid_log("B phase %u without the wait: %u steps, windows not whole when the step drew %llu; at the pass's step %llu (C and B steps so far)", m.pw_giveups, m.pw_b_steps, (unsigned long long)m.pwb_late,
+                        (unsigned long long)(m.pw_steps + m.pw_b_total));
+            m.pw_b_only = false;
+            m.ph_steps = 0;
+            m.ph_waited0 = m.pw_waited;
+            m.ph_sum0 = m.pw_wait_sum;
+            m.ph_late0 = m.pw_late_steps;
+            m.ph_max = 0;
+            m.pw_hist = 0;
+            m.pw_n = 0;
+            mid_log("in-between pictures from the pass again after %u steps from B (give-up %u): the next give-up waits %u", m.pw_b_steps, m.pw_giveups, m.pw_letgo << std::min<uint32_t>(m.pw_giveups, 10));
+            m.pw_b_steps = 0;
+        }
     }
     mid_remember(m, seg);   /* the worker has made every picture it was to: the plan is not read again */
     m.tainted = false;
@@ -1139,6 +1582,12 @@ uint64_t vsync_single(Mid &m, uint32_t field, int readback)
         m.mid_id = 0;
     }
     std::vector<ScanoutResult> mids;
+    if (m.th_pending && !(chain && rf_allowed(m)))
+    {
+        /* no in-between picture is made from the pass in this step (no chain, or no step before): nothing to wait for, and the real picture is not held up */
+        th_assemble(m, false);
+        m.th_pending = false;
+    }
     if (chain && rf_allowed(m))
     {
         m.params.alpha = m.alphas[0];
@@ -1188,7 +1637,7 @@ uint64_t vsync_single(Mid &m, uint32_t field, int readback)
             regs_save(I, saved);
             I.begin_speculation();
             if (g->textures)
-                g->textures->speculation_begin();
+                tex_spec(g, true);
             double tr1 = g->costs ? now_ms() : 0;
             for (size_t k = 0; k < m.alphas.size(); k++)
             {
@@ -1199,8 +1648,8 @@ uint64_t vsync_single(Mid &m, uint32_t field, int readback)
                     I.rewind_speculation();
                     if (g->textures)
                     {
-                        g->textures->speculation_end();
-                        g->textures->speculation_begin();
+                        tex_spec(g, false);
+                        tex_spec(g, true);
                     }
                     regs_restore(I, saved);
                     m.vw->wait(k);
@@ -1226,7 +1675,7 @@ uint64_t vsync_single(Mid &m, uint32_t field, int readback)
             double tr2 = g->costs ? now_ms() : 0;
             I.end_speculation();
             if (g->textures)
-                g->textures->speculation_end();
+                tex_spec(g, false);
             regs_restore(I, saved);
             s_b_inside = false;
             if (g->costs)
@@ -1300,8 +1749,294 @@ uint64_t vsync_single(Mid &m, uint32_t field, int readback)
 }
 
 /* A VSync with the second renderer. */
+/* The pass on a thread of its own: the stream of the step that ends, from what came outside the windows (alt, with th_marks) and the pass's data of each window (pwin), moment by
+ * moment. A window whose data is not all there (the pass thread was late) or is not whole makes the step B's, and is counted. */
+/* The windows from a up to b are over (th_mx held): with MH2_PASS_RXPOOL the room of their moments' vectors is kept for the records to come. */
+static void pass2_erase(Mid &m, std::map<uint32_t, Mid::PWin>::iterator a, std::map<uint32_t, Mid::PWin>::iterator b)
+{
+    if (m.rx_pool.on)
+        for (auto it = a; it != b; ++it)
+            for (Mid::PMom &pm : it->second.mom)
+                m.rx_pool.give(pm.data);
+    m.pwin.erase(a, b);
+}
+
+static void th_assemble(Mid &m, bool count)
+{
+    std::unique_lock<std::mutex> lk(m.th_mx);
+    const size_t nw = m.th_serials.size();
+    bool ok = nw > 0 && !m.alt_bad && !m.alt_real;
+    bool late = false;
+    uint32_t nm = 0, maxs = m.pfloor;
+    std::vector<const Mid::PWin *> ws(nw, nullptr);
+    for (size_t i = 0; i < nw; i++)
+    {
+        maxs = std::max(maxs, m.th_serials[i]);
+        auto it = m.pwin.find(m.th_serials[i]);
+        if (it == m.pwin.end() || !it->second.done)
+        {
+            late = true;
+            ok = false;
+            continue;
+        }
+        const Mid::PWin &w = it->second;
+        if (w.bad || w.in || w.nm == 0 || w.have != w.nm || (nm && nm != w.nm))
+        {
+            ok = false;
+            continue;
+        }
+        if (!nm)
+            nm = w.nm;
+        ws[i] = &w;
+    }
+    for (size_t i = 1; ok && i < nw; i++)
+        for (uint32_t mo = 0; mo < nm; mo++)
+            if (ws[i]->mom[mo].al != ws[0]->mom[mo].al)
+                ok = false;
+    m.th_late_now = late;
+    if (nw && count)   /* (a step with no in-between picture to make from the pass is not counted: nobody waited for its windows) */
+    {
+        m.th_steps++;
+        if (ok)
+            m.th_used++;
+        else if (late)
+            m.th_late++;
+        else
+            m.th_bad_steps++;
+    }
+    if (ok)
+    {
+        m.alt_done_x.clear();
+        for (uint32_t mo = 0; mo < nm; mo++)
+        {
+            Mh2Interp::Step out = m.alt;
+            out.events.clear();
+            auto add_window = [&](size_t wi) {
+                const Mid::PMom &pm = ws[wi]->mom[mo];
+                size_t off = 0;
+                for (const auto &c : pm.chunks)
+                {
+                    Mh2Interp::Event e;
+                    memset(&e, 0, sizeof(e));
+                    e.type = Mh2Interp::EV_GIF;
+                    e.path = uint8_t(c.first);
+                    e.off = uint32_t(out.data.size());
+                    e.len = c.second;
+                    out.data.insert(out.data.end(), pm.data.begin() + off, pm.data.begin() + off + c.second);
+                    out.events.push_back(e);
+                    off += c.second;
+                }
+            };
+            size_t wi = 0;
+            for (size_t e = 0; e <= m.alt.events.size(); e++)
+            {
+                while (wi < nw && m.th_marks[wi] == e)
+                    add_window(wi++);
+                if (e < m.alt.events.size())
+                    out.events.push_back(m.alt.events[e]);
+            }
+            for (; wi < nw; wi++)
+                add_window(wi);
+            if (mo == 0)
+                m.alt_done = std::move(out);
+            else
+                m.alt_done_x.push_back(std::move(out));
+            m.alt_al_done[mo < 8 ? mo : 7] = ws[0]->mom[mo].al;
+            m.alt_skip_done[mo < 8 ? mo : 7] = false;
+            for (size_t wi2 = 0; wi2 < nw; wi2++)
+                m.alt_skip_done[mo < 8 ? mo : 7] |= ws[wi2]->mom[mo].skip;
+        }
+        m.alt_nm_done = nm;
+    }
+    m.alt_use = ok;
+    m.alt.clear();
+    m.alt_x.clear();
+    pass2_erase(m, m.pwin.begin(), m.pwin.upper_bound(maxs));
+    m.pfloor = maxs;
+    m.th_serials.clear();
+    m.th_marks.clear();
+    m.alt_nm = 1;
+    m.alt_mo = 0;
+    m.alt_windows = m.alt_ok_windows = 0;
+    m.alt_bad = m.alt_real = m.alt_in = false;
+}
+
+/* The wait by picture (MH2_PASS_PICWAIT), the step's windows as th_assemble reads them, with m.th_mx held. The moment whose alpha is al (1/256): 1: it is whole in every window of the step (j is its
+ * number); 0: not yet; -1: it will not come (a window is bad or done without it, the windows disagree, or no moment of the step has this alpha: a picture of a refresh the host's plan had no moment for). */
+static int th_moment_find(Mid &m, uint32_t al, int &j)
+{
+    const size_t nw = m.th_serials.size();
+    j = -1;
+    if (!nw || m.alt_bad || m.alt_real)
+        return -1;
+    uint32_t nm = 0;
+    bool any_done = false;
+    for (size_t i = 0; i < nw; i++)
+    {
+        auto it = m.pwin.find(m.th_serials[i]);
+        if (it == m.pwin.end())
+            continue;
+        const Mid::PWin &w = it->second;
+        if (w.bad)
+            return -1;
+        if (w.nm)
+        {
+            if (nm && nm != w.nm)
+                return -1;
+            nm = w.nm;
+        }
+        if (w.done)
+        {
+            if (w.in || !w.nm || w.have != w.nm)
+                return -1;
+            any_done = true;
+        }
+        for (uint32_t jj = 0; jj < w.nm && jj < w.got.size(); jj++)
+            if (w.got[jj] && w.mom[jj].al == al)
+            {
+                if (j >= 0 && j != int(jj))
+                    return -1;
+                j = int(jj);
+            }
+    }
+    if (j < 0)
+        return any_done ? -1 : 0;
+    for (size_t i = 0; i < nw; i++)
+    {
+        auto it = m.pwin.find(m.th_serials[i]);
+        if (it == m.pwin.end())
+            return 0;
+        const Mid::PWin &w = it->second;
+        if (uint32_t(j) >= w.nm || !w.got[size_t(j)])
+            return w.done ? -1 : 0;
+        if (w.mom[size_t(j)].al != al)
+            return -1;
+        if (!w.whole[size_t(j)])
+            return w.done ? -1 : 0;
+    }
+    return 1;
+}
+
+/* (MH2GS_PICLOG=FILE) a line for each chain step of the wait by picture: the pictures' alphas (1/256) with each one's answer (m a moment, l late, n none), and for each window of the step its flags and moments
+ * (alpha, a record begun, the record whole). Read where a step has no moment for any of its pictures. */
+static void piclog(Mid &m, size_t n, const int *st)
+{
+    static FILE *pf = DEV_ENV("MH2GS_PICLOG") ? fopen(DEV_ENV("MH2GS_PICLOG"), "w") : nullptr;
+    static unsigned long long no = 0;
+    if (!pf)
+        return;
+    std::lock_guard<std::mutex> lk(m.th_mx);
+    fprintf(pf, "chain %llu: n %zu pictures", ++no, n);
+    for (size_t k = 0; k < n; k++)
+        fprintf(pf, " %u%c", (unsigned)alpha_256(m.alphas[k]), st[k < 16 ? k : 15] == 1 ? 'm' : st[k < 16 ? k : 15] == 0 ? 'l' : 'n');
+    fprintf(pf, "; flags bad %d real %d; windows %zu:", (int)m.alt_bad, (int)m.alt_real, m.th_serials.size());
+    for (size_t i = 0; i < m.th_serials.size(); i++)
+    {
+        auto it = m.pwin.find(m.th_serials[i]);
+        if (it == m.pwin.end())
+        {
+            fprintf(pf, " [none]");
+            continue;
+        }
+        const Mid::PWin &w = it->second;
+        fprintf(pf, " [%s%s%s nm %u:", w.done ? "d" : "", w.bad ? "B" : "", w.in ? "I" : "", (unsigned)w.nm);
+        for (uint32_t jj = 0; jj < w.nm && jj < w.got.size(); jj++)
+            fprintf(pf, " %u%s%s", (unsigned)w.mom[jj].al, w.got[jj] ? "g" : "", w.whole[jj] ? "w" : "");
+        fprintf(pf, "]");
+    }
+    fprintf(pf, "\n");
+    fflush(pf);
+}
+
+/* The moment's step made from the windows' data, as th_assemble makes each of its moments: 1 (out and skip set), 0 not there (late), -1 none for this alpha. */
+static int th_moment_try(Mid &m, uint32_t al, Mh2Interp::Step &out, bool &skip)
+{
+    std::lock_guard<std::mutex> lk(m.th_mx);
+    int j = -1;
+    const int r = th_moment_find(m, al, j);
+    if (r != 1)
+        return r;
+    const size_t nw = m.th_serials.size();
+    out = m.alt;
+    out.events.clear();
+    skip = false;
+    auto add_window = [&](size_t wi) {
+        const Mid::PMom &pm = m.pwin.find(m.th_serials[wi])->second.mom[size_t(j)];
+        skip = skip || pm.skip;
+        size_t off = 0;
+        for (const auto &c : pm.chunks)
+        {
+            Mh2Interp::Event e;
+            memset(&e, 0, sizeof(e));
+            e.type = Mh2Interp::EV_GIF;
+            e.path = uint8_t(c.first);
+            e.off = uint32_t(out.data.size());
+            e.len = c.second;
+            out.data.insert(out.data.end(), pm.data.begin() + off, pm.data.begin() + off + c.second);
+            out.events.push_back(e);
+            off += c.second;
+        }
+    };
+    size_t wi = 0;
+    for (size_t e = 0; e <= m.alt.events.size(); e++)
+    {
+        while (wi < nw && m.th_marks[wi] == e)
+            add_window(wi++);
+        if (e < m.alt.events.size())
+            out.events.push_back(m.alt.events[e]);
+    }
+    for (; wi < nw; wi++)
+        add_window(wi);
+    return 1;
+}
+
+/* The step's pass data is done with (after its last picture): what th_assemble does at its end. */
+static void th_finish(Mid &m)
+{
+    std::lock_guard<std::mutex> lk(m.th_mx);
+    uint32_t maxs = m.pfloor;
+    for (uint32_t s : m.th_serials)
+        maxs = std::max(maxs, s);
+    if (!m.th_serials.empty())
+        m.th_steps++;
+    m.alt_use = false;
+    m.alt.clear();
+    m.alt_x.clear();
+    pass2_erase(m, m.pwin.begin(), m.pwin.upper_bound(maxs));
+    m.pfloor = maxs;
+    m.th_serials.clear();
+    m.th_marks.clear();
+    m.alt_nm = 1;
+    m.alt_mo = 0;
+    m.alt_windows = m.alt_ok_windows = 0;
+    m.alt_bad = m.alt_real = m.alt_in = false;
+}
+
 uint64_t vsync_mid(Mid &m, uint32_t field, int readback)
 {
+    /* the pass thread's step is made after the real picture is started: below for the second renderer, in vsync_single for design B's single renderer */
+    const bool shared_on = m.shared && m.mode == MH2GS_INTERP_ON;
+    const bool th_after = m.alt_on && m.th_on && !shared_on;
+    if (m.alt_on && m.th_on)
+    {
+        if (shared_on)
+            m.th_pending = true;   /* vsync_single goes on: the real picture first, then the pass thread's step */
+    }
+    else if (m.alt_on)
+    {
+        m.alt_done = std::move(m.alt);
+        m.alt.clear();
+        m.alt_done_x = std::move(m.alt_x);
+        m.alt_x.clear();
+        m.alt_nm_done = m.alt_nm;
+        memcpy(m.alt_al_done, m.alt_al, sizeof(m.alt_al));
+        memcpy(m.alt_skip_done, m.alt_skip, sizeof(m.alt_skip));
+        m.alt_use = m.alt_ok_windows > 0 && !m.alt_bad && m.alt_ok_windows == m.alt_windows * m.alt_nm && !m.alt_real && !m.alt_in && m.alt_done_x.size() + 1 >= m.alt_nm;
+        m.alt_nm = 1;
+        m.alt_mo = 0;
+        m.alt_windows = m.alt_ok_windows = 0;
+        m.alt_bad = m.alt_real = m.alt_in = false;
+    }
     if (m.shared && m.mode == MH2GS_INTERP_ON)
         return vsync_single(m, field, readback);
     const bool test = m.mode >= MH2GS_INTERP_TEST_IDENTITY;
@@ -1331,6 +2066,14 @@ uint64_t vsync_mid(Mid &m, uint32_t field, int readback)
         m.last_p = p_id;
         if (!use_mid)
             id = p_id;
+    }
+    if (th_after)
+    {
+        /* the real picture is on its way: tell the host (which enters it at once), then let it wait for the pass thread's windows of the step; only the in-between picture depends on them */
+        if (id)
+            notify(id, -1);
+        notify(0, -4);
+        th_assemble(m);
     }
 
     /* the second renderer: given the stream, and scanned out every VSync */
@@ -1391,6 +2134,23 @@ uint64_t vsync_mid(Mid &m, uint32_t field, int readback)
                         mid_log("interp mov step %llu at VSync %llu: %llu moving vertices; error within 1/16 px %.2f %%, 1/4 %.2f, 1/2 %.2f, 1 %.2f, 2 %.2f, more %.2f", (unsigned long long)m.st.chains, (unsigned long long)m.nvs,
                                 (unsigned long long)tm, 100.0 * r.merr[0] / std::max<double>(1, tm), 100.0 * r.merr[1] / std::max<double>(1, tm), 100.0 * r.merr[2] / std::max<double>(1, tm),
                                 100.0 * r.merr[3] / std::max<double>(1, tm), 100.0 * r.merr[4] / std::max<double>(1, tm), 100.0 * r.merr[5] / std::max<double>(1, tm));
+                        if (DEV_ENV("MH2GS_MODELERR"))
+                        {
+                            std::vector<Mh2Interp::ModelErr> v = r.model_err;
+                            std::sort(v.begin(), v.end(), [](const Mh2Interp::ModelErr &a, const Mh2Interp::ModelErr &b) { return a.sum > b.sum; });
+                            double tot = 0;
+                            for (auto &e : v)
+                                tot += e.sum;
+                            for (size_t q = 0; q < v.size() && q < 6; q++)
+                            {
+                                const auto &e = v[q];
+                                if (e.sum <= 0) break;
+                                mid_log("interp merr step %llu at VSync %llu: model %d handle %u occ %u kicks %u/%u/%u/%u verts %llu mean %.2f max %.1f over2 %llu over8 %llu share %.1f %% byWhat %.0f/%.0f/%.0f/%.0f prog %u fl %u pos %.0f %.0f %.0f eye %.0f %.0f %.0f", (unsigned long long)m.st.chains, (unsigned long long)m.nvs, e.model, e.handle, e.occ,
+                                        e.kicks[0], e.kicks[1], e.kicks[2], e.kicks[3], (unsigned long long)e.verts, e.sum / std::max<double>(1, double(e.verts)), e.max, (unsigned long long)e.over2, (unsigned long long)e.over8,
+                                        100.0 * e.sum / std::max(1e-9, tot), e.sum_what[0], e.sum_what[1], e.sum_what[2], e.sum_what[3], e.prog, e.flags, e.pos[0], e.pos[1], e.pos[2], e.eye[0], e.eye[1], e.eye[2]);
+                            }
+                            mid_log("interp mtot step %llu at VSync %llu: models %zu total error %.0f px", (unsigned long long)m.st.chains, (unsigned long long)m.nvs, v.size(), tot);
+                        }
                         mid_log("interp vtx step %llu at VSync %llu: %llu vertices in the picture; error within 1/16 px %.2f %%, 1/4 %.2f, 1/2 %.2f, 1 %.2f, 2 %.2f, more %.2f", (unsigned long long)m.st.chains, (unsigned long long)m.nvs,
                                 (unsigned long long)t, 100.0 * r.err[0] / std::max<double>(1, t), 100.0 * r.err[1] / std::max<double>(1, t), 100.0 * r.err[2] / std::max<double>(1, t),
                                 100.0 * r.err[3] / std::max<double>(1, t), 100.0 * r.err[4] / std::max<double>(1, t), 100.0 * r.err[5] / std::max<double>(1, t));
@@ -1481,8 +2241,38 @@ uint64_t vsync_mid(Mid &m, uint32_t field, int readback)
 }
 }
 
+static void alt_step_gif(Mh2Interp::Step &st, uint32_t path, const uint8_t *p, size_t bytes)
+{
+    Mh2Interp::Event e;
+    memset(&e, 0, sizeof(e));
+    e.type = Mh2Interp::EV_GIF;
+    e.path = uint8_t(path);
+    e.off = uint32_t(st.data.size());
+    e.len = uint32_t(bytes);
+    st.data.insert(st.data.end(), p, p + bytes);
+    st.events.push_back(e);
+}
+
+/* all: what came outside the windows, for every moment's stream; else the pass's data, for the moment in progress alone */
+static void alt_add_gif(Mid &m, uint32_t path, const void *data, size_t bytes, bool all)
+{
+    const uint8_t *p = static_cast<const uint8_t *>(data);
+    if (!all && m.alt_mo)
+    {
+        if (m.alt_mo - 1 < m.alt_x.size())
+            alt_step_gif(m.alt_x[m.alt_mo - 1], path, p, bytes);
+        return;
+    }
+    alt_step_gif(m.alt, path, p, bytes);
+    if (all)
+        for (auto &x : m.alt_x)
+            alt_step_gif(x, path, p, bytes);
+}
+
 extern "C" MH2GS_API void mh2gs_gif(uint32_t path, const void *data, size_t bytes)
 {
+    if (g && bytes && g->mid && g->mid->active && g->mid->alt_on && !g->mid->alt_real && !g->mid->alt_in && path >= 1 && path <= 3)
+        alt_add_gif(*g->mid, path, data, bytes & ~size_t(15), true);
     if (g && bytes)
     {
         double t0 = g->costs ? now_ms() : 0;
@@ -1503,6 +2293,23 @@ extern "C" MH2GS_API void mh2gs_priv_write(uint32_t addr, uint64_t value)
 {
     if (!g)
         return;
+    if (g->mid && g->mid->active && g->mid->alt_on && !g->mid->alt_real && !g->mid->alt_in)
+    {
+        Mh2Interp::Event e;
+        memset(&e, 0, sizeof(e));
+        e.type = Mh2Interp::EV_PRIV;
+        e.addr = addr;
+        e.value = value;
+        g->mid->alt.events.push_back(e);
+        for (auto &x : g->mid->alt_x)
+            x.events.push_back(e);
+        if (addr == 0x12000070u || addr == 0x12000090u)   /* DISPFB1, DISPFB2 */
+        {
+            g->mid->alt.flip = true;
+            for (auto &x : g->mid->alt_x)
+                x.flip = true;
+        }
+    }
     if (!(g->mid && g->mid->active && g->mid->shared))
         priv_write(g->iface, addr, value);
     if (g->mid && g->mid->active)
@@ -1634,10 +2441,298 @@ extern "C" MH2GS_API void mh2gs_interp_stop(void)
     g->interp_state = 3;
 }
 
+extern "C" MH2GS_API void mh2gs_pass(uint32_t kind, uint32_t arg, const void *data, size_t bytes)
+{
+    if (!g || !g->mid || !g->mid->active || !g->mid->alt_on)
+        return;
+    Mid &m = *g->mid;
+    switch (kind)
+    {
+    case 0:
+        m.alt_real = true;
+        if (m.th_on && arg)   /* the pass thread's window: its serial, and the place in the stream it takes */
+        {
+            m.th_serials.push_back(arg);
+            m.th_marks.push_back(uint32_t(m.alt.events.size()));
+        }
+        break;
+    case 1: m.alt_real = false; m.alt_windows++; break;
+    case 2:
+    {
+        /* the record's argument: the alpha in 1/256 in bits 0 to 15, the moment's number in 16 to 23, how many moments there are in 24 to 31 (0: one) */
+        const uint32_t nm = std::min<uint32_t>(std::max<uint32_t>(arg >> 24, 1u), 8u), mo = std::min<uint32_t>((arg >> 16) & 255u, nm - 1);
+        if (mo == 0 && nm > 1 && m.alt_x.size() != nm - 1)
+            m.alt_x.assign(nm - 1, m.alt);   /* the first window of the step: the skeleton so far is each moment's */
+        if (!Mh2Interp::moment_ok(mo, nm, m.alt_x.size()))
+        {
+            m.alt_bad = true;   /* a moment above 0 with no moment 0 before it in the step: the step is B's, and the moment's data goes nowhere */
+            m.alt_in = false;
+            m.alt_guard++;
+            break;
+        }
+        m.alt_nm = nm;
+        m.alt_mo = mo;
+        m.alt_al[mo] = arg & 0x7FFFu;
+        m.alt_skip[mo] = (arg & 0x8000u) != 0;
+        m.alt_in = true;
+        break;
+    }
+    case 3:
+        if (m.alt_in && arg >= 1 && arg <= 3 && bytes)
+            alt_add_gif(m, arg, data, bytes & ~size_t(15), false);
+        break;
+    case 4: m.alt_in = false; m.alt_ok_windows++; break;
+    case 5: m.alt_bad = true; break;
+    }
+}
+
+/* A moment's record begins (kind 2, or kind 7): arg1 holds the alpha, the skip bit, the moment's number (bits 16 to 23) and the window's moment count (from bit 24). The moments of a window
+ * may come in any order; a moment twice, a number outside the count or another count than the window's is a bad window. */
+static bool pass2_begin(Mid &m, Mid::PWin &w, uint32_t arg1)
+{
+    const uint32_t nm = std::min<uint32_t>(std::max<uint32_t>(arg1 >> 24, 1u), 8u), mo = (arg1 >> 16) & 255u;
+    if (mo >= nm || (w.nm && nm != w.nm) || (w.nm && w.got[mo]) || w.in)
+    {
+        w.bad = true;
+        w.in = false;
+        m.th_guard++;
+        return false;
+    }
+    if (!w.nm)
+    {
+        w.nm = nm;
+        w.mom.assign(nm, Mid::PMom());
+        w.got.assign(nm, 0);
+    }
+    Mid::PMom &pm = w.mom[mo];
+    pm.al = arg1 & 0x7FFFu;
+    pm.skip = (arg1 & 0x8000u) != 0;
+    w.got[mo] = 1;
+    if (w.whole.size() != nm)
+        w.whole.assign(nm, 0);
+    w.cur = mo;
+    w.in = true;
+    return true;
+}
+
+/* The pass thread's records (the second ring; a reader thread of the host calls this): arg0 = the kind in the low 4 bits and the window's serial above, arg1 the kind's
+ * argument as mh2gs_pass has it; 6 says that the window's records are all here. */
+extern "C" MH2GS_API void mh2gs_pass2(uint32_t arg0, uint32_t arg1, const void *data, size_t bytes)
+{
+    if (!g || !g->mid || !g->mid->th_on)
+        return;
+    Mid &m = *g->mid;
+    const uint32_t kind = arg0 & 15u, ser = arg0 >> 4;
+    std::lock_guard<std::mutex> lk(m.th_mx);
+    if (ser <= m.pfloor)
+    {
+        m.th_dropped++;   /* the step it belonged to is over */
+        return;
+    }
+    while (m.pwin.size() > 4096)   /* nobody takes them (no interpolation is running): keep the newest */
+    {
+        m.pfloor = std::max(m.pfloor, m.pwin.begin()->first);
+        pass2_erase(m, m.pwin.begin(), std::next(m.pwin.begin()));
+    }
+    Mid::PWin &w = m.pwin[ser];
+    switch (kind)
+    {
+    case 2:
+        pass2_begin(m, w, arg1);
+        break;
+    case 3:
+        if (w.in && arg1 >= 1 && arg1 <= 3 && bytes)
+        {
+            Mid::PMom &pm = w.mom[w.cur];
+            const uint8_t *p = static_cast<const uint8_t *>(data);
+            pm.data.insert(pm.data.end(), p, p + (bytes & ~size_t(15)));
+            pm.chunks.push_back({arg1, uint32_t(bytes & ~size_t(15))});
+        }
+        break;
+    case 7:
+    case 8:
+    {
+        /* one record a moment: kind 7 begins it (arg1 as kind 2's; the first qword of the data is the count of qwords that follow), kind 8 goes on with it; each piece is a qword header
+         * (path, qwords) and its data. Taken apart into the moment's data and chunks, as kinds 2, 3 and 4 would have made them. The pieces of one record are consecutive on the ring (the
+         * producer holds the ring's lock across them), so one record is in progress at a time for a window, and the moments of a window may come in any order. */
+        const uint8_t *p = static_cast<const uint8_t *>(data);
+        size_t left_b = bytes & ~size_t(15);
+        if (kind == 7)
+        {
+            if (left_b < 16 || !pass2_begin(m, w, arg1))
+                break;
+            uint32_t total;
+            std::memcpy(&total, p, 4);
+            w.rx_left = total;
+            w.rx_cleft = 0;
+            m.rx_pool.take(w.mom[w.cur].data, size_t(total) * 16);   /* (the record's quadwords, its pieces' headers among them: no less than the data) */
+            p += 16;
+            left_b -= 16;
+        }
+        else if (!w.in)
+        {
+            w.bad = true;   /* a continuation with no moment begun */
+            m.th_guard++;
+            break;
+        }
+        Mid::PMom &pm = w.mom[w.cur];
+        auto fin = [&]() {
+            if (w.in)
+            {
+                w.in = false;
+                w.have++;
+                if (w.cur < w.whole.size())
+                    w.whole[w.cur] = 1;
+                if (m.picwait)
+                    m.th_cv.notify_all();
+            }
+        };
+        while (left_b && w.in)
+        {
+            if (w.rx_cleft == 0)
+            {
+                uint32_t h[4];
+                std::memcpy(h, p, 16);
+                p += 16;
+                left_b -= 16;
+                if (w.rx_left == 0 || h[1] > w.rx_left - 1 || h[0] < 1 || h[0] > 3)
+                {
+                    w.bad = true;
+                    w.in = false;
+                    m.th_guard++;
+                    break;
+                }
+                w.rx_left--;
+                w.rx_cleft = h[1];
+                if (h[1])
+                    pm.chunks.push_back({h[0], h[1] * 16u});
+                continue;
+            }
+            const size_t n = std::min<size_t>(left_b, size_t(w.rx_cleft) * 16);
+            pm.data.insert(pm.data.end(), p, p + n);
+            p += n;
+            left_b -= n;
+            w.rx_cleft -= uint32_t(n / 16);
+            w.rx_left -= n / 16;
+            if (w.rx_left == 0 && w.rx_cleft == 0)
+                fin();
+        }
+        if (w.in && w.rx_left == 0 && w.rx_cleft == 0)
+            fin();
+        break;
+    }
+    case 4:
+        if (w.in)
+        {
+            w.in = false;
+            w.have++;
+            if (w.cur < w.whole.size())
+                w.whole[w.cur] = 1;
+            if (m.picwait)
+                m.th_cv.notify_all();
+        }
+        break;
+    case 5: w.bad = true; break;
+    case 6:
+        w.done = true;
+        m.th_cv.notify_all();
+        break;
+    }
+}
+
+/* The VSync waits here (the host calls it before mh2gs_vsync, in slices) until every window of the step has all its records from the pass thread. 1: it has, or there
+ * is nothing to wait for; 0: not yet. */
+extern "C" MH2GS_API int mh2gs_pass_wait(uint32_t ms)
+{
+    if (!g || !g->mid || !g->mid->th_on)
+        return 1;
+    Mid &m = *g->mid;
+    if (m.th_serials.empty())
+        return 1;
+    std::unique_lock<std::mutex> lk(m.th_mx);
+    auto ready = [&]() {
+        for (uint32_t s : m.th_serials)
+        {
+            auto it = m.pwin.find(s);
+            if (it == m.pwin.end() || !it->second.done)
+                return false;
+        }
+        return true;
+    };
+    if (ready())
+        return 1;
+    const double t0 = now_ms();
+    const bool r = m.th_cv.wait_for(lk, std::chrono::milliseconds(ms), ready);
+    const double dt = now_ms() - t0;
+    m.th_waited++;
+    m.th_wait_sum += dt;
+    m.th_wait_max = std::max(m.th_wait_max, dt);
+    if (m.pw_b_only)
+    {
+        m.pwb_waited++;
+        m.pwb_wait_sum += dt;
+        m.pwb_wait_max = std::max(m.pwb_wait_max, dt);
+    }
+    return r ? 1 : 0;
+}
+
+/* The wait by picture (MH2_PASS_PICWAIT; development builds): waits up to us microseconds for the moment of the step in progress whose alpha is al (1/256) to be whole in every window of the
+ * step. 1: it is, or it will not come (the picture is then made at once, from the moment or from B); 0: not yet. */
+extern "C" MH2GS_API int mh2gs_pass_moment_wait(uint32_t al, uint32_t us)
+{
+    if (!g || !g->mid || !g->mid->th_on || !g->mid->picwait)
+        return 1;
+    Mid &m = *g->mid;
+    std::unique_lock<std::mutex> lk(m.th_mx);
+    int j;
+    auto ready = [&]() { return th_moment_find(m, al, j) != 0; };
+    if (ready())
+        return 1;
+    const double t0 = now_ms();
+    const bool r = m.th_cv.wait_for(lk, std::chrono::microseconds(us), ready);
+    const double dt = now_ms() - t0;
+    m.pw_waited++;
+    m.pw_wait_sum += dt;
+    m.pw_wait_max = std::max(m.pw_wait_max, dt);
+    m.ph_max = std::max(m.ph_max, dt);
+    return r ? 1 : 0;
+}
+
+/* (development builds) The steps B's phase has left after the last step made: 0 outside B's phase (or when the pass is not by picture), 0x7fffffff when the phase has no end (the latch,
+ * MH2_PASS_LETGO=0). The host reads it for MH2_PASS_BNOWIN: a step that falls in B's phase gets an empty plan, so that the core makes no moments for it. */
+extern "C" MH2GS_API int mh2gs_pass_b_left(void)
+{
+    if (!g || !g->mid || !g->mid->th_on || !g->mid->picwait || !g->mid->pw_b_only)
+        return 0;
+    const Mid &m = *g->mid;
+    if (!m.pw_b_len)
+        return 0x7fffffff;
+    return m.pw_b_len > m.pw_b_steps ? int(m.pw_b_len - m.pw_b_steps) : 0;
+}
+
+/* Whether the host's clock is steady (not a pause, a fast forward or a hitch): the rule of 4 late steps in 32 counts only steps made while it is. */
+extern "C" MH2GS_API void mh2gs_pass_steady(int steady)
+{
+    if (g && g->mid)
+        g->mid->pw_steady = steady != 0;
+}
+
 extern "C" MH2GS_API void mh2gs_camera(const float *m)
 {
     if (g && m && g->mid && g->mid->active)
         g->mid->cap.camera(m);
+}
+
+extern "C" MH2GS_API void mh2gs_model(uint32_t handle, uint32_t flags, uint32_t prog, const float *world, const float *cam, uint32_t site)
+{
+    if (g && g->mid && g->mid->active && (handle ? (world && cam) : true))   /* handle 0: the end of a labelled run (no matrix) */
+        g->mid->cap.model(handle, flags, prog, world, cam, site);
+}
+
+extern "C" MH2GS_API void mh2gs_anchor(uint32_t id, const float *point, const float *cam)
+{
+    if (g && g->mid && g->mid->active)
+        g->mid->cap.anchor(id, point, cam);
 }
 
 extern "C" MH2GS_API void mh2gs_set_notify(mh2gs_notify_fn fn, void *user)
@@ -1658,6 +2753,7 @@ extern "C" MH2GS_API int mh2gs_frame_poll(uint64_t id, mh2gs_frame *out)
     rb.soft = false;
     return mh2gs_get_frame(id, out) ? 1 : -1;
 }
+
 
 extern "C" MH2GS_API uint32_t mh2gs_interp_mids(uint64_t *ids, uint32_t cap)
 {
@@ -1851,6 +2947,7 @@ extern "C" MH2GS_API int mh2gs_state_set(const void *src, size_t len)
          * empty vertex queue. */
         auto &regs = iface.get_register_state();
         memcpy(static_cast<void *>(&regs), in + l.regs, sizeof(RegisterState));
+        iface.sync_clut_load_banks();   /* (a state holds no palette bank of its own: none is loaded again until a bank changes) */
         memcpy(static_cast<void *>(&iface.get_priv_register_state()), in + l.priv, sizeof(PrivRegisterState));
         iface.write_register(RegisterAddr::PRIM, regs.prim.bits);
         iface.write_register(RegisterAddr::XYOFFSET_1, regs.ctx[0].xyoffset.bits);
@@ -1899,6 +2996,11 @@ extern "C" MH2GS_API void mh2gs_shutdown(void)
             mid_log("in-between frames: %llu steps drawn, %llu without an in-between frame (a cut or no step before), %llu in-between frames shown, %llu of them not ready in time (the earlier frame was shown)%s",
                     (unsigned long long)g->mid->st.chains, (unsigned long long)g->mid->st.cuts, (unsigned long long)g->mid->st.mids,
                     (unsigned long long)g->mid->st.late, g->mid->active ? "" : "; given up, 30 frames per second from there");
+        if (g->mid && g->mid->th_on)
+            mid_log("pass thread's streams: %llu steps with windows, %llu made from the pass, %llu B's for a late window, %llu B's for a window not whole (guard %llu), records of over steps dropped %llu; waited at the VSync %llu times, %.2f ms on average, %.1f at worst",
+                    (unsigned long long)g->mid->th_steps, (unsigned long long)g->mid->th_used, (unsigned long long)g->mid->th_late, (unsigned long long)g->mid->th_bad_steps,
+                    (unsigned long long)g->mid->th_guard, (unsigned long long)g->mid->th_dropped, (unsigned long long)g->mid->th_waited,
+                    g->mid->th_waited ? g->mid->th_wait_sum / double(g->mid->th_waited) : 0.0, g->mid->th_wait_max);
         if (g->costs)
         {
             g->iface.flush();

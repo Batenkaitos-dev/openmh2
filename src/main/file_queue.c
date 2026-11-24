@@ -19,6 +19,9 @@
 #include "main.h"
 #include "vibration.h"
 #include "libc.h"
+
+
+
 extern s32 gLoadLastVSync;      /* the VSync count Load_Idle last ran at */
 
 #define FILE_QUEUE_LEN 256  /* the requests in the ring */
@@ -178,6 +181,14 @@ void FileQueue_Update(void)
             ADXF_Stop(queue->adxf);
             ADXF_Close(queue->adxf);
         }
+
+
+
+
+
+
+
+
         if (req->type == FILEREQ_AFS) {
             queue->adxf = ADXF_OpenAfs((req->u.id >> 16) & 0xFFFF, req->u.id & 0xFFFF);
             if (queue->adxf == NULL) {

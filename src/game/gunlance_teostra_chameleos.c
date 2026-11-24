@@ -625,7 +625,7 @@ void TeostraBlastRing_Draw(DrawSlot *drawSlot)
         if (i == -1) {
             return;
         }
-        bank = gScene.partModels[i];
+        bank = SCENE_PART_MODELS(i);
         flags |= 4;
         scaleKeys = TeostraBlastRing_ScaleKeysEnd;
         colorKeys = TeostraBlastRing_ColorKeysEnd;

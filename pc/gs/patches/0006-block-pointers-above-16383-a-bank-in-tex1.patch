@@ -1,0 +1,459 @@
+Block pointers above 16383: a bank in TEX1, 16-bit BITBLTBUF pointers
+
+TEX0's TBP0 and CBP are 14 bits each and every bit of TEX0 is a field, so a
+block at 16384 or more (GS memory beyond 4 MB, GSOptions::vram_size) cannot be
+named by TEX0. The high bits ride in TEX1's undefined bits: TBP0's in bits
+48-51 (TBP0_BANK), CBP's in bits 52-55 (CBP_BANK). BITBLTBUF's SBP and DBP
+become 16 bits (they were 14 followed by two spare bits). A mip level's 14-bit
+pointer is read as a distance from the base picture's pointer, modulo 16384
+(tex_level_tbp): levels follow their base in memory and span less than 16384
+blocks, so a level needs no bank of its own, and a picture may straddle a
+bank boundary.
+
+Every place that read TBP0, CBP, SBP or DBP as the block now reads the full
+pointer: the texture descriptor (its TEX1 bits, hashed, keep the TBP0 bank;
+the CBP bank is cleared with CBP), the page rectangles of a texture and of a
+palette, the feedback tests, the cached CLUT pointers (CLD compares), the
+forwarded CLUT, the transfer tracking, the texture upload's mip table, the
+CLUT descriptor, and the texture listener (on_clut_load takes the palette's
+full pointer). TEX2 changes only the CLUT fields and keeps the banks.
+
+A TEX1 write that changes the sampling only (the game's filter change, written
+between binding a texture and drawing it) sets bit 56, KEEP_BANK: it keeps the
+banks of the TEX1 it replaces and the bit is not stored. Without it the write
+would clear the bank of the texture bound.
+
+For a block below 16384 every bank bit is zero and nothing changes.
+
+GSOptions::ignore_bank (a control for tests) reads TEX1's bank bits as zero.
+
+diff --git a/gs/gs_interface.cpp b/gs/gs_interface.cpp
+index 3287b47..5f8a1d8 100644
+--- a/gs/gs_interface.cpp
++++ b/gs/gs_interface.cpp
+@@ -38,9 +38,13 @@ void GSInterface::reset_context_state_registers()
+ 	clobber_register_state();
+ }
+ 
++// ANDed into every TEX1 write: GSOptions::ignore_bank clears the bank bits (a control for tests).
++static uint64_t tex1_bank_keep = ~0ull;
++
+ bool GSInterface::init(Vulkan::Device *device, const GSOptions &options)
+ {
+ 	vram_size = options.vram_size;
++	tex1_bank_keep = options.ignore_bank ? ~(0xffull << 48) : ~0ull;
+ 	uint32_t num_pages = vram_size / PageSize;
+ 	tracker.set_num_pages(num_pages);
+ 	uint32_t num_pages_u32 = (num_pages + 31) / 32;
+@@ -317,6 +321,7 @@ void GSInterface::flush_render_pass(FlushReason reason)
+ 	render_pass.tex_infos.clear();
+ 	render_pass.tex_infos_has_super_samples = false;
+ 	render_pass.tex0_infos.clear();
++	render_pass.tex0_tbp.clear();
+ 	render_pass.state_vector_map.clear();
+ 	render_pass.state_vectors.clear();
+ 	render_pass.primitive_count = 0;
+@@ -512,7 +517,7 @@ void GSInterface::rewrite_forwarded_clut_upload(
+ 	auto &desc = ctx.tex0.desc;
+ 
+ 	// Match an extremely specific code pattern.
+-	if (uint32_t(ctx.tex0.desc.CBP) == fb_instance.frame.desc.FBP * PGS_BLOCKS_PER_PAGE &&
++	if (tex_cbp(ctx.tex0.desc, ctx.tex1.desc) == fb_instance.frame.desc.FBP * PGS_BLOCKS_PER_PAGE &&
+ 	    fb_instance.frame.desc.PSM == PSMCT32 &&
+ 	    ctx.tex0.desc.CSM == TEX0Bits::CSM_LAYOUT_RECT &&
+ 	    fb_instance.color_write_mask == 0xffffff && render_pass.primitive_count >= 2 &&
+@@ -593,6 +598,7 @@ void GSInterface::rewrite_forwarded_clut_upload(
+ 			return;
+ 
+ 		upload.tex0.desc.CBP = render_pass.tex0_infos[tex_index].TBP0;
++		upload.cbp_hi = render_pass.tex0_tbp[tex_index] & ~0x3fffu;
+ 		upload.texclut.desc.CBW = render_pass.tex0_infos[tex_index].TBW;
+ 		upload.texclut.desc.COU = 0;
+ 		upload.texclut.desc.COV = attr0.uv.y >> PGS_SUBPIXEL_BITS;
+@@ -618,6 +624,7 @@ void GSInterface::handle_clut_upload(uint32_t ctx_index)
+ 	auto psm = uint32_t(desc.PSM);
+ 	auto cpsm = uint32_t(desc.CPSM);
+ 	auto csa = uint32_t(desc.CSA);
++	const uint32_t full_cbp = tex_cbp(desc, ctx.tex1.desc);
+ 
+ 	// Fixup buggy case with PSMCT24, which is not supported.
+ 	if (cpsm == PSMCT24)
+@@ -637,12 +644,12 @@ void GSInterface::handle_clut_upload(uint32_t ctx_index)
+ 	case TEX0Bits::CLD_LOAD_WRITE_CBP0:
+ 	case TEX0Bits::CLD_LOAD_WRITE_CBP1:
+ 		load_clut = true;
+-		registers.cached_cbp[CLD & 1] = uint32_t(desc.CBP);
++		registers.cached_cbp[CLD & 1] = full_cbp;
+ 		break;
+ 	case TEX0Bits::CLD_COMPARE_LOAD_CBP0:
+ 	case TEX0Bits::CLD_COMPARE_LOAD_CBP1:
+-		load_clut = registers.cached_cbp[CLD & 1] != uint32_t(desc.CBP);
+-		registers.cached_cbp[CLD & 1] = uint32_t(desc.CBP);
++		load_clut = registers.cached_cbp[CLD & 1] != full_cbp;
++		registers.cached_cbp[CLD & 1] = full_cbp;
+ 		break;
+ 	default:
+ 		break;
+@@ -714,6 +721,7 @@ void GSInterface::handle_clut_upload(uint32_t ctx_index)
+ 	palette_desc.texclut = registers.texclut;
+ 	palette_desc.tex0.desc = desc;
+ 	palette_desc.tex0.desc.CPSM = cpsm;
++	palette_desc.cbp_hi = full_cbp & ~0x3fffu;
+ 
+ 	// Normalize fields we don't care about.
+ 	palette_desc.tex0.desc.TBP0 = 0;
+@@ -732,7 +740,7 @@ void GSInterface::handle_clut_upload(uint32_t ctx_index)
+ 	uint32_t y_offset = desc.CSM == TEX0Bits::CSM_LAYOUT_LINE ? palette_desc.texclut.desc.COV : 0;
+ 	x_offset += palette_desc.csm2_x_bias;
+ 
+-	auto clut_page = compute_page_rect(uint32_t(palette_desc.tex0.desc.CBP), x_offset, y_offset,
++	auto clut_page = compute_page_rect(uint32_t(palette_desc.tex0.desc.CBP) | palette_desc.cbp_hi, x_offset, y_offset,
+ 	                                   palette_width, palette_height,
+ 	                                   palette_desc.texclut.desc.CBW,
+ 	                                   cpsm);
+@@ -776,6 +784,7 @@ void GSInterface::handle_clut_upload(uint32_t ctx_index)
+ 		if (memoized.csa_mask == page.csa_mask &&
+ 		    memoized.upload.texclut.bits == palette_desc.texclut.bits &&
+ 		    memoized.upload.tex0.bits == palette_desc.tex0.bits &&
++		    memoized.upload.cbp_hi == palette_desc.cbp_hi &&
+ 		    memoized.upload.csm2_x_scale == palette_desc.csm2_x_scale &&
+ 		    memoized.upload.csm2_x_bias == palette_desc.csm2_x_bias &&
+ 		    memoized.upload.csm1_mask == palette_desc.csm1_mask &&
+@@ -878,7 +887,7 @@ void GSInterface::handle_miptbl_gen(uint32_t ctx_index)
+ 
+ 	// Auto-generate MIPTBL1 when TEX0 is written, and MTBA is set.
+ 
+-	uint32_t base = tex0.TBP0;
++	uint32_t base = tex_tbp0(tex0, tex1);
+ 	uint32_t TW = tex0.TW;
+ 	uint32_t TH = tex0.TH;
+ 	uint32_t W = 1u << TW;
+@@ -1235,7 +1244,7 @@ void GSInterface::texture_page_rects_read_region(const ivec4 &uv_bb)
+ 	auto &feedback = render_pass.potential_feedback;
+ 
+ 	assert(state_tracker.tex.rect.levels == 1);
+-	auto tex_base_page = uint32_t(ctx.tex0.desc.TBP0) / PGS_BLOCKS_PER_PAGE;
++	auto tex_base_page = tex_tbp0(ctx.tex0.desc, ctx.tex1.desc) / PGS_BLOCKS_PER_PAGE;
+ 
+ 	assert(uv_bb.z >= 0);
+ 	assert(uv_bb.w >= 0);
+@@ -1412,6 +1421,7 @@ uint32_t GSInterface::drawing_kick_update_texture(FBFeedbackMode feedback_mode,
+ 
+ 	// Only affects palette upload
+ 	desc.tex0.desc.CBP = 0;
++	desc.tex1.desc.CBP_BANK = 0;
+ 	desc.tex0.desc.CSM = 0;
+ 	desc.tex0.desc.CLD = 0;
+ 
+@@ -1611,42 +1621,43 @@ uint32_t GSInterface::drawing_kick_update_texture(FBFeedbackMode feedback_mode,
+ 
+ 	// Memoize this computation.
+ 	state_tracker.tex.rect = desc.rect = GSRenderer::compute_effective_texture_rect(desc);
+-	state_tracker.tex.levels[0].base = desc.tex0.desc.TBP0;
++	const uint32_t base_tbp = tex_tbp0(desc.tex0.desc, desc.tex1.desc);
++	state_tracker.tex.levels[0].base = base_tbp;
+ 	state_tracker.tex.levels[0].stride = desc.tex0.desc.TBW;
+ 
+ 	if (desc.rect.levels >= 2)
+ 	{
+-		desc.miptbp1_3.desc.TBP1 = state_tracker.tex.levels[1].base = ctx.miptbl_1_3.desc.TBP1;
++		desc.miptbp1_3.desc.TBP1 = state_tracker.tex.levels[1].base = tex_level_tbp(base_tbp, ctx.miptbl_1_3.desc.TBP1);
+ 		desc.miptbp1_3.desc.TBW1 = state_tracker.tex.levels[1].stride = ctx.miptbl_1_3.desc.TBW1;
+ 	}
+ 
+ 	if (desc.rect.levels >= 3)
+ 	{
+-		desc.miptbp1_3.desc.TBP2 = state_tracker.tex.levels[2].base = ctx.miptbl_1_3.desc.TBP2;
++		desc.miptbp1_3.desc.TBP2 = state_tracker.tex.levels[2].base = tex_level_tbp(base_tbp, ctx.miptbl_1_3.desc.TBP2);
+ 		desc.miptbp1_3.desc.TBW2 = state_tracker.tex.levels[2].stride = ctx.miptbl_1_3.desc.TBW2;
+ 	}
+ 
+ 	if (desc.rect.levels >= 4)
+ 	{
+-		desc.miptbp1_3.desc.TBP3 = state_tracker.tex.levels[3].base = ctx.miptbl_1_3.desc.TBP3;
++		desc.miptbp1_3.desc.TBP3 = state_tracker.tex.levels[3].base = tex_level_tbp(base_tbp, ctx.miptbl_1_3.desc.TBP3);
+ 		desc.miptbp1_3.desc.TBW3 = state_tracker.tex.levels[3].stride = ctx.miptbl_1_3.desc.TBW3;
+ 	}
+ 
+ 	if (desc.rect.levels >= 5)
+ 	{
+-		desc.miptbp4_6.desc.TBP1 = state_tracker.tex.levels[4].base = ctx.miptbl_4_6.desc.TBP1;
++		desc.miptbp4_6.desc.TBP1 = state_tracker.tex.levels[4].base = tex_level_tbp(base_tbp, ctx.miptbl_4_6.desc.TBP1);
+ 		desc.miptbp4_6.desc.TBW1 = state_tracker.tex.levels[4].stride = ctx.miptbl_4_6.desc.TBW1;
+ 	}
+ 
+ 	if (desc.rect.levels >= 6)
+ 	{
+-		desc.miptbp4_6.desc.TBP2 = state_tracker.tex.levels[5].base = ctx.miptbl_4_6.desc.TBP2;
++		desc.miptbp4_6.desc.TBP2 = state_tracker.tex.levels[5].base = tex_level_tbp(base_tbp, ctx.miptbl_4_6.desc.TBP2);
+ 		desc.miptbp4_6.desc.TBW2 = state_tracker.tex.levels[5].stride = ctx.miptbl_4_6.desc.TBW2;
+ 	}
+ 
+ 	if (desc.rect.levels >= 7)
+ 	{
+-		desc.miptbp4_6.desc.TBP3 = state_tracker.tex.levels[6].base = ctx.miptbl_4_6.desc.TBP3;
++		desc.miptbp4_6.desc.TBP3 = state_tracker.tex.levels[6].base = tex_level_tbp(base_tbp, ctx.miptbl_4_6.desc.TBP3);
+ 		desc.miptbp4_6.desc.TBW3 = state_tracker.tex.levels[6].stride = ctx.miptbl_4_6.desc.TBW3;
+ 	}
+ 
+@@ -1787,7 +1798,7 @@ uint32_t GSInterface::drawing_kick_update_texture(FBFeedbackMode feedback_mode,
+ 				    state_tracker.tex.page_rects[0].page_width == 1 &&
+ 				    state_tracker.tex.page_rects[0].page_height == 1)
+ 				{
+-					state_tracker.last_cpu_compatible_cache_TBP0 = desc.tex0.desc.TBP0;
++					state_tracker.last_cpu_compatible_cache_TBP0 = tex_tbp0(desc.tex0.desc, desc.tex1.desc);
+ 				}
+ 				else
+ 					state_tracker.last_cpu_compatible_cache_TBP0 = UINT32_MAX;
+@@ -1865,6 +1876,8 @@ uint32_t GSInterface::drawing_kick_update_texture(FBFeedbackMode feedback_mode,
+ 
+ 		info.info.bias.x = -float(desc.rect.x) * info.info.sizes.z;
+ 		info.info.bias.y = -float(desc.rect.y) * info.info.sizes.w;
++		// Beside tex0_infos: the texture's full block pointer (tex0_infos holds TEX0's 14 bits).
++		render_pass.tex0_tbp.push_back(tex_tbp0(ctx.tex0.desc, ctx.tex1.desc));
+ 
+ 		info.info.arrayed = int(desc.samples > 1);
+ 		info.info.flags = long_term_cache_texture ? TEX_INFO_LONG_TERM_REFERENCE : 0;
+@@ -2260,7 +2273,7 @@ void GSInterface::update_color_feedback_state()
+ 	if (ctx.tex1.desc.has_mipmap() && !hacks.disable_mipmaps)
+ 		return;
+ 
+-	auto tbp0 = uint32_t(ctx.tex0.desc.TBP0);
++	auto tbp0 = tex_tbp0(ctx.tex0.desc, ctx.tex1.desc);
+ 	auto tex_psm = uint32_t(ctx.tex0.desc.PSM);
+ 
+ 	if (ctx.frame.desc.PSM == tex_psm &&
+@@ -2325,7 +2338,7 @@ void GSInterface::update_color_feedback_state()
+ 
+ 		bool is_potential_color_feedback = false;
+ 		bool is_potential_depth_feedback = false;
+-		compute_has_potential_feedback(ctx.tex0.desc, ctx.clamp.desc,
++		compute_has_potential_feedback(ctx.tex0.desc, tbp0, ctx.clamp.desc,
+ 		                               ctx.frame.desc, ctx.zbuf.desc,
+ 		                               vram_size / PGS_PAGE_ALIGNMENT_BYTES,
+ 		                               is_potential_color_feedback, is_potential_depth_feedback);
+@@ -2358,7 +2371,7 @@ void GSInterface::update_color_feedback_state()
+ 		{
+ 			auto layout = get_data_structure(ctx.tex0.desc.PSM);
+ 
+-			render_pass.potential_feedback.base_page = uint32_t(ctx.tex0.desc.TBP0) / PGS_BLOCKS_PER_PAGE;
++			render_pass.potential_feedback.base_page = tbp0 / PGS_BLOCKS_PER_PAGE;
+ 			render_pass.potential_feedback.page_width_log2 = layout.page_width_log2;
+ 			render_pass.potential_feedback.page_height_log2 = layout.page_height_log2;
+ 			render_pass.potential_feedback.page_stride = ctx.tex0.desc.TBW;
+@@ -3748,8 +3761,19 @@ void GSInterface::a_d_XYZ3(uint64_t payload)
+ 	drawing_kick(true);
+ }
+ 
++// A TEX1 write with KEEP_BANK set takes the banks (bits 48-55) of the TEX1 it replaces and drops the flag: the game writes
++// the sampling alone (a filter change) between binding a texture and drawing it, and the bank belongs to the texture.
++static uint64_t tex1_keep_banks(uint64_t old_bits, uint64_t payload)
++{
++	constexpr uint64_t banks = 0xffull << 48, keep = 1ull << 56;
++	if (payload & keep)
++		payload = (payload & ~(banks | keep)) | (old_bits & banks);
++	return payload;
++}
++
+ void GSInterface::a_d_TEX1_1(uint64_t payload)
+ {
++	payload = tex1_keep_banks(registers.ctx[0].tex1.bits, payload) & tex1_bank_keep;
+ 	update_internal_register(registers.ctx[0].tex1.bits, payload,
+ 	                         STATE_DIRTY_FEEDBACK_BIT | STATE_DIRTY_PRIM_TEMPLATE_BIT | STATE_DIRTY_TEX_BIT);
+ 	TRACE("TEX1_1", registers.ctx[0].tex1);
+@@ -3757,6 +3781,7 @@ void GSInterface::a_d_TEX1_1(uint64_t payload)
+ 
+ void GSInterface::a_d_TEX1_2(uint64_t payload)
+ {
++	payload = tex1_keep_banks(registers.ctx[1].tex1.bits, payload) & tex1_bank_keep;
+ 	update_internal_register(registers.ctx[1].tex1.bits, payload,
+ 	                         STATE_DIRTY_FEEDBACK_BIT | STATE_DIRTY_PRIM_TEMPLATE_BIT | STATE_DIRTY_TEX_BIT);
+ 	TRACE("TEX1_2", registers.ctx[1].tex1);
+diff --git a/gs/gs_interface.hpp b/gs/gs_interface.hpp
+index 0dd9cf3..64ff119 100644
+--- a/gs/gs_interface.hpp
++++ b/gs/gs_interface.hpp
+@@ -204,6 +204,7 @@ struct GSOptions
+ 	bool dynamic_super_sampling = false; // If super sampling rate can be toggled in-flight.
+ 	bool ordered_super_sampling = true; // Prefers ordered grid. Aids debugging.
+ 	bool super_sampled_textures = false;
++	bool ignore_bank = false; // A control for tests: TEX1's bank bits (48-55) are read as zero, as by a renderer without patch 0006's bank.
+ };
+ 
+ // Pragmatic hacks which may or may not be useful.
+@@ -410,6 +411,7 @@ private:
+ 		std::vector<Vulkan::ImageHandle> held_images;
+ 		std::vector<TextureInfo> tex_infos;
+ 		std::vector<TEX0Bits> tex0_infos;
++		std::vector<uint32_t> tex0_tbp;
+ 
+ 		bool tex_infos_has_super_samples = false;
+ 
+diff --git a/gs/gs_registers.hpp b/gs/gs_registers.hpp
+index ba77d55..6a202f9 100644
+--- a/gs/gs_registers.hpp
++++ b/gs/gs_registers.hpp
+@@ -79,7 +79,15 @@ struct TEX1Bits
+ 	FIELD32(L, 2);
+ 	PAD32(11);
+ 	FIELD32(K, 12);
+-	PAD32(20);
++	// The undefined bits above K carry the high bits of two block pointers that TEX0's 14-bit fields cannot name
++	// (a block at 16384 or more): see tex_tbp0 and tex_cbp. Zero for every block below 16384.
++	PAD32(4);
++	FIELD32(TBP0_BANK, 4);
++	FIELD32(CBP_BANK, 4);
++	// Set on a TEX1 write that changes the sampling only: the write keeps the banks of the TEX1 it replaces (the bit
++	// itself is not stored). See tex1_keep_banks.
++	FIELD32(KEEP_BANK, 1);
++	PAD32(7);
+ 
+ 	enum
+ 	{
+@@ -106,6 +114,24 @@ struct MIPTBPBits
+ 	PAD(4);
+ };
+ 
++// The full block pointers of a texture. TEX0's TBP0 and CBP hold the low 14 bits; the high bits ride in TEX1.
++inline uint32_t tex_tbp0(const TEX0Bits &tex0, const TEX1Bits &tex1)
++{
++	return uint32_t(tex0.TBP0) | (uint32_t(tex1.TBP0_BANK) << 14);
++}
++
++inline uint32_t tex_cbp(const TEX0Bits &tex0, const TEX1Bits &tex1)
++{
++	return uint32_t(tex0.CBP) | (uint32_t(tex1.CBP_BANK) << 14);
++}
++
++// A mip level follows its base picture in memory, so its 14-bit pointer is the base's block plus the distance
++// from the base's low 14 bits, taken modulo 16384. A picture's levels span less than 16384 blocks.
++inline uint32_t tex_level_tbp(uint32_t base_tbp, uint32_t level_tbp14)
++{
++	return base_tbp + ((level_tbp14 - base_tbp) & 0x3fffu);
++}
++
+ struct TEXABits
+ {
+ 	FIELD32(TA0, 8);
+@@ -153,14 +179,12 @@ struct ZBUFBits
+ 
+ struct BITBLTBUFBits
+ {
+-	FIELD32(SBP, 14);
+-	PAD32(2);
++	FIELD32(SBP, 16);
+ 	FIELD32(SBW, 6);
+ 	PAD32(2);
+ 	FIELD32(SPSM, 6);
+ 	PAD32(2);
+-	FIELD32(DBP, 14);
+-	PAD32(2);
++	FIELD32(DBP, 16);
+ 	FIELD32(DBW, 6);
+ 	PAD32(2);
+ 	FIELD32(DPSM, 6);
+diff --git a/gs/gs_renderer.cpp b/gs/gs_renderer.cpp
+index a7676dc..9d3beb8 100644
+--- a/gs/gs_renderer.cpp
++++ b/gs/gs_renderer.cpp
+@@ -1426,7 +1426,7 @@ Vulkan::ImageHandle GSRenderer::create_cached_texture(const TextureDescriptor &d
+ 		         desc.samples > 1 ? " (SSAA)" : "",
+ 		         desc.rect.width, desc.rect.height,
+ 		         desc.rect.x, desc.rect.y,
+-		         uint32_t(desc.tex0.desc.TBP0) * PGS_BLOCK_ALIGNMENT_BYTES,
++		         tex_tbp0(desc.tex0.desc, desc.tex1.desc) * PGS_BLOCK_ALIGNMENT_BYTES,
+ 		         desc.palette_bank,
+ 		         uint32_t(desc.tex0.desc.CSA),
+ 		         psm_to_str(uint32_t(desc.tex0.desc.CSM)));
+@@ -3773,17 +3773,18 @@ void GSRenderer::upload_texture(const TextureUpload &upload)
+ 		info.vfix = uint32_t(desc.clamp.desc.MAXV);
+ 	}
+ 
++	const uint32_t base_tbp = tex_tbp0(desc.tex0.desc, desc.tex1.desc);
+ 	const struct
+ 	{
+ 		uint32_t addr, stride;
+ 	} table[] = {
+-		{ uint32_t(desc.tex0.desc.TBP0), uint32_t(desc.tex0.desc.TBW) },
+-		{ uint32_t(desc.miptbp1_3.desc.TBP1), uint32_t(desc.miptbp1_3.desc.TBW1) },
+-		{ uint32_t(desc.miptbp1_3.desc.TBP2), uint32_t(desc.miptbp1_3.desc.TBW2) },
+-		{ uint32_t(desc.miptbp1_3.desc.TBP3), uint32_t(desc.miptbp1_3.desc.TBW3) },
+-		{ uint32_t(desc.miptbp4_6.desc.TBP1), uint32_t(desc.miptbp4_6.desc.TBW1) },
+-		{ uint32_t(desc.miptbp4_6.desc.TBP2), uint32_t(desc.miptbp4_6.desc.TBW2) },
+-		{ uint32_t(desc.miptbp4_6.desc.TBP3), uint32_t(desc.miptbp4_6.desc.TBW3) },
++		{ base_tbp, uint32_t(desc.tex0.desc.TBW) },
++		{ tex_level_tbp(base_tbp, desc.miptbp1_3.desc.TBP1), uint32_t(desc.miptbp1_3.desc.TBW1) },
++		{ tex_level_tbp(base_tbp, desc.miptbp1_3.desc.TBP2), uint32_t(desc.miptbp1_3.desc.TBW2) },
++		{ tex_level_tbp(base_tbp, desc.miptbp1_3.desc.TBP3), uint32_t(desc.miptbp1_3.desc.TBW3) },
++		{ tex_level_tbp(base_tbp, desc.miptbp4_6.desc.TBP1), uint32_t(desc.miptbp4_6.desc.TBW1) },
++		{ tex_level_tbp(base_tbp, desc.miptbp4_6.desc.TBP2), uint32_t(desc.miptbp4_6.desc.TBW2) },
++		{ tex_level_tbp(base_tbp, desc.miptbp4_6.desc.TBP3), uint32_t(desc.miptbp4_6.desc.TBW3) },
+ 	};
+ 
+ 	cmd.set_specialization_constant_mask(0xf);
+@@ -3938,7 +3939,7 @@ void GSRenderer::flush_palette_upload()
+ 	{
+ 		clut_desc.tex_format = uint32_t(upload.tex0.desc.PSM);
+ 		clut_desc.format = uint32_t(upload.tex0.desc.CPSM);
+-		clut_desc.base_pointer = uint32_t(upload.tex0.desc.CBP);
++		clut_desc.base_pointer = uint32_t(upload.tex0.desc.CBP) | upload.cbp_hi;
+ 		clut_desc.instance = instance;
+ 		clut_desc.co_uv = uint32_t(upload.texclut.desc.COU) | (uint32_t(upload.texclut.desc.COV) << 16);
+ 		clut_desc.cbw = uint32_t(upload.texclut.desc.CBW);
+@@ -3984,7 +3985,7 @@ void GSRenderer::flush_palette_upload()
+ 			auto &upload = palette_uploads[i];
+ 			insert_label(cmd, "Bank %u - 0x%x - %s - %u colors - CSA %u - CSM %u - COU/V %u, %u - S/B %.3f, %u, incoming %u",
+ 			             uint32_t(base_clut_instance + 1 + i) % CLUTInstances,
+-			             uint32_t(upload.tex0.desc.CBP) * PGS_BLOCK_ALIGNMENT_BYTES,
++			             (uint32_t(upload.tex0.desc.CBP) | upload.cbp_hi) * PGS_BLOCK_ALIGNMENT_BYTES,
+ 			             psm_to_str(uint32_t(upload.tex0.desc.CPSM)),
+ 			             ((uint32_t(upload.tex0.desc.PSM) == PSMT8 ||
+ 			               uint32_t(upload.tex0.desc.PSM) == PSMT8H) ? 256 : 16),
+diff --git a/gs/gs_renderer.hpp b/gs/gs_renderer.hpp
+index fe893bf..3889445 100644
+--- a/gs/gs_renderer.hpp
++++ b/gs/gs_renderer.hpp
+@@ -129,6 +129,8 @@ struct PaletteUploadDescriptor
+ 	uint32_t csm1_reference_base;
+ 	uint32_t csm1_mask;
+ 	uint32_t incoming_clut_instance;
++	// The palette block's bits above TEX0's CBP field (the bank, shifted into place).
++	uint32_t cbp_hi = 0;
+ 	bool fully_replaces_clut_upload(const PaletteUploadDescriptor &old) const;
+ };
+ 
+diff --git a/gs/gs_util.cpp b/gs/gs_util.cpp
+index 4feb3bd..5957954 100644
+--- a/gs/gs_util.cpp
++++ b/gs/gs_util.cpp
+@@ -78,7 +78,7 @@ Extent1D compute_effective_texture_extent(uint32_t extent, uint32_t wrap_mode, u
+ 	return { base, extent };
+ }
+ 
+-void compute_has_potential_feedback(const TEX0Bits &tex0, const CLAMPBits &clamp,
++void compute_has_potential_feedback(const TEX0Bits &tex0, uint32_t tbp0, const CLAMPBits &clamp,
+                                     const FRAMEBits &frame, const ZBUFBits &z,
+                                     uint32_t pages_in_vram, bool &color_feedback, bool &depth_feedback)
+ {
+@@ -110,7 +110,7 @@ void compute_has_potential_feedback(const TEX0Bits &tex0, const CLAMPBits &clamp
+ 	if (width >= 1024 && row_length_64)
+ 		width = std::min<uint32_t>(width, row_length_64 * PGS_BUFFER_WIDTH_SCALE);
+ 
+-	auto base_block = uint32_t(tex0.TBP0);
++	auto base_block = tbp0;
+ 	uint32_t base_page = base_block / PGS_BLOCKS_PER_PAGE;
+ 
+ 	uint32_t fb_base_block = fb_base_page * PGS_BLOCKS_PER_PAGE;
+diff --git a/gs/gs_util.hpp b/gs/gs_util.hpp
+index bbab0d3..b0dc8d4 100644
+--- a/gs/gs_util.hpp
++++ b/gs/gs_util.hpp
+@@ -32,7 +32,7 @@ bool triangles_form_parallelogram(const VertexPosition *pos, const VertexAttribu
+                                   const VertexPosition *last_pos, const VertexAttribute *last_attr,
+                                   const muglm::ivec3 &last_order, const PRIMBits &prim);
+ 
+-void compute_has_potential_feedback(const TEX0Bits &tex0, const CLAMPBits &clamp,
++void compute_has_potential_feedback(const TEX0Bits &tex0, uint32_t tbp0, const CLAMPBits &clamp,
+                                     const FRAMEBits &frame, const ZBUFBits &z,
+                                     uint32_t pages_in_vram, bool &color_feedback, bool &depth_feedback);
+ 

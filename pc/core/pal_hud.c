@@ -94,11 +94,13 @@ static s32 Verts(u32 *packet, u32 *xyz[16])
  * Pal_HudPacket: when the stage is hidden, all its vertices go to x = 0, which is outside the scissor (the frame is drawn
  * about x = 2048), so a sprite, a triangle and a line each cover no pixel. The packet is built, queued and sent as the game
  * has it: its place in the buffers, the queue's words and the emitter's scratchpad are the same. */
-void Pal_HudQueued(u32 *queued)
+
+void Pal_HudQueued(u32 *queued, s32 qwc)
 {
     s32 i, count;
     u32 *xyz[16];
 
+    (void)qwc;
     if (!sHideThis) {
         return;
     }

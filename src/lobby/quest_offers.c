@@ -33,6 +33,14 @@
 #include "rand.h"
 #include "libc.h"
 
+
+
+
+
+
+#define QUEST_TERMS_OF(q, ordering) Quest_CheckOrderTerms((q)->terms, (ordering))
+
+
 /* unit's own declaration: returning s32, as Quest_IsOffered passes it on; with the definition's u16 the call compiles differently */
 #if PLATFORM_PC
 /* PC form (result width): the definition's u16 (area_update.c). The s32 here reads all of the result's
@@ -175,13 +183,18 @@ s32 Quest_CheckOrder(u16 id)
     QuestInfo *quest;
 
     quest = Quest_GetDiscInfo(id);
+
+
+
+
+
     season = LobbyWorld_GetSeason();
     isPm = LobbyTime_IsPm();
     if (gLobby->questPaid != 0) {
-        if (Quest_CheckOrderTerms(quest->terms, 0) == 0) {
+        if (QUEST_TERMS_OF(quest, 0) == 0) {
             return QUEST_ORDER_TERMS;
         }
-    } else if (Quest_CheckOrderTerms(quest->terms, 1) == 0) {
+    } else if (QUEST_TERMS_OF(quest, 1) == 0) {
         return QUEST_ORDER_TERMS;
     }
     if (id >= QUEST_ID_DOWNLOADED) {
@@ -222,6 +235,11 @@ s32 Quest_IsOffered(u16 id, s32 listKind, s32 withMustOrder)
     if (Quest_MatchesSeasonTime(id, season, isPm) == 0) {
         return 0;
     }
+
+
+
+
+
     if (Game_RulesOnline() == 0) {
         if (MapGroup_IsOpen(Map_Group(quest->map)) == 0) {
             return 0;
@@ -492,6 +510,11 @@ void QuestList_Rebuild(void)
     }
     memset(&gQuestLists, 0, sizeof(gQuestLists));
     if (Game_RulesOnline() == 0) {
+
+
+
+
+
         if (gSave.awayFromVillage != 0) {
             QuestList_Build(QUEST_LIST_AWAY);
         } else {
@@ -549,6 +572,71 @@ s32 QuestList_PickShown(s8 set)
 
 extern u16 *gQuestIdLists[];
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /*
  * Builds the quest list set of list kind `kind` (enum QuestListKind):
  * QUEST_LIST_ONLINE_DESK_2 fills set 1 from the source lists
@@ -582,6 +670,14 @@ void QuestList_Build(s32 kind)
         i = 4;
         end = 8;
         break;
+
+
+
+
+
+
+
+
     }
     count = 0;
     for (; i < end; i++) {
@@ -606,6 +702,26 @@ void QuestList_Build(s32 kind)
             break;
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     if (Game_RulesOnline() == 1 || Cond_Check(7) == 1) {
         QuestList_DropRandom(set);
     }

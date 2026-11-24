@@ -38,7 +38,9 @@ extern void *gPadPtr;
 extern char *gInfoMenuLabels[]; /* sub_main area_draw.c: the info menu labels (the town info prints [0]) */
 extern s32 gActiveSkillsTitle;
 extern s32 gPouchFullTakeText;
+
 extern char *gItemNames[];
+
 extern u16 gKbdHeldKey; /* the first key held in sub_main's copy of the USB keyboard's report (gKbdSettings.keys[0]) */
 extern NetMsgState gNetMsgState; /* the connect state machine's state */
 extern s16 gNetCancelHold;

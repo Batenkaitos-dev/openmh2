@@ -7,6 +7,10 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <time.h>
+#include <errno.h>
 
 #include "host.h"
 #include "host_file.h"
@@ -153,6 +157,17 @@ HOST int HostFile_Replace(const char *from, const char *to)
     return rename(from, to);
 }
 
+
+
+
+
+
+
+
+
+
+
+
 HOST unsigned int Host_PageSize(void)
 {
     return (unsigned int)sysconf(_SC_PAGESIZE);
@@ -169,4 +184,73 @@ HOST void *Host_LowMap(unsigned int addr, unsigned int size)
         return NULL;
     }
     return p;
+}
+
+typedef struct ThreadStart {
+    HostThreadFn fn;
+    void *arg;
+} ThreadStart;
+
+static void *ThreadMain(void *p)
+{
+    ThreadStart t = *(ThreadStart *)p;
+    free(p);
+    t.fn(t.arg);
+    return NULL;
+}
+
+HOST int Host_ThreadStart(HostThreadFn fn, void *arg, int low)
+{
+    pthread_t th;
+    pthread_attr_t at;
+    ThreadStart *t = malloc(sizeof(*t));
+    int r;
+    (void)low;
+    if (!t)
+        return 0;
+    t->fn = fn;
+    t->arg = arg;
+    pthread_attr_init(&at);
+    pthread_attr_setstacksize(&at, 8u << 20);
+    pthread_attr_setdetachstate(&at, PTHREAD_CREATE_DETACHED);
+    r = pthread_create(&th, &at, ThreadMain, t);
+    pthread_attr_destroy(&at);
+    if (r) {
+        free(t);
+        return 0;
+    }
+    return 1;
+}
+
+HOST void *Host_SemNew(void)
+{
+    sem_t *s = malloc(sizeof(*s));
+    if (s && sem_init(s, 0, 0)) {
+        free(s);
+        s = NULL;
+    }
+    return s;
+}
+
+HOST void Host_SemPost(void *sem)
+{
+    sem_post((sem_t *)sem);
+}
+
+HOST int Host_SemWait(void *sem, unsigned int ms)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_sec += ms / 1000;
+    ts.tv_nsec += (long)(ms % 1000) * 1000000L;
+    if (ts.tv_nsec >= 1000000000L) {
+        ts.tv_sec++;
+        ts.tv_nsec -= 1000000000L;
+    }
+    for (;;) {
+        if (!sem_timedwait((sem_t *)sem, &ts))
+            return 1;
+        if (errno != EINTR)
+            return 0;
+    }
 }

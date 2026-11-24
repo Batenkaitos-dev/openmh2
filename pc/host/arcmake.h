@@ -97,4 +97,8 @@ uint64_t arc_free_space(const char *path);
  * or no such file). NAME is the entry's path with its leading slash. */
 int arc_find(const char *archive, const char *name, uint32_t *lba, uint32_t *size, uint64_t *offset);
 
+/* Where the disc file NAME ("DATA.BIN") is in the player's copy GIVEN (an image, a folder with the disc's files, or a folder that holds the image): the host file (FILE) and the
+ * byte in it where the file starts (a folder's file: 0; on an image: its sector * 2048), and its size. 0, or -1 with the reason in ERR. Nothing is copied. */
+int arc_source_locate(const char *given, const char *name, char *file, size_t cap, uint64_t *offset, uint64_t *size, char *err, size_t ecap);
+
 #endif

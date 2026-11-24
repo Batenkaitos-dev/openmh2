@@ -42,8 +42,11 @@
 #include "lobby_world.h"
 #include "rand.h"
 #include "libc.h"
+#include "content_area.h"
+
 
 extern Em gEms[];
+
 extern u8 gBgmVars[];           /* the first of the music's variables, which Bgm_Init clears together */
 extern BgmEntry gTownTuneEvents[];
 extern BgmEntry gTownTuneSeasons[];
@@ -822,8 +825,8 @@ void Bgm_PlayAreaMusic(u16 area)
         gBgmId = id;
         gBgmVolume = vol;
     }
-    Sound_SetEffectOnce(0, gAreaReverbs[gAreaReverbIdx[area]].mode0, gAreaReverbs[gAreaReverbIdx[area]].depth0, 0, 0);
-    Sound_SetEffectOnce(1, gAreaReverbs[gAreaReverbIdx[area]].mode1, gAreaReverbs[gAreaReverbIdx[area]].depth1, 0, 0);
+    Sound_SetEffectOnce(0, gAreaReverbs[AREA_AT(AT_REVERB, gAreaReverbIdx, area)].mode0, gAreaReverbs[AREA_AT(AT_REVERB, gAreaReverbIdx, area)].depth0, 0, 0);
+    Sound_SetEffectOnce(1, gAreaReverbs[AREA_AT(AT_REVERB, gAreaReverbIdx, area)].mode1, gAreaReverbs[AREA_AT(AT_REVERB, gAreaReverbIdx, area)].depth1, 0, 0);
 }
 
 /* Fades the music in from silence to its volume over fade frames. */
@@ -1084,8 +1087,8 @@ void Bgm_EnterArea(u16 area)
         gScene.musicState = MUSIC_AREA;
     }
     gBgmIndex = gBgmVariant;
-    Sound_SetEffectOnce(0, gAreaReverbs[gAreaReverbIdx[area]].mode0, gAreaReverbs[gAreaReverbIdx[area]].depth0, 0, 0);
-    Sound_SetEffectOnce(1, gAreaReverbs[gAreaReverbIdx[area]].mode1, gAreaReverbs[gAreaReverbIdx[area]].depth1, 0, 0);
+    Sound_SetEffectOnce(0, gAreaReverbs[AREA_AT(AT_REVERB, gAreaReverbIdx, area)].mode0, gAreaReverbs[AREA_AT(AT_REVERB, gAreaReverbIdx, area)].depth0, 0, 0);
+    Sound_SetEffectOnce(1, gAreaReverbs[AREA_AT(AT_REVERB, gAreaReverbIdx, area)].mode1, gAreaReverbs[AREA_AT(AT_REVERB, gAreaReverbIdx, area)].depth1, 0, 0);
 }
 
 /* Reverb (effect mode 4) on both cores, unless an effect was already set. */

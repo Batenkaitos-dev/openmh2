@@ -145,6 +145,8 @@ static void run(const char *name, const char *ini, const char *const *args, cons
     settings_load(path);
     settings_apply(0, 0);
     settings_session_begin();
+    char fps_read[64];   /* the frame rate as read (before the launcher's changes), and the launcher's row */
+    snprintf(fps_read, sizeof(fps_read), "fps=%d shown=%s", g_cfg.fps, settings_text(settings_find("fps")));
     for (const Step *s = steps; s && s->key; s++) {
         if (!strcmp(s->key, "@packs")) {   /* the Content page's list: "name=on,name=off" in order */
             PackInfo list[16];
@@ -176,7 +178,12 @@ static void run(const char *name, const char *ini, const char *const *args, cons
     int rc = settings_save(err, sizeof(err));
     char *after = read_file(path);
     int ok = rc == 0 && (expect ? after && !strcmp(after, expect) : after == NULL);
-    if (cfg_check) {   /* "ssaa=4": the session's value in HostConfig */
+    if (cfg_check && !strncmp(cfg_check, "fps=", 4)) {   /* "fps=60 shown=60": the frame rate read, and the row */
+        if (strcmp(fps_read, cfg_check)) {
+            ok = 0;
+            fprintf(stderr, "%s: read \"%s\", expected \"%s\"\n", name, fps_read, cfg_check);
+        }
+    } else if (cfg_check) {   /* "ssaa=4": the session's value in HostConfig */
         char got[64];
         snprintf(got, sizeof(got), "ssaa=%d", g_cfg.ssaa);
         ok = ok && !strcmp(got, cfg_check);
@@ -247,6 +254,21 @@ int main(int argc, char **argv)
     run("packs: the last line has no end of line", "mute = on\npack.a = on", NULL, (Step[]){{"@packs", "a=off"}, {0}},
         "mute = on\npack.a = off\n", NULL);
     run("packs: unchanged, the file is left alone", "pack.b = off\npack.a = on\n", NULL, (Step[]){{0}}, "pack.b = off\npack.a = on\n", NULL);
+
+    /* The frame rate with no fps key and no --fps: a release build runs at 60, a development build at the game's own 30
+     * (0, which the rate rule takes as 30); the launcher's row shows the same, and the writer writes no key at it. */
+    {
+        const char *cli30[] = {"--fps=30", NULL};
+        run("fps: no key, the default 60", NULL, NULL, (Step[]){{0}}, NULL, "fps=60 shown=60");
+        run("fps: the file's 30", "fps = 30\n", NULL, (Step[]){{0}}, "fps = 30\n", "fps=30 shown=30");
+        run("fps: the command line's 30", NULL, cli30, (Step[]){{0}}, NULL, "fps=30 shown=30");
+        run("fps: the file's 144", "fps = 144\n", NULL, (Step[]){{0}}, "fps = 144\n", "fps=144 shown=144");
+        run("fps: the default chosen, no key written", NULL, NULL, (Step[]){{"fps", "60"}, {0}}, NULL, "fps=60 shown=60");
+        run("fps: the default chosen in a file, no key written", "mute = on\n", NULL, (Step[]){{"fps", "60"}, {0}},
+            "mute = on\n", "fps=60 shown=60");
+        run("fps: 30 chosen, its key written", NULL, NULL, (Step[]){{"fps", "30"}, {0}}, "[launcher]\nfps = 30\n",
+            "fps=60 shown=60");
+    }
 
     /* a file that cannot be made */
     {

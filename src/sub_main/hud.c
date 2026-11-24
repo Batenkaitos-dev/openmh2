@@ -51,12 +51,19 @@
 #include "prim.h"
 #include "save.h"
 #include "hud.h"
+#include "pal.h"
 #include "lobby_state.h"
 #include "syssave.h"
 #include "sub_main/hud.h"   /* the texts this file uses (tools/content_gen.py) */
 #include "render_state.h"
 #include "sound.h"
 #include "area.h"
+
+
+
+
+
+
 #include "texture.h"
 #include "area_draw.h"
 #include "bgm.h"
@@ -119,7 +126,9 @@ extern u8 gFieldMenuHelpLines[];
 extern ListPanel gInfoMenuPanel;
 extern char **gInfoMenuLabelSets[];
 extern ListPanel gChatMenuPanel;
+
 extern char *gItemNames[];
+
 extern s16 gItemGetWait;
 extern u16 gItemGetSerial;
 extern u8 gPhraseMenuCursor;
@@ -224,6 +233,17 @@ void ItemHud_Update(void)
         return;
     }
     pl = gHudState->player;
+
+
+
+
+
+
+
+
+
+
+
     if (Quest_PhaseIsOver(1) == 1) {
         if (gHudState->combineTaken != 0) {
             for (i = 0; i < 3; i++) {
@@ -1654,6 +1674,22 @@ extern char *gQuestMenuItemLists[][17];
 s32 func_793C10(void);
 void func_793BE0(void);
 
+
+
+
+
+
+
+
+
+
+
+
+
+#define QUEST_TERMS_BUF
+#define QUEST_TERMS_TEXT gQuestKindNames[gQuestInfo->terms]
+
+
 /* Draws the quest page under pageCursor (or a line saying no quest is
  * taken): the page's kind is gQuestMenuKinds[questMenuInField][pageCursor]
  * (QUEST_PAGE_*), and the labels it lists depend on the quest (a versus
@@ -1669,6 +1705,7 @@ void QuestMenu_DrawPage(void)
     s8 versus;
     s16 itemList;
     char buf[64];
+    QUEST_TERMS_BUF
 
     Gfx_SetBlend(GFX_BLEND_SRC_ALPHA, GFX_BLEND_INV_SRC_ALPHA);
     if (gHudState->hasQuestInfo == 0) {
@@ -1739,7 +1776,7 @@ void QuestMenu_DrawPage(void)
             Font_SetPos(*offset + 359, 322);
             Text_Draw(QuestInfo_Get(3));
             Font_SetPos(*offset + 359, 382);
-            Text_Draw(gQuestKindNames[gQuestInfo->terms]);
+            Text_Draw(QUEST_TERMS_TEXT);
         } else {
             Font_SetPos(*offset + 359, 182);
             Text_Draw(QuestInfo_Get(1));
@@ -1750,7 +1787,7 @@ void QuestMenu_DrawPage(void)
             Font_SetPos(*offset + 449, 262);
             Text_DrawStars(gQuestInfo->stars);
             Font_SetPos(*offset + 359, 322);
-            Text_Draw(gQuestKindNames[gQuestInfo->terms]);
+            Text_Draw(QUEST_TERMS_TEXT);
         }
         break;
     case QUEST_PAGE_TERMS:
@@ -4163,8 +4200,10 @@ void Hud_DrawPlayerNames(void)
                 name = buf;
             }
             scr[0] -= ((s16)Str_Length(name) / 2) * 8;
+            PC_GS_ANCHOR(0x20000 + pl->index, pos);
             Font_SetPos(1.25f * scr[0], scr[1]);
             Text_Draw(name);
+            PC_GS_ANCHOR_END();
         }
     }
 }
@@ -4221,7 +4260,9 @@ void Hud_DrawVersusMonsterBars(void)
                     color = ((s8)(112.0f * Math_Sin(0.0000958738f * (u16)((gFrameTick & 0x3F) << 10))) + 143) << 16 | 0xFF000000;
                 }
             }
+            PC_GS_ANCHOR(0x30000 + i, pos);
             Hud_DrawVersusMonsterBar(em, x, y, color, ((NextQuest *)side)->teams[0].name);
+            PC_GS_ANCHOR_END();
         }
     }
 }
@@ -6388,8 +6429,19 @@ void Hud_DrawPlayerStatus(Player *pl, s16 y, f32 x)
     sprite.w = 20;
     sprite.h = 18;
     sprite.color = gPlayerMapColors[pl->index & 3];
+
+
+
+
+
+
+
+
+
+
     Hud_WeaponIconUV((u8 *)pl, (struct Pt *)&sprite.u0, (struct Pt *)&sprite.u1);
     Sprite_Draw((struct Sprite *)&sprite);
+
     Font_SetSpacing(16, 16);
     Font_SetColor(0x807F7F7F);
     Font_SetPos(33.0f + x, rowY + 1);
@@ -7104,6 +7156,58 @@ void Hud_DrawWeaponBox(void)
         Gfx_SetBlend(GFX_BLEND_SRC_ALPHA, GFX_BLEND_INV_SRC_ALPHA);
     }
     switch (pl->weaponType) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     case 7:
         if (pl->swordGauge > 0) {
             sprite.x = D_00430958[0];
@@ -8498,6 +8602,7 @@ void Text_SetColor(s16 color);
 void QuestMenu_DrawInfo(void)
 {
     char buf[64];
+    QUEST_TERMS_BUF
     char out[64];
     s16 *pos;
     s32 i;
@@ -8555,7 +8660,7 @@ void QuestMenu_DrawInfo(void)
         Font_SetPos(pos[0] + 359, 322);
         Text_Draw(QuestInfo_Get(3));
         Font_SetPos(pos[0] + 359, 382);
-        Text_Draw(gQuestKindNames[gQuestInfo->terms]);
+        Text_Draw(QUEST_TERMS_TEXT);
         break;
     case 1:
         QuestMenu_DrawParTime(pos[0]);

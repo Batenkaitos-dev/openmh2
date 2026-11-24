@@ -572,6 +572,9 @@ GestureOneShot gTownGestureOneShots[4] = {
 ForgeRecipe gArmorRecipes[518] = {
 #include "lobby/00802C70.inc"
 };
+
+
+
 ForgeRecipe gWeaponRecipes[237] = {
 #include "lobby/00805D00.inc"
 };

@@ -12,6 +12,10 @@
 #include "gs_setup.h"
 #include "mem_util.h"
 #include "packet_tim2.h"
+#include "content_area.h"
+
+
+
 
 /* img: the channels of the texture pixels in the GS order. */
 #define TEX_GS_DESC(t, img)                                         \
@@ -906,9 +910,29 @@ s32 Tex_MakeResident(s32 handleCount, u32 *handles)
             if (slot != (VramSlot *)-1) {
                 VramSlot_Assign(slot, rec);
             } else {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 do {
                     slot = VramSlot_FindVictim(rec, handles, handleCount);
                 } while (slot == (VramSlot *)-1);
+
                 VramSlot_Replace(slot, rec);
             }
             Tex_SendLevels(rec);

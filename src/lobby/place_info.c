@@ -36,6 +36,9 @@
 #include "village_clock.h"
 #include "libc.h"
 
+
+
+
 extern u8 gMenuWork[];
 
 /* Opens the place info page: hides the help line, clears the menu work
@@ -84,6 +87,11 @@ u8 Area_GetSetIndex(u16 id);
 void *LobbyArea_GetName(u16 id)
 {
     u8 setIndex = Area_GetSetIndex(id);
+
+
+
+
+
 
     if (id == 0) {
         return gAreaNameTexts[15];

@@ -56,6 +56,45 @@ IPC_CALL void Ipc_GsVSync(unsigned int field, unsigned long long vblank);
 /* The camera a model is drawn with (MH2IPC_REC_CAMERA): view and projection, 4 x 4 floats each, in the ring's order with the GIF data.
  * It is not part of the picture's stream: the renderer uses it only for the in-between pictures. */
 IPC_CALL void Ipc_GsCamera(const float m[32]);
+/* The label of a Model_Draw (MH2IPC_REC_MODEL; PC_GS_MODEL in include/pal.h): Ipc_GsModelSet keeps it by the guest address of the chain's first
+ * tag; Ipc_GsModelTag, called for each tag the DMA channel 1 reads, puts the record into the ring (before the data the chain makes) when the tag
+ * is one that was set, once. Not part of the picture's stream; development builds only (nothing is kept in a release). */
+IPC_CALL void Ipc_GsModelSet(unsigned int top, unsigned int last, unsigned int handle, unsigned int flags, unsigned int prog, const float *world, const float *cam, unsigned int site, const float *vp);
+/* The label of a 2D packet an anchored element queued (PC_GS_ANCHOR): its guest address and size in qwords, the element's id, its world point and the camera.
+ * The DMA emulation (gfx_dma.c) asks Ipc_GsAnchorNext for the lowest-addressed label whose packet lies in the data a tag moves (a packet whose first quadword is the
+ * tag just before the data counts: its data is the rest), gets where its data starts and how long it is, cuts the transfer there, and brackets the packet's data
+ * with MH2IPC_REC_ANCHOR records (Ipc_GsAnchorBegin, then the data, then Ipc_GsAnchorEnd). Not part of the picture's stream; development builds only. */
+IPC_CALL void Ipc_GsAnchorSet(unsigned int addr, unsigned int qwc, unsigned int id, const float *point, const float *cam);
+IPC_CALL int Ipc_GsAnchorNext(unsigned int from, unsigned int end, unsigned int *at, unsigned int *qwc);
+IPC_CALL void Ipc_GsAnchorBegin(void);
+IPC_CALL void Ipc_GsAnchorEnd(void);
+/* What Ipc_GsModelTag found: the label as the game set it. */
+typedef struct IpcLabel {
+    unsigned int top, last, handle, flags, prog, site;
+    float world[16], cam[32], vp[16];   /* vp: gViewportMtx at the draw */
+    float slots[32 * 16];               /* the matrix table gMtxSlots at the draw (the second pass only: the bones' matrices; world is slot 0) */
+} IpcLabel;
+/* Returns 1 and the label in *out when the tag is the first of a labelled chain (once: the label is used up), else 0. With a host attached it also puts the label's record into the
+ * ring; the second pass (Ipc_GsKeepLabels(1), development builds) keeps the labels without one. */
+IPC_CALL int Ipc_GsModelTag(unsigned int taddr, IpcLabel *out);
+IPC_CALL void Ipc_GsKeepLabels(int on);
+/* The live plan (development builds, the pass on; plan 11's step 5a): the host's plan for the step that follows its last anchor: the VBlank its VSync record is expected to have, the moments (up to 6, rising
+ * alphas in 1/256) and the moments the pass makes by itself when the plan is not in time. 0 when there is none. Ipc_GsPlanUsed: the plan's VBlank the step's windows were made at, for the stamp before the VSync record. */
+IPC_CALL int Ipc_GsLivePlan(unsigned int *vblank, unsigned int *n, unsigned int *alpha, unsigned int *fb);
+IPC_CALL void Ipc_GsPlanUsed(unsigned int vblank);
+/* The second pass's records (MH2IPC_REC_PASS; development builds): kind 0 and 1 bracket a window's real records, 2 begins the pass's stream (arg: alpha in 1/256),
+ * 3 is a GIF item of it (arg: the path; data: whole qwords), 4 ends it, 5 says the pass was not run for the window. Nothing headless. */
+IPC_CALL void Ipc_GsPass(unsigned int kind, unsigned int arg, const void *data, unsigned int qwords);
+/* The pass thread's records (the pass thread's only output): its own ring, a record per call (arg0: the kind in the low 4 bits and the window's serial above,
+ * arg1 the kind's argument, data: whole qwords). The pass thread is the only caller. Returns 0 when the host made no such ring (nothing is sent). */
+IPC_CALL int Ipc_GsPassRing(unsigned int arg0, unsigned int arg1, const void *data, unsigned int qwords);
+/* The put's own counters (MH2_PASS_CENSUS, a development switch: a release build never starts them): what 1 starts them, 0 gives the 10 counters, 2 the stretches of the
+ * waits for room (their count, then four values each). */
+IPC_CALL void Ipc_GsPassRingCensus(int what, unsigned long long *out);
+/* The time in ns (the pass's own timings). */
+IPC_CALL unsigned long long Ipc_TimeNs(void);
+/* Called for each tag after the DMA has done with it: the record of the end of a labelled chain (handle 0) when that was its last tag. */
+IPC_CALL void Ipc_GsModelTagEnd(unsigned int taddr);
 /* A local -> host transfer (TRXDIR = 1): `qwords` 128-bit words of what
  * the GS reads out, into dst, after everything sent before. Returns 1 when
  * the host's renderer gave them, 0 when they are zeros (headless, or a
@@ -83,7 +122,7 @@ typedef struct IpcPad {
     unsigned short buttons;
     unsigned char rx, ry, lx, ly;
     unsigned char pressure[12];
-    unsigned char reserved[2];
+    unsigned char camTurn, camTilt;   /* Mh2IpcPad's: the modern camera's stick, each a signed byte */
 } IpcPad;
 
 /* Same layout as Mh2IpcKeyboard: the keys down as a bitmap of HID usage

@@ -12,6 +12,9 @@
 #include "em.h"
 #include "npc_motion.h"
 
+
+
+
 u8 Area_GetSetIndex(u16 id);
 /* unit's own declaration: the definition takes (u8 kind, s32 area, u8 force); with those types the compiler converts Npc_SpawnArea's arguments differently from the game's code */
 s32 Npc_IsPresent(u8 kind, u16 area, s32 force);
@@ -26,12 +29,12 @@ extern NpcAreaEntry *gAreaNpcTables[];
  * in the game. */
 void Npc_Spawn(s32 npcId)
 {
-    s32 area = Area_GetSetIndex(gScene.area);
-    NpcAreaEntry *entry = gAreaNpcTables[area];
+    s32 area = NPC_SET(gScene.area);
+    NpcAreaEntry *entry = NPC_AREA_TABLE(area);
     s32 i;
     Em *em;
 
-    for (i = 0; i < gAreaNpcCounts[area]; i++) {
+    for (i = 0; i < NPC_AREA_COUNT(area); i++) {
         if (npcId == entry->id) {
             em = EmSlot_Alloc();
             if (em != NULL) {
@@ -87,6 +90,11 @@ void Npc_SpawnArea(void)
 {
     NpcPair *pair = (NpcPair *)gAreaNpcSpawns[Area_GetSetIndex(gScene.area)];
 
+
+
+
+
+
     if (pair == NULL) {
         return;
     }
@@ -101,6 +109,25 @@ void Npc_SpawnArea(void)
         pair++;
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* The file's data: the per-area townspeople tables and spawn pairs, the route
  * lines (gNpcSidePairs, gNpcSideLines), the partner pairs, the town's area

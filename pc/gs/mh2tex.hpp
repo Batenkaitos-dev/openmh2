@@ -69,6 +69,9 @@ public:
     /* device may be null: keys and dumps work, nothing is replaced (the tests). */
     Textures(Vulkan::Device *device, uint32_t vram_size, const Options &options);
     ~Textures() override;
+    /* The renderer's registers (the interface's own; their address does not change). A CLUT load reads the palette's
+     * high block bits from TEX1 there; without them the palette is taken as the 14 bits of TEX0. */
+    void set_registers(const ParallelGS::RegisterState *regs);
 
     void on_host_upload(const ParallelGS::CopyDescriptor &copy) override;
     void on_vram_damage(const ParallelGS::PageRect &rect) override;

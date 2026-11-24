@@ -110,7 +110,11 @@ s32 Npc_UpdateState(Em *npc)
 #endif
         goto end;
     }
+
+
+
     npcWork->noTalk = 0;
+
     NpcScene_RunNpc(npc);
     switch (npc->variant) {
     case 81:

@@ -41,6 +41,7 @@ if(MH2_FPTRACE)
 endif()
 
 
+
 option(MH2_PS2FP "compile the game's C through tools/pc/ps2fp/ps2fpcc.py (the EE's float, division and shift semantics)" ON)
 
 # ---- the game's files, by module (tools/pc/sources.py) ----
@@ -136,7 +137,7 @@ foreach(mod IN LISTS MH2_MODULES)
 endforeach()
 
 # ---- the platform layer ----
-set(MH2_PAL_SOURCES main.c pal_mem.c pal_overlay.c pal_camera.c pal_fpmodel.c pal_hud.c pal_freecam.c pal_text.c pal_hub.c)
+set(MH2_PAL_SOURCES main.c pal_mem.c pal_overlay.c pal_camera.c pal_fpmodel.c pal_hud.c pal_freecam.c pal_text.c pal_hub.c pal_modcam.c)
 if(MH2_FPTRACE)   # the product trace (pal_fptrace.c; PS2FP_SITES names the site list the pass writes)
   list(APPEND MH2_PAL_SOURCES pal_fptrace.c)
 endif()

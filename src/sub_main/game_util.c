@@ -30,6 +30,9 @@
 #include "window.h"
 #include "syssettings.h"
 #include "syssave.h"
+
+
+
 #include "movie.h"
 #include "stream.h"
 #include "texture.h"
@@ -109,6 +112,9 @@ void Gfx_ClearModelBuffers(void)
 {
     memset(gObjBufBlocks, 0, 0x20000);
     memset(gMatSets, 0, 53760);
+
+
+
     memset(gMaterials, 0, 0x14000);
     memset(gBones, 0, 0xC8000);
     memset(gModels, 0, 16384);
@@ -177,26 +183,41 @@ void Game_ResetSubsystems(void)
     for (i = 0; i < MOTIONS_EM_SLOTS; i++) {
         EmSlot_ForgetModel(i, 2);
     }
+
+
+
 }
 
 /* Frees every loaded motion (gMotions) and clears its entry. */
 void Motion_FreeAll(void)
 {
     s32 i;
-    void **motion = gMotions;
+    void **motion = MOTION_TABLE;
 
-    for (i = 0; i < MOTIONS_TOTAL; i++, motion++) {
+    for (i = 0; i < MOTION_TOTAL; i++, motion++) {
         if (*motion != NULL && Mem_FreeRet1(*motion) == 1) {
             *motion = NULL;
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
 }
 
 /* Frees the common set's motions (those before the players'). */
 void Motion_FreeCommon(void)
 {
     s32 i;
-    void **motion = gMotions;
+    void **motion = MOTION_TABLE;
 
     for (i = 0; i < MOTIONS_PLAYER_FIRST; i++, motion++) {
         if (*motion != NULL && Mem_FreeRet1(*motion) == 1) {
@@ -212,9 +233,21 @@ void Motion_FreeEmSlot(s16 slot)
     s16 i;
 
     EmSlot_ForgetModel(slot, 1);
-    for (i = slot * MOTIONS_PER_EM + MOTIONS_EM_FIRST, end = i + MOTIONS_PER_EM; i < end; i++) {
-        if (gMotions[i] != NULL && Mem_FreeRet1(gMotions[i]) == 1) {
-            gMotions[i] = NULL;
+
+
+
+
+
+
+
+
+
+
+
+
+    for (i = slot * MOTIONS_PER_EM + MOTION_EM_FIRST, end = i + MOTIONS_PER_EM; i < end; i++) {
+        if (MOTION_TABLE[i] != NULL && Mem_FreeRet1(MOTION_TABLE[i]) == 1) {
+            MOTION_TABLE[i] = NULL;
         }
     }
 }
@@ -414,6 +447,11 @@ s32 Game_HubOffered(void)
 
 s32 Game_HubTownArea(u16 area)
 {
+
+
+
+
+
     return area >= AREA_HUB_0x84 && area <= AREA_ELDER_HALL;
 }
 

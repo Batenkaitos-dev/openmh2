@@ -18,6 +18,9 @@
 #include "engine_math.h"
 #include "rand.h"
 
+
+
+
 typedef struct SndFile {
     u32 unk0[2];
     u32 headOffset;     /* 0x08: bank header (Head/Prog/Smpl/Vagi) */
@@ -199,7 +202,11 @@ s32 Sound_LoadBankFile(s32 data, s32 slot)
 s32 Sound_LoadMergedBanks(SndFile *file, u8 *out, u32 slot)
 {
     Sound_SetSe(slot, (u8 *)file + file->seOffset, file->seSize);
+
+
+
     Sound_SetBank(slot, out, Snd_MergeBanks(out, gSndStageHeads, gSndStageCount));
+
     Snd_UploadBank(slot, (u32)gSndStageBodyBase, Snd_GetBankBodySize(out), 0);
     return 0;
 }
@@ -556,7 +563,11 @@ void Sound_StageBank(SndFile *file)
     u8 *head = gSndStageHeadBase + gSndStageHeadUsed;
 
     memcpy(head, (u8 *)file + file->headOffset, ((volatile SndFile *)file)->headSize);
+
+
+
     gSndStageHeads[gSndStageCount] = head;
+
     memcpy(gSndStageBodyBase + gSndStageBodyUsed, (u8 *)file + file->bodyOffset, file->bodySize);
     gSndStageHeadUsed += file->headSize;
     gSndStageBodyUsed += file->bodySize;

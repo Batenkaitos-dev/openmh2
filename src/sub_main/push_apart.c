@@ -19,7 +19,9 @@
 #include "equip_shop.h"
 #include "hit_setup.h"
 #include "area.h"
+
 extern Em gEms[EM_COUNT];
+
 void Player_BodyCapsule(Player *p, HitCapsule *cap, f32 r);
 extern HitShape *gEmBoneHits[];
 /* end of prototypes */

@@ -536,6 +536,25 @@ Em *Npc_Find(u8 npcId);
 void Npc_SpawnArea(void);
 extern u8 gAreaNpcCounts[16];
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#define NPC_SET(area) Area_GetSetIndex(area)
+#define NPC_AREA_TABLE(set) gAreaNpcTables[set]
+#define NPC_AREA_COUNT(set) gAreaNpcCounts[set]
+
+
 s32 Npc_UpdateState(Em *npc);
 void Npc_HoldRoute(Em *npc);
 void Npc_EnterRoutePoint(Em *npc);

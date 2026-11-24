@@ -1709,7 +1709,7 @@ void GmEm_PrepareMeshSet(Em *em, s32 set, ModelMatSet *sets)
                 case 1:
                 case 5:
                     if (em->parts[7].state >= 10) texIdx = 2; else texIdx = 1;
-                    material->tex = gTexHandles[em->modelSlot * 20 + 163 + texIdx];
+                    material->tex = gTexHandles[SCENE_EM_TEX(em->modelSlot) + texIdx];
                     break;
                 case 3:
                 case 8:
@@ -2534,7 +2534,7 @@ void GmEm_PrepareMeshSet(Em *em, s32 set, ModelMatSet *sets)
                     modelMats[j].rgb[1] = shade;
                     modelMats[j].rgb[2] = shade;
                 }
-                modelMats[j].tex = gTexHandles[em->modelSlot * 20 + 163 + texIdx];
+                modelMats[j].tex = gTexHandles[SCENE_EM_TEX(em->modelSlot) + texIdx];
             }
         }
         for (i = 0; i < sets[set].count; i++) {
@@ -2561,7 +2561,7 @@ void GmEm_PrepareMeshSet(Em *em, s32 set, ModelMatSet *sets)
                 case 5:
                     if (em->parts[7].state >= 10) texIdx = 2; else texIdx = 1;
                     if (rageTex) texIdx += 8;
-                    material->tex = gTexHandles[em->modelSlot * 20 + 163 + texIdx];
+                    material->tex = gTexHandles[SCENE_EM_TEX(em->modelSlot) + texIdx];
                     break;
                 case 3:
                 case 8:
@@ -2615,7 +2615,7 @@ void GmEm_PrepareMeshSet(Em *em, s32 set, ModelMatSet *sets)
                 case 1:
                 case 5:
                     if (em->parts[7].state >= 10) texIdx = 2; else texIdx = 1;
-                    material->tex = gTexHandles[em->modelSlot * 20 + 163 + texIdx];
+                    material->tex = gTexHandles[SCENE_EM_TEX(em->modelSlot) + texIdx];
                     break;
                 case 3:
                 case 8:
@@ -2694,10 +2694,10 @@ void GmEm_PrepareMeshSet(Em *em, s32 set, ModelMatSet *sets)
             material = &modelMats[sets[set].mat[i]];
             if (i == 0) {
                 kind20Tex = 1;
-                material->tex = gTexHandles[em->modelSlot * 20 + 163 + kind20Tex];
+                material->tex = gTexHandles[SCENE_EM_TEX(em->modelSlot) + kind20Tex];
             }
             material->alpha = em->alpha;
-            material->tex = gTexHandles[em->modelSlot * 20 + 163 + kind20Tex];
+            material->tex = gTexHandles[SCENE_EM_TEX(em->modelSlot) + kind20Tex];
             GmEm_UploadMaterial((s32)em, material, i);
         }
         break;

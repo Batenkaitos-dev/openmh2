@@ -9,6 +9,8 @@
  *                 is used, the same on every run.
  *   --widescreen  the camera's aspect 16:9 (pal_camera.c)
  *   --offline-hub the village's gate leads to the online town, offline (pal_hub.c)
+ *   --smooth-camera the modern camera: the right stick turns and tilts the follow camera (pal_modcam.c)
+ *
  *   snd's (Libsd_Option: --audio cse)
  *   io's (Io_Init: --disc, --memcard1, --memcard2)
  * Before the game's main the boot executable's segment is loaded into the RAM
@@ -19,10 +21,15 @@
 #include "pal_camera.h"
 #include "pal_fpmodel.h"
 #include "pal_hub.h"
+#include "pal_modcam.h"
 #include "pal_freecam.h"
 #include "host.h"
 #include "kernel/kern_int.h"
 #include "ipc/core_ipc.h"
+
+
+
+
 
 static int StrEq(const char *a, const char *b)
 {
@@ -64,6 +71,7 @@ int main(int argc, char **argv)
     Pal_OverlayInit();
     for (i = 1; i < argc; i++) {
         if (StrEq(argv[i], "--check")) {
+            { void Pal_LowPoolReport(void); Pal_LowPoolReport(); }
             Host_Log("startup checks passed");
             return 0;
         }
@@ -88,10 +96,34 @@ int main(int argc, char **argv)
         if (Pal_OfflineHubOption(argc, argv, i)) {   /* the offline hub */
             continue;
         }
+        {   /* the modern camera (--smooth-camera; --smooth-camera-test in the development builds) */
+            s32 mtook = Pal_ModcamOption(argc, argv, i);
+            if (mtook > 0) {
+                i += mtook - 1;
+                continue;
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
         { void Libsd_Option(int argc, char **argv, int i); Libsd_Option(argc, argv, i); }   /* --audio */
     }
     Pal_WidescreenStart();   /* the setting, once the options are read */
     Pal_FpuModelStart();     /* the float model: a saved session's, else the option's */
     Pal_OfflineHubStart();   /* the offline hub's, the same */
+    Pal_ModcamStart();       /* the modern camera's */
+
+
+
+
     Kern_Boot(frames, argc, argv);
 }

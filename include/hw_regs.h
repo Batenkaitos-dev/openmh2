@@ -180,6 +180,24 @@ typedef struct GsAd {
 #define TEX1_MIN_LINEAR_MIP_NEAREST 4
 #define TEX1_MIN_LINEAR_MIP_LINEAR 5
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* TEST's fields: the alpha test (ATE, ATST, AREF) and the depth test
  * (ZTE, ZTST). */
 #define GS_TEST_ATE 1

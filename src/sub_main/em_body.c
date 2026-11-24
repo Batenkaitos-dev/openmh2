@@ -39,7 +39,9 @@
 
 struct SparkEmitter;
 struct FxObj;
+
 extern Em gEms[];
+
 struct SparkObj;
 /* end of prototypes */
 
@@ -870,6 +872,13 @@ u8 EmKind_MotionGroupCount(s16 i)
 s16 EmSlot_FindKind(s16 k)
 {
     s16 i;
+
+
+
+
+
+
+
     u8 *scene;
 
     for (i = 0, scene = (u8 *)&gScene; i < 4; i++, scene++) {
@@ -877,6 +886,7 @@ s16 EmSlot_FindKind(s16 k)
             return i;
         }
     }
+
     return -1;
 }
 

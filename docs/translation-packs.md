@@ -161,12 +161,19 @@ messages.
 
 ### 3.5 Use it
 
-Put the folder in `text_packs` in the user data folder (the player's guide, "Where things are"), and choose it:
+Put the folder in `text_packs` in the user data folder (the player's guide, "Where things are"; the launcher's Content page has
+**Open the translation packs folder**, which makes the folder if it is not there and opens it), and choose it:
 
+- in the launcher: the Content page's **Translation pack** row, below the texture packs, lists **Off** and each folder of
+  `text_packs`, by the name in its `pack.ini` (the folder's name when the pack has none, and after the name, in brackets, when
+  two packs have the same name). Left and Right choose. **This pack**, under the row, says whether the game accepts the pack,
+  and the line at the bottom gives the reason when it does not. That is the game's own check of the pack at its start (the
+  `pack.ini`, the character map, the text table and the files: section 5), made without starting the game. It does not hold
+  the pack's disc files to the original's sizes: `textpack.py check --archive` does. **Play** stops while the chosen pack is
+  refused. The launcher writes `text_pack = NAME` to `mh2.ini` when you press Play. A folder whose name `mh2.ini` cannot hold
+  (a `#` or `;` in it, or spaces at either end) is not listed (**Folders not listed** counts them): rename it. Or
 - `text_pack = NAME` in `mh2.ini` (`NAME` is the folder's name; a path also works), or
-- `--text-pack NAME` on the command line.
-
-The launcher does not list or choose translation packs (its Content page is for texture packs).
+- `--text-pack NAME` on the command line (the launcher shows "(command line)" and does not change it).
 
 `text_pack = off` is the default. A pack that cannot be used stops the game before it starts, with the reason.
 

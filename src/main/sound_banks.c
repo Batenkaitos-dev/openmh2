@@ -33,6 +33,23 @@ enum SndLoadStep {
 /* The most entries a staged load's list has: the quest's monster slots. */
 #define SNDLOAD_LIST_MAX 4
 
+/*
+ * The list's entries through these macros: SNDLOAD_LIST_N of them, SNDLOAD_EM_KIND(list, i) an entry's monster kind,
+ * SNDLOAD_KIND(i) the bank kind staged for it. Off the content core they are Dos's four and the game's own cells. In the
+ * content core a quest of the pack lists six kinds (its scene's slots), and the entries 4 and 5 live in the content core
+ * (include/content_area.h); a bank of the entries 4 and 5 is staged only while it fits the monsters' sound slot.
+ */
+
+
+
+
+
+
+#define SNDLOAD_LIST_N          SNDLOAD_LIST_MAX
+#define SNDLOAD_EM_KIND(list, i) ((list)[i])
+#define SNDLOAD_KIND(i)         gSndLoad.kinds[i]
+
+
 /* The progress of a staged load (gSndLoad; SndLoad_Init starts one). */
 typedef struct SndLoad {
     /* 0x0 */ s8 state;                     /* enum SndLoadStep */
@@ -44,6 +61,9 @@ typedef struct SndLoad {
 extern SndLoad gSndLoad;
 extern s8 gVoiceBanks[2][VOICE_BANKS_PER_GENDER];   /* per gender and voice, the voice's bank */
 extern s16 gWeaponSeBanks[];  /* per weapon kind, its bank file after SND_BANK_WEAPONS */
+
+
+
 
 struct SndFile;
 s32 Sound_LoadBankWait(struct SndFile *f, u32 slot);
@@ -59,6 +79,10 @@ void Sound_Silence(void)
 void SndLoad_Init(s8 count)
 {
     memset(&gSndLoad, 0, sizeof(SndLoad));
+
+
+
+
     gSndLoad.count = count;
 }
 
@@ -68,6 +92,7 @@ void SndLoad_Init(s8 count)
  * (gScene.emKind; 0 is an empty slot) the bank of its kind
  * (gEmSeBankFiles), unless a bank of that kind is staged already. Bank
  * kind 38 counts as staged when 28 is, 39 when 29 is, and 27 when 1 is.
+ * In the content core a quest of the pack lists six kinds (SNDLOAD_EM_KIND).
  * buf is the load buffer (SNDLOAD_EM_*). Returns 1 once every entry is
  * done.
  */
@@ -90,7 +115,7 @@ s32 SndLoad_EmBanks(u8 *buf, u8 *emKinds)
         }
         break;
     case SNDLOAD_QUEUE_NEXT:
-        emKind = emKinds[gSndLoad.index];
+        emKind = SNDLOAD_EM_KIND(emKinds, gSndLoad.index);
         if (emKind == 0) {
             if (++gSndLoad.index >= gSndLoad.count) {
                 done = 1;
@@ -105,44 +130,53 @@ s32 SndLoad_EmBanks(u8 *buf, u8 *emKinds)
             break;
         }
         if (bankKind == 38) {
-            for (i = 0; i < SNDLOAD_LIST_MAX; i++) {
-                if (bankKind == gSndLoad.kinds[i] || gSndLoad.kinds[i] == 28) {
+            for (i = 0; i < SNDLOAD_LIST_N; i++) {
+                if (bankKind == SNDLOAD_KIND(i) || SNDLOAD_KIND(i) == 28) {
                     break;
                 }
             }
         } else if (bankKind == 39) {
-            for (i = 0; i < SNDLOAD_LIST_MAX; i++) {
-                if (bankKind == gSndLoad.kinds[i] || gSndLoad.kinds[i] == 29) {
+            for (i = 0; i < SNDLOAD_LIST_N; i++) {
+                if (bankKind == SNDLOAD_KIND(i) || SNDLOAD_KIND(i) == 29) {
                     break;
                 }
             }
         } else if (bankKind == 27) {
-            for (i = 0; i < SNDLOAD_LIST_MAX; i++) {
-                if (bankKind == gSndLoad.kinds[i] || gSndLoad.kinds[i] == 1) {
+            for (i = 0; i < SNDLOAD_LIST_N; i++) {
+                if (bankKind == SNDLOAD_KIND(i) || SNDLOAD_KIND(i) == 1) {
                     break;
                 }
             }
         } else {
-            for (i = 0; i < SNDLOAD_LIST_MAX; i++) {
-                if (bankKind == gSndLoad.kinds[i]) {
+            for (i = 0; i < SNDLOAD_LIST_N; i++) {
+                if (bankKind == SNDLOAD_KIND(i)) {
                     break;
                 }
             }
         }
-        if (i < SNDLOAD_LIST_MAX) {
+        if (i < SNDLOAD_LIST_N) {
             /* staged already */
             if (++gSndLoad.index >= gSndLoad.count) {
                 done = 1;
             }
             break;
         }
-        gSndLoad.kinds[gSndLoad.index] = bankKind;
+        SNDLOAD_KIND(gSndLoad.index) = bankKind;
         Sound_QueueBank(SND_BANK_FILE(bankKind + SND_BANK_EM), buf + SNDLOAD_EM_FILE);
         gSndLoad.state++;
         break;
     case SNDLOAD_WAIT_NEXT:
         if (!FileQueue_IsBusy()) {
+
+
+
+
+
+
+
+
             Sound_StageBank((struct SndFile *) (buf + SNDLOAD_EM_FILE));
+
             if (++gSndLoad.index >= gSndLoad.count) {
                 done = 1;
                 gSndLoad.state++;
@@ -174,6 +208,11 @@ s32 SndLoad_PlayerBanks(u8 *buf, Player *pl)
     switch (gSndLoad.state) {
     case SNDLOAD_QUEUE_FIRST:
         Sound_InitStaging(buf + SNDLOAD_PL_HEAD, buf + SNDLOAD_PL_BODY);
+
+
+
+
+
         if (pl->active != 0) {
             id = SND_BANK_FILE(gWeaponSeBanks[pl->weaponKind] + SND_BANK_WEAPONS);
         } else {

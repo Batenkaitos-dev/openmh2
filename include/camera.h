@@ -714,6 +714,17 @@ typedef struct CamCtl {
 } CamCtl;
 typedef char CamCtl_size_check[(sizeof(CamCtl) == 0x680) ? 1 : -1];
 
+#if PLATFORM_PC
+/*
+ * The modern camera's state (pc/core/pal_modcam.c) lives in padding bytes nothing uses, so no layout changes: CamCtl +0x381 and
+ * +0x382 hold the right stick's turn and tilt as the camera read them (signed bytes, -127 to 127; 0 unless the setting is on),
+ * and CamFollow +0x7E holds the tilt's fraction of a view (a signed 16 bits: the view is distNo + fraction / 65536).
+ */
+#define CAM_PAD_TURN(ctl) (*(s8 *)&(ctl)->pad381[0])
+#define CAM_PAD_TILT(ctl) (*(s8 *)&(ctl)->pad381[1])
+#define CAM_TILT_FRAC(work) (*(s16 *)&(work)->pad7D[1])
+#endif
+
 /* A camera mode's init or update handler (gCamModeInit, gCamModeUpdate): the controller and
  * the mode's view. */
 typedef void (*CamEntFn)(CamCtl *c, CamView *v);

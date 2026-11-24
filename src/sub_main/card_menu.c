@@ -4994,6 +4994,76 @@ void Save_CopyToSlot(s32 slot)
     *dst = gSysSave.save;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* With save 0, copies a character file's body into save slot slot and keeps its date stamp.
  * Otherwise stamps the date, copies the slot into a cleared body and encrypts the file. */
 void SaveMenu_CopyCharacter(NetMenu *menu, s32 data, s32 save, s32 slot)
@@ -5016,6 +5086,9 @@ void SaveMenu_CopyCharacter(NetMenu *menu, s32 data, s32 save, s32 slot)
     menu->readDate[1] = stamp[1];
     memset(body, 0, CARD_FILE_CHAR_BODY_SIZE);
     memcpy(body, chara, sizeof(SaveData));
+
+
+
     SaveFile_Encrypt((u8 *)data);
 }
 

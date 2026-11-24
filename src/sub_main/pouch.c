@@ -21,6 +21,9 @@
 #include "card.h"
 #include "qsync.h"
 
+
+
+
 u16 Pouch_NextSelectable(Player *pl, u16 cur, u8 dir);
 
 /* Selects the first pouch slot with a selectable item (flag 1). */
@@ -53,9 +56,16 @@ u8 Pouch_AddEx(Player *pl, u16 item, s16 n, u8 silent)
     s16 i;
     u8 ret;
 
+
+
+
+
+
+
     if (item >= ITEM_ID_COUNT) {
         return 0;
     }
+
     if (item == 135) {
         return 0;
     }

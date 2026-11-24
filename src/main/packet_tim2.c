@@ -12,6 +12,12 @@
 #include "mem_util.h"
 #include "tim2_file.h"
 
+
+
+
+#define PKT_BYTES(idx) PACKET_BUF_SIZE
+
+
 extern s32 gPacketMode;          /* gSysWork: packet buffer in use when 0..2 */
 extern s32 gPacketBufIdx;          /* gSysWork: frame buffer index (0/1) */
 extern u8 *gPacketBuf;          /* gSysWork: packet buffer of this frame */
@@ -36,13 +42,27 @@ void Packet_InitBuffers(void)
 /* Starts the frame's packet buffer (the one of gPacketBufIdx). */
 void Packet_Reset(void)
 {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     switch (gPacketMode) {
     case 0:
     case 2:
     case 1:
         gPacketBuf = Mem_GetAddr(gPacketBlocks[gPacketBufIdx]);
         gPacketCur = gPacketBuf;
-        gPacketEnd = (u8 *)((u32)gPacketBuf + 0xA0000);
+        gPacketEnd = (u8 *)((u32)gPacketBuf + PKT_BYTES(gPacketBufIdx));
         break;
     }
 }
@@ -66,6 +86,9 @@ void *Packet_Alloc(u32 size, s32 align)
     block = (u8 *)(~(align - 1) & (u32)(cur + align - 1));
     end = block + size;
     if (gPacketEnd < end) {
+
+
+
         Dma_WaitIdle();
         block = gPacketBuf;
         end = block + size;

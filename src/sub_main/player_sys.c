@@ -46,6 +46,9 @@
 #include "vec_math.h"
 #include "light.h"
 
+
+
+
 /* The player system's state (gPlayerSys, 16 bytes). */
 typedef struct PlayerSys {
     s8 state;                   /* 0x0: 0 set the hunters up, 1 run them; 2 and 3 idle */
@@ -469,6 +472,11 @@ void Player_Reset(Player *pl)
         pl->supplyTaken = 0;
         Pouch_SetStartItems(pl);
         Player_ResetAttackPercent(pl);
+
+
+
+
+
         switch (pl->weaponType) {
         case WEAPON_GUNLANCE:
             switch (pl->bladeSpecial % 3) {

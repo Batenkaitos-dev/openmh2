@@ -54,6 +54,10 @@
 #include "mem_util.h"
 #include "menu_steps.h"
 #include "move_menu.h"
+#include "ship_mine_menus.h"
+
+
+
 #include "my_house.h"
 #include "pets.h"
 #include "quest_counter.h"
@@ -317,6 +321,11 @@ void TownPc_HandleInput(Player *pl)
             NpcWork *npcWork;
 
             npcWork = (NpcWork *)&npc->work;
+
+
+
+
+
             /* no talk while the townsperson is busy */
             if ((s8)npcWork->noTalk == 1 || gTownActionDelay != 0) {
                 return;
@@ -393,6 +402,17 @@ void TownPc_HandleInput(Player *pl)
         default:
             return;
         case TOWN_SPOT_MOVE:
+
+
+
+
+
+
+
+
+
+
+
             MoveMenu_Open();
             break;
         case TOWN_SPOT_AREA_DOOR:

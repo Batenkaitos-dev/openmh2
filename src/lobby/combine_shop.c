@@ -664,7 +664,9 @@ const char gCombFeeFmt[6] = {
 void Item_DrawIcon(s16 x, s16 y, s16 size, s32 item);
 /* unit's own declaration: the width, mode, extra value, page and colour are declared s32 (the definition takes s16, u8, u16, s8 and u32); with the definition's types the calls in CombShop_DrawLineWindow build differently from the game's code */
 void ItemInfo_Draw(s16 x, s16 y, s32 w, s32 mode, s32 item, s32 extra, s32 page, s32 color);
+
 extern char *gItemNames[];
+
 
 /* Draws the combination list at (x, y): its sheet; with nothing to list,
  * the shop's no-recipes text; else the page counter, each item's icon, name

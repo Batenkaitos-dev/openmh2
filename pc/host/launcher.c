@@ -19,22 +19,25 @@
 #include "mh2host.h"
 #include "packs.h"
 #include "settings.h"
+#include "textpack.h"
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
 
 enum { PG_HOME, PG_PICTURE, PG_GAME, PG_KEYS, PG_FOLDERS, PG_LOG, PG_DISC, PG_MAKING, PG_CARDS, PG_NEWCARD, PG_FIRST1,
-       PG_FIRST3, PG_FCKEYS, PG_CONTENT, PG_PZKEYS, PG_BUILDING, NPAGES };
+       PG_FIRST3, PG_FCKEYS, PG_CONTENT, PG_PZKEYS, PG_BUILDING, PG_CAMSTICK, NPAGES };
 enum { A_INFO, A_SET, A_GO, A_PLAY, A_QUIT, A_BACK, A_DEFAULTS, A_OPEN_DATA, A_OPEN_LOGS, A_SHOWLOG,
        A_PICK_ISO, A_PICK_DIR, A_CHOOSE_ARC, A_MAKE_TABLE, A_USE_SOURCE, A_CANCEL_MAKE, A_MAKE_DONE,
-       A_CARDPORT, A_NEWCARD, A_IMPORT, A_OPEN_CARDS, A_NC_NAME, A_NC_PORT, A_NC_MAKE, A_FIRST_NEW, A_LATER, A_OPEN_PACKS, A_PACK, A_BUILD, A_CANCEL_BUILD, A_BUILD_DONE };
+       A_CARDPORT, A_NEWCARD, A_IMPORT, A_OPEN_CARDS, A_NC_NAME, A_NC_PORT, A_NC_MAKE, A_FIRST_NEW, A_LATER, A_OPEN_PACKS, A_PACK, A_TEXTPACK, A_OPEN_TPACKS, A_BUILD, A_CANCEL_BUILD, A_BUILD_DONE,
+       A_FR_SRC, A_FR_QUESTS, A_FR_QDIR, A_FR_CLEAR, A_FR_MAKE };
 enum { D_NONE, D_SAVE, D_FAIL, D_OPENFAIL, D_MAKEFAIL, D_PACK, D_BUILDFAIL };
 enum { ARC_MISSING, ARC_READY, ARC_BAD, ARC_NOTABLE };
 
 #define MAXROWS UI_MAXROWS
 #define PK_MAX 256     /* the most packs read */
 #define PK_ROWS 40     /* the most the page lists */
+#define TP_MAX 64      /* the most translation packs listed */
 typedef struct PRow {
     int act, arg;
     int invert;   /* the value is shown the other way round (Skip this screen: the key is launcher) */
@@ -96,6 +99,17 @@ static struct {
     } pk[PK_MAX];
     int npk, pk_dlg;             /* pk_dlg: the pack the open dialog is about */
     char pk_dir[1200];           /* the packs folder ("" when there is none to look in) */
+    /* the content page: the translation pack (text_pack) */
+    struct {
+        TextPackInfo pk[TP_MAX];  /* the folders of text_packs whose names mh2.ini can hold, by folder name */
+        int n, skipped;           /* how many listed; how many folders were left out for their names */
+        char root[1200];          /* the text_packs folder ("" when there is no user data folder) */
+        char value[256];          /* the setting as it stands ("" for off) */
+        int cur;                  /* 0 off, 1..n a listed pack, n+1 the value when no listed pack has that folder name */
+        int status;               /* 0 no pack chosen, 1 the game accepts it, -1 it refuses it */
+        char why[1600];           /* what is wrong with it */
+        char help[1800];          /* the row's help line when the game refuses the pack */
+    } tp;
 } L;
 
 static struct {
@@ -197,6 +211,14 @@ static void summary_picture(char *out, size_t cap)
     }
     if (!strcmp(settings_text(hires), "on"))
         snprintf(out + strlen(out), cap - strlen(out), "%s%s", out[0] ? ", " : "", TX(T_SUM_HIRES));
+    if (strcmp(settings_text(settings_find("fps")), "30")) {   /* the frame rate, when it is not the game's own 30 */
+        snprintf(part, sizeof(part), TX(T_SUM_FPS), settings_shown(settings_find("fps")));
+        snprintf(out + strlen(out), cap - strlen(out), "%s%s", out[0] ? ", " : "", part);
+    }
+    if (!strcmp(settings_text(settings_find("scaling")), "sharp"))
+        snprintf(out + strlen(out), cap - strlen(out), "%s%s", out[0] ? ", " : "", TX(T_SUM_SHARP));
+    if (!strcmp(settings_text(settings_find("scaling")), "whole"))
+        snprintf(out + strlen(out), cap - strlen(out), "%s%s", out[0] ? ", " : "", TX(T_SUM_WHOLE));
     if (!strcmp(settings_text(full), "on"))
         snprintf(out + strlen(out), cap - strlen(out), "%s%s", out[0] ? ", " : "", TX(T_SUM_FULLSCREEN));
     if (!out[0])
@@ -575,6 +597,8 @@ static void packs_summary(char *out, size_t cap)
         snprintf(out, cap, "%s", TX(T_CONTENT_SUM_NONE));
     else
         snprintf(out, cap, TX(T_CONTENT_SUM), on, present);
+    if (L.tp.status)
+        snprintf(out + strlen(out), cap - strlen(out), ", %s", TX(L.tp.status > 0 ? T_CONTENT_SUM_TP : T_CONTENT_SUM_TPBAD));
 }
 
 /* A pack's row: "[x] Name" and, at the right, its author and its files. */
@@ -626,6 +650,87 @@ static void add_pack(Page *p, int i)
     add(p, lab, val, fl, A_PACK, i, help);
 }
 
+/* ---------------------------------------------------------------- the translation pack (text_pack)
+
+ * The choices are Off and the folders of text_packs in the user data folder; the setting is the folder's name. The check is
+ * the game's: textpack.c, which loads the pack as the core does. It runs when the page opens and when the choice changes, not
+ * at every redraw. */
+
+/* Whether mh2.ini can hold the name as a value: not empty, no # or ; (a comment starts there), no edge blanks, no control. */
+static int tp_name_ok(const char *name)
+{
+    size_t n = strlen(name);
+    if (!n || name[0] == ' ' || name[0] == '\t' || name[n - 1] == ' ' || name[n - 1] == '\t')
+        return 0;
+    for (size_t i = 0; i < n; i++)
+        if (name[i] == '#' || name[i] == ';' || (unsigned char)name[i] < 32)
+            return 0;
+    return 1;
+}
+
+/* How a choice is shown: the name in its pack.ini, else the folder's name; with the folder's name after it when another pack has
+ * the same name. */
+static void tp_label(int i, char *out, size_t cap)
+{
+    const TextPackInfo *t = &L.tp.pk[i];
+    int same = 0;
+    for (int k = 0; k < L.tp.n; k++)
+        if (k != i && !strcmp(L.tp.pk[k].name, t->name))
+            same = 1;
+    if (same && strcmp(t->name, t->folder))
+        snprintf(out, cap, "%s (%s)", t->name, t->folder);
+    else
+        snprintf(out, cap, "%s", t->name);
+}
+
+static void tp_refresh(void)
+{
+    static TextPackInfo all[TP_MAX * 2];
+    int idx = settings_find("text_pack");
+    const char *dd = play_data_dir();
+    L.tp.n = L.tp.skipped = 0;
+    L.tp.root[0] = L.tp.value[0] = L.tp.why[0] = 0;
+    L.tp.cur = L.tp.status = 0;
+    if (idx < 0)
+        return;
+    if (dd && *dd) {
+        snprintf(L.tp.root, sizeof(L.tp.root), "%stext_packs", dd);
+        int n = textpack_list(L.tp.root, all, TP_MAX * 2);
+        for (int i = 0; i < n; i++) {
+            if (!tp_name_ok(all[i].folder))
+                L.tp.skipped++;
+            else if (L.tp.n < TP_MAX)
+                L.tp.pk[L.tp.n++] = all[i];
+        }
+    }
+    snprintf(L.tp.value, sizeof(L.tp.value), "%s", settings_text(idx));
+    if (!strcmp(L.tp.value, "off"))
+        L.tp.value[0] = 0;
+    if (!L.tp.value[0])
+        return;
+    L.tp.cur = L.tp.n + 1;
+    for (int i = 0; i < L.tp.n; i++)
+        if (!strcmp(L.tp.pk[i].folder, L.tp.value))
+            L.tp.cur = i + 1;
+    char dir[1300];
+    text_pack_dir(L.tp.value, dir, sizeof(dir));
+    L.tp.status = textpack_check_as(dir, L.tp.value, L.tp.why, sizeof(L.tp.why)) == 0 ? 1 : -1;
+}
+
+static int tp_count(void)
+{
+    return 1 + L.tp.n + (L.tp.cur > L.tp.n);
+}
+
+static void tp_go(int pos)
+{
+    int idx = settings_find("text_pack");
+    if (idx < 0 || settings_given(idx) || pos < 0 || pos >= tp_count() || pos == L.tp.cur)
+        return;
+    settings_put(idx, pos == 0 ? "off" : L.tp.pk[pos - 1].folder);
+    tp_refresh();
+}
+
 /* What is wrong with the game archive, in words: the Home banner, and the reason Play gives. NULL when the archive is ready. */
 static const char *banner_text(void)
 {
@@ -645,6 +750,55 @@ static const char *play_noarc_text(void)
     default: return TX(T_PLAY_NOARC);
     }
 }
+
+/* The Content page's rows for the translation pack: the choice, whether the game accepts it, and the folder. */
+static void tp_rows(Page *p)
+{
+    int idx = settings_find("text_pack");
+    if (idx < 0)
+        return;
+    int given = settings_given(idx);
+    char v[400];
+    unsigned fl = UR_GAP;
+    const char *help = TX(T_TP_H);
+    if (L.tp.cur == 0 && !L.tp.n && !given) {
+        snprintf(v, sizeof(v), "%s", TX(T_TP_NONE));
+        fl |= UR_DIM;
+        help = TX(T_TP_NONE_H);
+    } else {
+        if (L.tp.cur == 0)
+            snprintf(v, sizeof(v), "%s", TX(T_TP_OFF));
+        else if (L.tp.cur <= L.tp.n)
+            tp_label(L.tp.cur - 1, v, sizeof(v));
+        else
+            snprintf(v, sizeof(v), "%s", L.tp.value);
+        if (given) {
+            snprintf(v + strlen(v), sizeof(v) - strlen(v), " %s", TX(T_CMDLINE));
+        } else if (tp_count() > 1) {
+            fl |= UR_ARROWS;
+            if (L.tp.cur <= 0)
+                fl |= UR_NOLEFT;
+            if (L.tp.cur >= tp_count() - 1)
+                fl |= UR_NORIGHT;
+        }
+    }
+    if (L.tp.status < 0) {   /* the reason is the help of the choice too: the player is on that row */
+        snprintf(L.tp.help, sizeof(L.tp.help), TX(T_TP_BAD_H), L.tp.why);
+        help = L.tp.help;
+    }
+    add(p, TX(T_TEXTPACK), v, fl, A_TEXTPACK, 0, help);
+    if (L.tp.status > 0)
+        add(p, TX(T_TP_CHECK), TX(T_TP_OKV), 0, A_INFO, 0, TX(T_TP_OK_H));
+    else if (L.tp.status < 0)
+        add(p, TX(T_TP_CHECK), TX(T_TP_BADV), UR_WARN, A_INFO, 0, L.tp.help);
+    if (L.tp.skipped) {
+        snprintf(v, sizeof(v), TX(T_TP_SKIPV), L.tp.skipped);
+        add(p, TX(T_TP_SKIP), v, UR_DIM, A_INFO, 0, TX(T_TP_SKIP_H));
+    }
+    add(p, TX(T_OPEN_TPACKS), NULL, L.tp.root[0] ? 0 : UR_DIM, A_OPEN_TPACKS, 0, TX(T_OPEN_TPACKS_H));
+}
+
+
 
 static void build(Page *p)
 {
@@ -667,7 +821,7 @@ static void build(Page *p)
         summary_game(sum, sizeof(sum));
         add(p, TX(T_GAME), sum, 0, A_GO, PG_GAME, TX(T_GAME_H));
         packs_summary(sum, sizeof(sum));
-        add(p, TX(T_CONTENT), sum, 0, A_GO, PG_CONTENT, TX(T_CONTENT_H));
+        add(p, TX(T_CONTENT), sum, L.tp.status < 0 ? UR_WARN : 0, A_GO, PG_CONTENT, TX(T_CONTENT_H));
         add(p, TX(T_FOLDERS), NULL, 0, A_GO, PG_FOLDERS, TX(T_FOLDERS_H));
         int li = settings_find("launcher");
         add(p, TX(T_SKIP), settings_text(li)[1] == 'n' ? "off" : "on", UR_ARROWS | UR_GAP, A_SET, li, TX(T_SKIP_H));
@@ -678,7 +832,7 @@ static void build(Page *p)
     case PG_PICTURE:
         p->title = TX(T_HEAD_PICTURE);
         for (int i = 0; i < settings_count(); i++)
-            if (settings_row(i)->page == PAGE_PICTURE && settings_row(i)->type != SET_TEXT)   /* (the textures folder: mh2.ini) */
+            if (settings_row(i)->page == PAGE_PICTURE && (settings_row(i)->type != SET_TEXT || settings_row(i)->choices))   /* (the textures folder: mh2.ini) */
                 add_setting(p, i);
         add_defaults(p);
         add(p, TX(T_BACK), NULL, UR_GAP, A_BACK, PG_HOME, TX(T_BACK_H));
@@ -714,11 +868,18 @@ static void build(Page *p)
         add_setting(p, settings_find("freecam_key_photo"));
         add_setting(p, settings_find("freecam_key_hide"));
         add_setting(p, settings_find("freecam_pad_toggle"));
-        add_setting(p, settings_find("camera_stick"));
-        add_setting(p, settings_find("camera_stick_invert"));
-        add_setting(p, settings_find("camera_stick_speed"));
+        add(p, TX(T_CAMPAGE), NULL, 0, A_GO, PG_CAMSTICK, TX(T_NONE));
         add(p, TX(T_FCOTHER), "mh2.ini", UR_DIM, A_INFO, 0, TX(T_FCOTHER_H));
         add(p, TX(T_BACK), NULL, UR_GAP, A_BACK, PG_GAME, TX(T_BACK_H));
+        break;
+    case PG_CAMSTICK:
+        p->title = TX(T_HEAD_CAMSTICK);
+        add_setting(p, settings_find("camera_stick"));
+        add_setting(p, settings_find("camera_modern"));
+        add_setting(p, settings_find("camera_stick_invert"));
+        add_setting(p, settings_find("camera_stick_speed"));
+        add_defaults(p);
+        add(p, TX(T_BACK), NULL, UR_GAP, A_BACK, PG_FCKEYS, TX(T_BACK_H));
         break;
     case PG_CONTENT: {
         p->title = TX(T_HEAD_CONTENT);
@@ -738,6 +899,7 @@ static void build(Page *p)
             add(p, more, NULL, UR_DIM, A_INFO, 0, TX(T_PACK_MORE_H));
         }
         add(p, TX(T_OPEN_PACKS), NULL, (L.pk_dir[0] ? 0 : UR_DIM) | UR_GAP, A_OPEN_PACKS, 0, TX(T_OPEN_PACKS_H));
+        tp_rows(p);
         add(p, TX(T_BACK), NULL, UR_GAP, A_BACK, PG_HOME, TX(T_BACK_H));
         break;
     }
@@ -990,6 +1152,8 @@ static void set_page(int page)
         cards_refresh();
     if (page == PG_HOME || page == PG_CONTENT)
         packs_refresh(page == PG_CONTENT);
+    if (page == PG_CONTENT)
+        tp_refresh();   /* (the folders and the game's look at the chosen pack: Home shows the last look) */
 }
 
 /* A message over the page, one button. */
@@ -1038,6 +1202,16 @@ static void do_play(void)
     if (L.arc.state != ARC_READY) {   /* the help line says why; pressing it says it again */
         show_note(play_noarc_text());
         return;
+    }
+    int ti = settings_find("text_pack");
+    if (ti >= 0 && !settings_given(ti)) {   /* the game would refuse the pack: say so here, where it can be changed */
+        tp_refresh();
+        if (L.tp.status < 0) {
+            char msg[sizeof(L.message)];
+            snprintf(msg, sizeof(msg), TX(T_PLAY_TPBAD), L.tp.why);
+            show_note(msg);
+            return;
+        }
     }
     if (save(A_PLAY) != 0)
         return;
@@ -1253,6 +1427,13 @@ static void step(const PRow *r, int dir)
         ui_bounce(dir);
         return;
     }
+    if (r->act == A_TEXTPACK) {
+        int before = L.tp.cur;
+        tp_go(L.tp.cur + dir);
+        if (L.tp.cur != before)
+            ui_bounce(dir);
+        return;
+    }
     if (r->act == A_NC_PORT) {
         int port = dir > 0;
         if (port != L.nc_port) {
@@ -1277,6 +1458,14 @@ static void activate(Page *p, int sel)
         else {
             settings_default(r->arg);
             ui_bounce(-1);
+        }
+        break;
+    case A_TEXTPACK:   /* confirm moves on to the next choice, and round to Off */
+        if (tp_count() > 1 && !settings_given(settings_find("text_pack"))) {
+            int before = L.tp.cur;
+            tp_go(L.tp.cur + 1 < tp_count() ? L.tp.cur + 1 : 0);
+            if (L.tp.cur != before)
+                ui_bounce(L.tp.cur > before ? 1 : -1);
         }
         break;
     case A_GO:
@@ -1397,6 +1586,14 @@ static void activate(Page *p, int sel)
                 SDL_CreateDirectory(L.pk_dir);
             }
             if (!open_folder(L.pk_dir))
+                show_note(TX(T_OPEN_FAIL));
+        }
+        break;
+    case A_OPEN_TPACKS:
+        if (L.tp.root[0]
+        ) {
+            SDL_CreateDirectory(L.tp.root);   /* (the user data folder too) */
+            if (!open_folder(L.tp.root))
                 show_note(TX(T_OPEN_FAIL));
         }
         break;
@@ -1861,6 +2058,7 @@ int launcher_run(void)
     arc_refresh();
     cards_refresh();
     packs_refresh(0);
+    tp_refresh();
     L.nsrc = 0;
         L.nsrc = make_sources(L.src, 6, 0);
     L.first = first_run();
