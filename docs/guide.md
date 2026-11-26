@@ -145,7 +145,7 @@ Down move a page, and the wheel scrolls without changing a value. A line at the 
 | **Game archive** | the archive's status, file, size and free space; **Make the archive from a disc image...** or **from a folder...** (a file or folder dialog, then a progress screen with Cancel); choose another archive; **Make the movie table** (shown only when the table is missing) |
 | **Memory cards** | the card in each slot, the cards in the folder (marked in use when another copy of OpenMH2 has one open), **New card...**, **Import cards from an earlier version...**, open the memory cards folder |
 | **Graphics** | anti-aliasing, high resolution, frames per second, picture scaling and its sharpness, fullscreen, V-Sync, mute, dump textures, use texture packs; **Defaults** shows while something differs |
-| **Game** | widescreen, Offline Dundorma, fast loading, keyboard typing and its typing key, the save states folder, and three pages: the Japanese keyboard's keys, **Cameras** (the free camera's keys, and **Camera settings** for the camera on the right stick), and the save state, pause and speed keys |
+| **Game** | widescreen, Offline Dundorma, **Frontier controls**, fast loading, keyboard typing and its typing key, the save states folder, and three pages: the Japanese keyboard's keys, **Cameras** (the free camera's keys, and **Camera settings** for the camera on the right stick), and the save state, pause and speed keys |
 | **Content** | texture packs: whether to use them, the memory they may use, and the list of packs in order, each with its author (the `author = NAME` line of the pack's `pack.txt`) and file count. Below the list, **Translation pack** chooses a translation (**Off**, or a folder of `text_packs`; Left and Right), **This pack** says whether the game accepts it, and **Open the translation packs folder** opens where they go. [Translation packs](#translation-packs), below, has the rest |
 | **Folders and logs** | open the user data folder and the logs folder, show the last log, the photos folder (a setting), and the settings file's path. It has no summary |
 
@@ -229,6 +229,7 @@ search. `--set KEY=VALUE` gives one setting for a single start, and `mh2 --help`
 | `states`, `state_key_*` | save states |
 | `fast_loading`, `fast_forward_cap`, `pace_key_*` | speed and pause (below) |
 | `freecam_*`, `pictures` | the free camera and photo mode (below) |
+| `frontier_controls = on/off` | the attacks on the face buttons and the camera on the right stick (below) |
 | `key.NAME`, `pad.NAME` | the controller bindings |
 
 ### The extras
@@ -375,6 +376,28 @@ the camera all the time, for places where you do not attack. `camera_stick_which
 turns at full tilt, as a share of the D-pad's turning speed (25, 50, 75 or 100). **Modern camera** (`camera_modern = on`, with `camera_stick` at `hold` or `on`) makes the stick an omnidirectional camera. It is off by default. It changes what the game computes, so a save state made with it on needs it on. The mode, Modern camera, the invert and the speed
 are on the Camera settings page, opened from the Cameras page; the other two are in `mh2.ini`. With Modern camera off, the game and your saves are the same as before. The
 camera moves only in hunts and the dojo, because the village's camera does not turn with the D-pad either.
+
+**Frontier controls.** A second way to play, with the attacks on the face buttons and the camera on the right stick, the way
+Monster Hunter Frontier lays out the pad. The Game page's **Frontier controls** row turns it on or off; it starts off. With it
+off, the controls are the game's own, and your saves and your games are the same as before. With it on, the right stick turns the
+camera (the Modern camera is on too, and its speed and inversion stay on the Camera settings page), and the buttons of the game's
+11 weapon types change as follows. A move the game does not have for a button is not made up: the button does nothing.
+
+| Button | In the field |
+|---|---|
+| Triangle | the weapon's main attack (the one the right stick pushed up makes in the original); with the weapon away it draws the weapon with that attack |
+| Circle | the weapon's second attack when the weapon is drawn; with the weapon away, as in the original (gather, talk, carve) |
+| Triangle and Circle together | the weapon's third attack |
+| Select | the move the original has on R3, for the types that have one |
+| R1 | the run when the weapon is away (the original's R2); with the weapon drawn, the weapon's own R1 move, as in the original |
+| L2 | the chat (the original's Triangle) |
+| L1 held for a moment | the item bar (the original's L2) |
+| R3 | the map's zoom (the original's Select) |
+| Cross, Square, the D-pad, the left stick | as in the original |
+
+The great sword's overhead slash comes when you let go of Triangle, and holding Triangle for a moment charges it. The hunting
+horn's notes in a play stance are Triangle, Circle, both together and Square. In the village, in menus and while you talk, the
+buttons are the original's, except that R1 runs in the village; there Triangle is still the chat.
 
 **The free camera and photo mode.** Press `F9` in the village or in a hunt, and the camera is yours. It starts
 where the game's camera is, and the game goes on. The keys:

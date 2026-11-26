@@ -317,6 +317,17 @@ target_compile_options(host_settings_writer_test PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(host_settings_writer_test PRIVATE SDL3::SDL3)
 host_add_exe_test(host_settings_writer host_settings_writer_test "${CMAKE_CURRENT_BINARY_DIR}/settings-writer")
 
+# The Frontier controls setting (settings.c): auto follows the Frontier content, on and off as written, a saved off kept, and no
+# translation twice (a recorded pad, a game played back and a command line that names the option are left as they are).
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/frontier-controls")
+add_executable(host_frontier_controls_test tests/frontier_controls_test.c settings.c hostfs.c packs.c launcher_text.c ${MH2_TEXTPACK_SRCS})
+target_compile_definitions(host_frontier_controls_test PRIVATE MH2_SETTINGS_TEST=1)
+  target_compile_definitions(host_frontier_controls_test PRIVATE MH2_RELEASE=1)
+target_include_directories(host_frontier_controls_test PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${MH2_ROOT}/pc")
+target_compile_options(host_frontier_controls_test PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(host_frontier_controls_test PRIVATE SDL3::SDL3)
+host_add_exe_test(host_frontier_controls host_frontier_controls_test "${CMAKE_CURRENT_BINARY_DIR}/frontier-controls")
+
 # The launcher's headless test (development builds): each case is a script of key presses and mouse clicks that mh2 runs on SDL's
 # dummy video driver and software renderer; the pictures are read back to hashes, and the mh2.ini it wrote is compared.
 

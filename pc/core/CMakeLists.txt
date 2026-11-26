@@ -137,7 +137,7 @@ foreach(mod IN LISTS MH2_MODULES)
 endforeach()
 
 # ---- the platform layer ----
-set(MH2_PAL_SOURCES main.c pal_mem.c pal_overlay.c pal_camera.c pal_fpmodel.c pal_hud.c pal_freecam.c pal_text.c pal_hub.c pal_modcam.c)
+set(MH2_PAL_SOURCES main.c pal_mem.c pal_overlay.c pal_camera.c pal_fpmodel.c pal_hud.c pal_freecam.c pal_text.c pal_hub.c pal_modcam.c pal_ctl.c)
 if(MH2_FPTRACE)   # the product trace (pal_fptrace.c; PS2FP_SITES names the site list the pass writes)
   list(APPEND MH2_PAL_SOURCES pal_fptrace.c)
 endif()

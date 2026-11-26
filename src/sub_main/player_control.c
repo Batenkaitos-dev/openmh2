@@ -22,6 +22,7 @@
 #include "player.h"
 #include "pad.h"
 #include "hud.h"
+#include "pal.h"
 #include "qsync.h"
 #include "objhead.h"
 #include "em.h"
@@ -595,6 +596,7 @@ void Player_CopyPadInput(s32 playerNo)
 
     if (Hud_InputBlocked() == 0 && player->supplyBoxOpen == 0 && player->deliveryMenu == 0 && player->deliveryOpen == 0 &&
         gQuest.inputLock == 0) {
+        PC_CTL_STORE(player->weaponType, player->weaponOut != 0, 0, ((u32)player->stateGroup << 8) | player->state);
         if (player->itemSelect != 0) {
             padIn->held &= PAD_R1 | PAD_R2;
             padIn->prevHeld &= PAD_R1 | PAD_R2;
@@ -602,6 +604,7 @@ void Player_CopyPadInput(s32 playerNo)
             padIn->prevPressed &= PAD_R1 | PAD_R2;
         }
     } else {
+        PC_CTL_STORE(player->weaponType, player->weaponOut != 0, 1, ((u32)player->stateGroup << 8) | player->state);
         if (player->supplyBoxOpen == 0 && player->deliveryOpen == 0 && player->deliveryMenu == 0 && gQuest.inputLock == 0) {
             padIn->stickDir &= PAD_DPAD;
             padIn->prevStickDir &= PAD_DPAD;

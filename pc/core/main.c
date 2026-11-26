@@ -22,6 +22,7 @@
 #include "pal_fpmodel.h"
 #include "pal_hub.h"
 #include "pal_modcam.h"
+#include "pal_ctl.h"
 #include "pal_freecam.h"
 #include "host.h"
 #include "kernel/kern_int.h"
@@ -94,6 +95,9 @@ int main(int argc, char **argv)
             }
         }
         if (Pal_OfflineHubOption(argc, argv, i)) {   /* the offline hub */
+            continue;
+        }
+        if (PalCtl_Option(argc, argv, i)) {   /* the Frontier controls preset (pal_ctl.c) */
             continue;
         }
         {   /* the modern camera (--smooth-camera; --smooth-camera-test in the development builds) */

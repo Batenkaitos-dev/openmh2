@@ -85,6 +85,7 @@
 #define PC_CAM_TURN_STEP(ctl, step) ((void)0)
 #define PC_CAM_BLEND(ctl, work, pl, distKind, offY, offZ) ((void)0)
 #define PC_CAM_TILT_RESET(work) ((void)0)
+#define PC_CTL_STORE(t, d, l, s) ((void)0)
 #define PAL_SYNC_EI() __asm__ volatile ("sync.l\n\tei")
 #define PAL_NOPS_8() __asm__ volatile ("nop\n nop\n nop\n nop\n nop\n nop\n nop\n nop")
 #define PAL_NOPS_7() __asm__ volatile ("nop\n nop\n nop\n nop\n nop\n nop\n nop")
@@ -113,6 +114,17 @@
 #define PC_CAM_TURN_STEP(ctl, step) ((step) = (s16)Pal_CamTurnStep((ctl), (step)))
 #define PC_CAM_BLEND(ctl, work, pl, distKind, offY, offZ) Pal_CamBlend((ctl), (work), (pl), (distKind), (offY), (offZ))
 #define PC_CAM_TILT_RESET(work) Pal_CamTiltReset(work)
+#define PC_CTL_TRACE(t, d, l, s) ((void)0)
+#define PC_CTL_STORE(t, d, l, s)              \
+    do {                                      \
+        PC_CTL_TRACE(t, d, l, s);             \
+        gPalCtlCtx.type = (u8)(t);           \
+        gPalCtlCtx.drawn = (u8)(d);           \
+        gPalCtlCtx.locked = (u8)(l);          \
+        gPalCtlCtx.state = (u16)(s);          \
+        gPalCtlCtx.set = 1;                   \
+        gPalCtlCtx.seq++;                     \
+    } while (0)
 /* A release build keeps the labels only when the host made the pass's ring (the higher frame rates): Pal_GsLabels is set once, as the core
  * attaches, and is 0 otherwise, so that at 30 no label is made or stored and the game's path is the flag's test. */
 extern int Pal_GsLabels;
@@ -572,6 +584,23 @@ s32 Pal_FreezeStep(void);
  * equivalent is sched_poll_event.
  */
 void Pal_Poll(void);
+
+/*
+ * The Frontier controls preset's context (pc/core/pal_ctl.c): what Player_CopyPadInput stores for the platform layer to read, through
+ * PC_CTL_STORE: the hunter's weapon type, whether the weapon is drawn, whether the input is locked (0 free in the field, 1 locked, 2 free in the town), and a count that rises with
+ * each store (the platform layer takes a count that stopped rising as the context none). Nothing is called and nothing the game
+ * reads is changed.
+ */
+typedef struct PalCtlCtx {
+    u8 type;    /* the hunter's weapon type, 0 to 10 for Dos's types */
+    u8 drawn;    /* the weapon is drawn */
+    u8 locked;   /* 0: the field's input is free; 1: locked (a menu, a supply box, a delivery, the quest's lock); 2: free in the town */
+    u8 set;      /* 0 until the first store */
+    u16 state;   /* the hunter's state group in the high byte and its state in the low byte (the hunting horn's play stances are read from it) */
+    u32 seq;     /* rises by one at each store */
+} PalCtlCtx;
+
+extern PalCtlCtx gPalCtlCtx;
 
 #endif /* PLATFORM_PC */
 

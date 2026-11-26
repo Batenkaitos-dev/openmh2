@@ -42,6 +42,8 @@ typedef struct HostConfig {
     const char *disc_path;     /* the archive the core is given (launcher_disc): its MH2_DISC */
     const char *memcard[2];    /* --memcard1/2 FILE: the core's cards (before the settings' memcard1/2) */
     int vsync;                 /* --vsync, the setting vsync: -1 auto (on in fullscreen), 0 off, 1 on */
+    int frontier_controls;     /* the setting frontier_controls: -1 auto (on with the Frontier content), 0 off, 1 on (settings.c) */
+    int frontier_on;           /* the preset is on for this run: the core was given --frontier-controls by the setting (launcher_frontier_controls) */
     const char *log_file;      /* --log-file FILE: the log (play.c; in play, by default) */
     int launcher;              /* --launcher 1: show the launcher; --no-launcher -1: not (launcher.c) */
     int content_core;          /* the core the host starts is the content core: the renderer's memory is 8 MB, not the GS's 4 (gs.c). Set in main.c
@@ -126,6 +128,7 @@ void launcher_core_flag(const char *name);   /* NAME alone, before the core's ow
 int text_pack_dir(const char *name, char *out, size_t cap);   /* the folder a text_pack value names (settings.c) */
 void launcher_text_pack(void);    /* the core's --pack DIR when the setting names a text pack (settings.c) */
 void launcher_widescreen(void);   /* the core's --widescreen when it is on (settings.c) */
+void launcher_frontier_controls(void);   /* the core's --frontier-controls when the setting is on, the camera the right stick's (settings.c) */
 void launcher_smooth_camera(void);  /* the core's --smooth-camera when the setting is on and the camera stick is (settings.c) */
 void launcher_offline_hub(void);  /* the core's --offline-hub when the setting is on (settings.c) */
 /* The windows' title: the project's own name, with the game named as what it runs (Capcom's name is its trademark). */

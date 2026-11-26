@@ -46,6 +46,8 @@
  *   camera_stick = hold   the camera on the right stick (camstick.c): off (default), hold (while
  *                         camera_stick_button is held: l3 by default) or on (always); camera_stick_which = right|left,
  *                         camera_stick_invert = none|x|y|xy, camera_stick_speed = 25|50|75|100 (percent of the game's turn)
+ *   frontier_controls = auto|on|off   the attacks on the face buttons and the camera on the right stick (the core's --frontier-controls;
+ *                         auto: on with the Frontier content, else off; the Modern camera is on with it)
  *   camera_modern = on    the modern camera (as --smooth-camera): with the camera stick on, the right stick turns the camera at a
  *                         speed that follows the push and tilts it smoothly between the game's lowest and highest views. It
  *                         changes the game's state: it is the core's --smooth-camera, and a saved session or save state made
@@ -75,6 +77,7 @@ static struct {
     char memcard[2][1024];
     char cards[1024], card[2][256];
     int fullscreen, mute, vsync;
+    int frontier_controls;
     int ssaa, hires, widescreen, fast_loading, offline_hub, camera_smooth;
     char scaling[12], sharpness[12];
     int fps;   /* the frame rate: 30, or 60, 120 and 144 with the in-between pictures */
@@ -87,7 +90,7 @@ static struct {
     char freecam_input[16], freecam_speed[16], freecam_pad[16], fast_forward_cap[16];
     char camera_stick[8], camera_stick_button[12], camera_stick_which[8], camera_stick_invert[8], camera_stick_speed[8];
     int launcher;   /* launcher = off: the launcher's window is not shown at the start (launcher.c) */
-} st = {.fullscreen = -1, .mute = -1, .vsync = -2, .launcher = 1};
+} st = {.fullscreen = -1, .mute = -1, .vsync = -2, .frontier_controls = -2, .launcher = 1};
 
 static char g_loaded[1200];   /* the settings file read last (the launcher saves into it) */
 
@@ -279,6 +282,10 @@ static const Setting g_rows[] = {
     {.key = "camera_modern", .opt = "--smooth-camera", .type = SET_FLAG, .how = AP_ON, .page = PAGE_GAME, .effect = FX_COMPUTED,
      .restart = 1, .ckind = C_FLAG, .onval = 1, CFG(camera_smooth), .dflt = "off", .label = T_CAMSMOOTH, .help = T_NONE,
      INTST(camera_smooth)},
+    /* the Frontier controls: the attacks on the face buttons (the core's --frontier-controls); auto follows the Frontier content */
+    {.key = "frontier_controls", .type = SET_VSYNC, .how = AP_FCTL, .page = PAGE_GAME, .effect = FX_START, .restart = 1,
+     .ckind = C_VSYNC, CFG(frontier_controls), .dflt = "auto", .choices = "on|off", .label = T_FCTL, .help = T_FCTL_H,
+     INTST(frontier_controls)},
     {.key = "camera_stick_button", .type = SET_TEXT, .how = AP_TEXT_SET, .page = PAGE_GAME, .effect = FX_START,
      .ckind = C_STR, CFG(camera_stick_button), .dflt = "l3", .choices = "l3|select|l2|r2", .label = T_CAMSTICK_BTN,
      .help = T_CAMSTICK_BTN_H, TXTST(camera_stick_button)},
@@ -664,6 +671,9 @@ void settings_apply(int cli_fullscreen, int cli_mute)
             if (g_cfg.vsync == -2)   /* not on the command line */
                 g_cfg.vsync = st.vsync == -2 ? -1 : st.vsync;
             break;
+        case AP_FCTL:
+            g_cfg.frontier_controls = st.frontier_controls == -2 ? -1 : st.frontier_controls;
+            break;
         case AP_SSAA:
             if (!g_cfg.ssaa)
                 g_cfg.ssaa = st.ssaa;
@@ -817,9 +827,19 @@ const char *settings_choice_label(int i, int n)
     return nth_word(l, n);
 }
 
+/* The Frontier controls row's value as the player sees it: auto is on with the Frontier content's core, else off. */
+static const char *fctl_value(const char *v)
+{
+    if (!SDL_strcasecmp(v, "on") || !SDL_strcasecmp(v, "off"))
+        return v;
+    return g_cfg.content_core ? "on" : "off";
+}
+
 static int choice_index(int i, const char *value)
 {
     const char *l = choice_words(&g_rows[i]);
+    if (!strcmp(g_rows[i].key, "frontier_controls"))
+        value = fctl_value(value);
     for (int n = 0; l; n++) {
         const char *w = nth_word(l, n);
         if (!w)
@@ -833,6 +853,11 @@ static int choice_index(int i, const char *value)
 const char *settings_shown(int i)
 {
     static char b[SBUF];
+    if (!strcmp(g_rows[i].key, "camera_stick") || !strcmp(g_rows[i].key, "camera_modern")) {
+        int f = settings_find("frontier_controls");   /* with the Frontier controls on, the right stick is the camera and the Modern camera is on */
+        if (f >= 0 && !strcmp(fctl_value(g_cur[f]), "on"))
+            return TX(T_FCTL_CAM);
+    }
     int n = choice_index(i, g_cur[i]);
     if (n >= 0)
         return settings_choice_label(i, n);
@@ -1398,6 +1423,28 @@ void launcher_smooth_camera(void)
     host_log("modern camera: on (the right stick turns and tilts the camera; the game's state differs once it moves)");
 }
 
+/* The Frontier controls reach the core as its own option, --frontier-controls: the setting on, or auto with the Frontier content's
+ * core. With them the right stick is the camera and the Modern camera is on (camstick.c, --smooth-camera). A command line that gives
+ * the core the option itself decides that run alone: the camera is left as it is. A recorded pad and a game played back hold the game's own
+ * pad already, so the setting adds nothing to them (the controls would be applied twice). */
+void launcher_frontier_controls(void)
+{
+    int on = g_cfg.frontier_controls == 1 || (g_cfg.frontier_controls == -1 && g_cfg.content_core);
+    int fed = 0;
+    g_cfg.frontier_on = 0;
+    if (on && fed && !has_arg("--frontier-controls")) {
+        host_log("frontier controls: not given to the core (the pad is a recorded one: it holds the game's own pad)");
+        return;
+    }
+    if (!on || fed || has_arg("--frontier-controls"))
+        return;
+    launcher_core_flag("--frontier-controls");
+    g_cfg.frontier_on = 1;
+    g_cfg.camera_stick = "on";
+    g_cfg.camera_smooth = 1;
+    host_log("frontier controls: on (the attacks are on the face buttons, the right stick is the camera, the modern camera is on)");
+}
+
 
 /* The offline hub reaches the core as its own option, --offline-hub. */
 void launcher_offline_hub(void)
@@ -1451,6 +1498,7 @@ void settings_test_reset(void)
     st.fullscreen = -1;
     st.mute = -1;
     st.vsync = -2;
+    st.frontier_controls = -2;
     st.launcher = 1;
     memset(g_given, 0, sizeof(g_given));
     memset(g_base, 0, sizeof(g_base));

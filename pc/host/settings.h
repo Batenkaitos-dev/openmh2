@@ -31,6 +31,7 @@ enum {
     AP_RECORD,    /* record: on unless the file says off */
     AP_INVERT,     /* an inverted flag: the option says no to it */
     AP_VSYNC,
+    AP_FCTL,
     AP_SSAA,
     AP_DAMAGE,
     AP_TEXMB,     /* texture_cache_mb: the file's, when set */

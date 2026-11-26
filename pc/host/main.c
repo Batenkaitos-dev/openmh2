@@ -293,6 +293,7 @@ int main(int argc, char **argv)
         return 1;
     }
     launcher_widescreen();       /* the core's --widescreen when the setting is on (settings.c) */
+    launcher_frontier_controls();   /* the core's --frontier-controls when the setting is on, the right stick the camera (settings.c) */
     launcher_smooth_camera();    /* the core's --smooth-camera when the setting and the camera stick are on (settings.c) */
     launcher_offline_hub();      /* the core's --offline-hub when the setting is on (settings.c) */
     launcher_text_pack();        /* the core's --pack when the setting names a text pack (settings.c) */

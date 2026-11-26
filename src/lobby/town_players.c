@@ -38,6 +38,7 @@
 #include "engine_math.h"
 #include "game_util.h"
 #include "hud.h"
+#include "pal.h"
 #include "lobby_queries.h"
 #include "my_house.h"
 #include "rand.h"
@@ -149,6 +150,7 @@ void TownPc_ReadPad(s32 playerNo)
         padInput->rightStickTilt = 0;
     }
     if (Hud_InputBlocked() == 0 && player->supplyBoxOpen == 0) {
+        PC_CTL_STORE(player->weaponType, player->weaponOut != 0, 2, ((u32)player->stateGroup << 8) | player->state);
         padInput->held = gPadInput.buttons[0].cur;
         padInput->prevHeld = gPadInput.buttons[0].prev;
         padInput->prevPressed = padInput->pressed;
@@ -166,6 +168,7 @@ void TownPc_ReadPad(s32 playerNo)
         }
         Player_RunInputHook(player);
     } else {
+        PC_CTL_STORE(player->weaponType, player->weaponOut != 0, 1, ((u32)player->stateGroup << 8) | player->state);
         if (player->supplyBoxOpen == 0) {
             padInput->stickDir &= 0x3C00;
             padInput->prevStickDir &= 0x3C00;

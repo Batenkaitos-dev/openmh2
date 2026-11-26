@@ -44,6 +44,7 @@
 #include "pal.h"
 #include "pal_freecam.h"
 #include "pal_modcam.h"
+#include "pal_ctl.h"
 #include "ipc/mh2ipc.h"
 
 static void Rumble(int port, u8 small, u8 large)
@@ -71,6 +72,24 @@ static void PadFromHost(void)
         st.rx = st.ry = st.lx = st.ly = 0x80;
         for (i = 0; i < 12; i++)
             st.pressure[i] = 0;
+    }
+    {   /* the Frontier controls preset: Dos's pad for the face buttons of the second layout (off: the pad as it is) */
+        PalCtlPad cp;
+        cp.buttons = st.buttons;
+        cp.rx = st.rx;
+        cp.ry = st.ry;
+        cp.lx = st.lx;
+        cp.ly = st.ly;
+        for (i = 0; i < 12; i++)
+            cp.pressure[i] = st.pressure[i];
+        PalCtl_Run(&gPalCtlCtx, Kern_VblankCount(), &cp);
+        st.buttons = cp.buttons;
+        st.rx = cp.rx;
+        st.ry = cp.ry;
+        st.lx = cp.lx;
+        st.ly = cp.ly;
+        for (i = 0; i < 12; i++)
+            st.pressure[i] = cp.pressure[i];
     }
     Io_PadSetState(0, &st);
     /* the modern camera's stick: two signed bytes of the host's pad record (zeros from a host that has none; at rest or off) */

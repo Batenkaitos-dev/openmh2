@@ -192,6 +192,9 @@
     X(T_CAMSTICK, "Camera on the right stick") \
     X(T_CAMSTICK_H, "The right stick turns and tilts the game's camera, as the D-pad does. The game uses that stick to attack, so hold: it is the camera only while you hold L3, and on: it is the camera always. More keys in mh2.ini: camera_stick_button, _which, _invert, _speed.") \
     X(T_CAMSMOOTH, "Modern camera") \
+    X(T_FCTL, "Frontier controls") \
+    X(T_FCTL_CAM, "on (Frontier controls)") \
+    X(T_FCTL_H, "Attacks on the face buttons and the camera on the right stick. The village and the menus keep the game's buttons. Turns on the Modern camera.") \
     X(T_CAMPAGE, "Camera settings") \
     X(T_HEAD_CAMSTICK, "CAMERA SETTINGS") \
     X(T_CAMSTICK_BTN, "Camera stick button") \

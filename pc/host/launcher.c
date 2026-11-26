@@ -848,6 +848,7 @@ static void build(Page *p)
         add(p, TX(T_JKEYS), NULL, 0, A_GO, PG_KEYS, TX(T_JKEYS_H));
         add(p, TX(T_FREECAM), NULL, 0, A_GO, PG_FCKEYS, TX(T_FREECAM_H));
         add(p, TX(T_PZKEYS), NULL, 0, A_GO, PG_PZKEYS, TX(T_PZKEYS_H));
+        add_setting(p, settings_find("frontier_controls"));
         add_defaults(p);
         add(p, TX(T_BACK), NULL, UR_GAP, A_BACK, PG_HOME, TX(T_BACK_H));
         break;
